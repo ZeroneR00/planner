@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вариант Б2 — планировщик</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #111316; color: #ECEDEF; font-family: 'Golos Text', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+<sc-if value="{{isToday}}" hint-placeholder-val="{{true}}">
+<div style="flex: 1; min-height: 0; display: flex; flex-direction: column">
+<header style="padding: 24px 16px 16px 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<div style="font-size: 14px; color: #9BA0A8">{{dateLabel}}</div>
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em">Сегодня</h1>
+</div>
+<button type="button" onClick="{{goAhead}}" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: 1px solid #2C3037; border-radius: 999px; background: #181B1F; color: #ECEDEF; font-family: inherit; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>
+<span>Впереди</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: {{accent}}">{{aheadCount}}</span>
+</button>
+</header>
+
+<main style="flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 20px; display: flex; flex-direction: column; gap: 24px">
+
+<section aria-label="Сейчас" style="background: #1C1F24; border-radius: 22px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
+<div style="font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: {{accent}}">Сейчас</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #9BA0A8">сделано {{doneCount}}</div>
+</div>
+<sc-if value="{{hasCurrent}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<button type="button" aria-label="{{currentEditLabel}}" onClick="{{editCurrent}}" style="padding: 0; border: 0; border-radius: 8px; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; outline: {{currentRing}}; outline-offset: 6px">{{currentTitle}}</button>
+<sc-if value="{{currentHasRep}}" hint-placeholder-val="{{false}}">
+<div style="font-size: 13px; color: #9BA0A8">↻ {{currentRep}}</div>
+</sc-if>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" onClick="{{finishCurrent}}" style="flex: 1; height: 48px; border: 0; border-radius: 14px; background: {{accent}}; color: #111316; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer">Сделано</button>
+<button type="button" onClick="{{postpone}}" style="flex: 1; height: 48px; border: 1px solid #3A3F47; border-radius: 14px; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer">Позже</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{noCurrent}}" hint-placeholder-val="{{false}}">
+<div style="font-size: 20px; font-weight: 600; line-height: 1.3">На сегодня всё. Можно выдохнуть.</div>
+</sc-if>
+</section>
+
+<section aria-label="Карман" style="display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 4px 6px">
+<h2 style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #9BA0A8">Карман · {{inboxCount}}</h2>
+<span style="font-size: 12px; color: #8A909A">тапни текст, чтобы изменить</span>
+</div>
+<sc-for list="{{inbox}}" as="x" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 0; min-height: 52px; padding: 0 0 0 14px; border-radius: 14px; background: #181B1F; outline: {{x.ring}}; outline-offset: -1px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 6px 0">
+<button type="button" aria-label="{{x.editLabel}}" onClick="{{x.edit}}" style="padding: 4px 0; border: 0; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 15px; line-height: 1.35; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word">{{x.title}}</button>
+<sc-if value="{{x.back}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; color: #FDBA74">↩ вчера не отмечено</span>
+</sc-if>
+</div>
+<sc-if value="{{x.back}}" hint-placeholder-val="{{false}}">
+<button type="button" aria-label="{{x.doneLabel}}" onClick="{{x.markDone}}" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; color: {{accent}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+</button>
+</sc-if>
+<button type="button" aria-label="{{x.todayLabel}}" onClick="{{x.toToday}}" style="height: 44px; flex-shrink: 0; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; color: {{accent}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Сегодня</button>
+<button type="button" aria-label="{{x.dropLabel}}" onClick="{{x.drop}}" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; color: #9BA0A8; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+</button>
+</div>
+</sc-for>
+<sc-if value="{{inboxEmpty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 14px; border-radius: 14px; border: 1px dashed #2C3037; font-size: 14px; color: #9BA0A8">Карман пуст — всё разобрано</div>
+</sc-if>
+</section>
+
+<sc-if value="{{hasRest}}" hint-placeholder-val="{{true}}">
+<section aria-label="Дальше сегодня" style="display: flex; flex-direction: column; gap: 2px">
+<h2 style="margin: 0; padding: 0 4px 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #9BA0A8">Дальше сегодня</h2>
+<sc-for list="{{rest}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 4px; min-height: 52px; border-radius: 14px; background: {{t.rowBg}}; outline: {{t.ring}}; outline-offset: -1px">
+<button type="button" aria-label="{{t.checkLabel}}" aria-pressed="{{t.done}}" onClick="{{t.toggle}}" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<span style="width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: {{t.boxBorder}}; background: {{t.boxBg}}">
+<sc-if value="{{t.done}}" hint-placeholder-val="{{false}}">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+</sc-if>
+</span>
+</button>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 6px 10px 6px 0">
+<button type="button" aria-label="{{t.editLabel}}" onClick="{{t.edit}}" style="padding: 2px 0; border: 0; background: transparent; color: {{t.titleColor}}; text-decoration: {{t.titleDeco}}; font-family: inherit; font-size: 16px; line-height: 1.35; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word">{{t.title}}</button>
+<sc-if value="{{t.hasRep}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; color: {{t.repColor}}">{{t.repText}}</span>
+</sc-if>
+</div>
+</div>
+</sc-for>
+</section>
+</sc-if>
+
+</main>
+</div>
+</sc-if>
+
+<sc-if value="{{isAhead}}" hint-placeholder-val="{{false}}">
+<div style="flex: 1; min-height: 0; display: flex; flex-direction: column">
+<header style="padding: 18px 16px 12px 6px; display: flex; align-items: center; gap: 2px">
+<button type="button" aria-label="Назад к «Сегодня»" onClick="{{goToday}}" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; color: #ECEDEF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+</button>
+<h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.02em">Впереди</h1>
+</header>
+
+<main style="flex: 1; min-height: 0; overflow-y: auto; padding: 4px 16px 20px; display: flex; flex-direction: column; gap: 22px">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<section style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; padding: 0 4px 6px; font-size: 14px; font-weight: 600; color: #9BA0A8">{{g.label}}</h2>
+<sc-for list="{{g.items}}" as="it" hint-placeholder-count="1">
+<div style="display: flex; align-items: center; gap: 4px; min-height: 52px; padding-left: 14px; border-radius: 14px; background: #181B1F; outline: {{it.ring}}; outline-offset: -1px">
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 0">
+<button type="button" aria-label="{{it.editLabel}}" onClick="{{it.edit}}" style="padding: 0; border: 0; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 15px; line-height: 1.35; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word">{{it.title}}</button>
+<sc-if value="{{it.hasRep}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; color: #9BA0A8">↻ {{it.rep}}</span>
+</sc-if>
+</div>
+<button type="button" aria-label="{{it.dropLabel}}" onClick="{{it.drop}}" style="width: 44px; height: 44px; flex-shrink: 0; border: 0; background: transparent; color: #9BA0A8; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+</button>
+</div>
+</sc-for>
+</section>
+</sc-for>
+<sc-if value="{{noPlans}}" hint-placeholder-val="{{false}}">
+<div style="padding: 14px; border-radius: 14px; border: 1px dashed #2C3037; font-size: 14px; color: #9BA0A8">Пока ничего не запланировано</div>
+</sc-if>
+
+<sc-if value="{{hasRules}}" hint-placeholder-val="{{true}}">
+<section aria-label="Повторяется" style="display: flex; flex-direction: column; gap: 4px">
+<h2 style="margin: 0; padding: 0 4px 6px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #9BA0A8">Повторяется</h2>
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding-left: 14px; border-radius: 14px; background: #181B1F; outline: {{r.ring}}; outline-offset: -1px">
+<span aria-hidden="true" style="display: flex; color: {{accent}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l4 4-4 4"></path><path d="M3 11V9a3 3 0 0 1 3-3h15"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 13v2a3 3 0 0 1-3 3H3"></path></svg>
+</span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 8px 0">
+<button type="button" aria-label="{{r.editLabel}}" onClick="{{r.edit}}" style="padding: 0; border: 0; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 15px; line-height: 1.35; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word">{{r.title}}</button>
+<span style="font-size: 12px; color: #9BA0A8">{{r.label}}</span>
+</div>
+<button type="button" aria-label="{{r.stopLabel}}" onClick="{{r.stop}}" style="height: 44px; flex-shrink: 0; padding: 0 14px; border: 0; background: transparent; color: #9BA0A8; font-family: inherit; font-size: 13px; cursor: pointer">Остановить</button>
+</div>
+</sc-for>
+</section>
+</sc-if>
+</main>
+</div>
+</sc-if>
+
+<footer style="position: relative; padding: 10px 12px 20px; background: #16191D; border-top: 1px solid #23272D; display: flex; flex-direction: column; gap: 10px">
+<sc-if value="{{hasUndo}}" hint-placeholder-val="{{false}}">
+<div role="status" style="position: absolute; left: 12px; right: 12px; bottom: calc(100% + 10px); z-index: 2; overflow: hidden; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 6px 0 10px; box-sizing: border-box; border-radius: 16px; background: rgba(44, 48, 56, 0.72); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); opacity: {{undoOpacity}}; transition: opacity 0.2s linear">
+<span aria-hidden="true" style="position: relative; width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center">
+<svg width="28" height="28" viewBox="0 0 28 28" style="position: absolute; left: 0; top: 0">
+<circle cx="14" cy="14" r="11" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="2.5"></circle>
+<circle cx="14" cy="14" r="11" fill="none" stroke="{{accent}}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="69.115" stroke-dashoffset="{{undoDash}}" transform="rotate(-90 14 14)" style="transition: stroke-dashoffset 0.1s linear"></circle>
+</svg>
+<span style="position: relative; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #ECEDEF">{{undoSec}}</span>
+</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; color: #ECEDEF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{undoText}}</span>
+<button type="button" onClick="{{undoLast}}" style="height: 44px; flex-shrink: 0; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: {{accent}}; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Вернуть</button>
+<span aria-hidden="true" style="position: absolute; left: 0; bottom: 0; height: 2px; width: {{undoPct}}; background: {{accent}}; transition: width 0.1s linear"></span>
+</div>
+</sc-if>
+
+<sc-if value="{{editing}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -6px 0 -8px; padding-left: 4px">
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: {{accent}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+<span>{{editTitle}}</span>
+</span>
+<button type="button" onClick="{{cancelEdit}}" style="height: 44px; padding: 0 10px; border: 0; background: transparent; color: #9BA0A8; font-family: inherit; font-size: 13px; cursor: pointer">Отмена</button>
+</div>
+</sc-if>
+
+<sc-if value="{{hasLine}}" hint-placeholder-val="{{false}}">
+<div role="status" style="padding: 0 4px; font-size: 13px; line-height: 1.4; color: {{lineColor}}">{{line}}</div>
+</sc-if>
+
+<sc-if value="{{sheetRepeat}}" hint-placeholder-val="{{false}}">
+<div role="group" aria-label="Повторять" style="background: #1C1F24; border-radius: 18px; padding: 6px; display: flex; flex-direction: column">
+<div style="padding: 8px 12px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #9BA0A8">Повторять</div>
+<sc-for list="{{repeatOptions}}" as="o" hint-placeholder-count="5">
+<button type="button" onClick="{{o.choose}}" aria-pressed="{{o.on}}" style="height: 48px; padding: 0 12px; border: 0; border-radius: 12px; background: {{o.bg}}; color: #ECEDEF; font-family: inherit; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; max-width: 100%; overflow-wrap: anywhere; word-break: break-word">
+<span>{{o.label}}</span>
+<sc-if value="{{o.on}}" hint-placeholder-val="{{false}}">
+<span aria-hidden="true" style="display: flex; color: {{accent}}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"></path></svg>
+</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{sheetDate}}" hint-placeholder-val="{{false}}">
+<div role="group" aria-label="Выбор даты" style="background: #1C1F24; border-radius: 18px; padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<button type="button" aria-label="Предыдущий месяц" onClick="{{calPrev}}" disabled="{{calPrevDisabled}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: {{calPrevColor}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+</button>
+<div style="font-size: 15px; font-weight: 600">{{calTitle}}</div>
+<button type="button" aria-label="Следующий месяц" onClick="{{calNext}}" style="width: 44px; height: 44px; border: 0; background: transparent; color: #ECEDEF; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px">
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Пн</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Вт</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Ср</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Чт</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Пт</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Сб</span>
+<span style="text-align: center; font-size: 12px; color: #8A909A; padding: 4px 0">Вс</span>
+<sc-for list="{{calCells}}" as="c" hint-placeholder-count="35">
+<sc-if value="{{c.empty}}" hint-placeholder-val="{{false}}">
+<span aria-hidden="true" style="height: 44px"></span>
+</sc-if>
+<sc-if value="{{c.real}}" hint-placeholder-val="{{true}}">
+<button type="button" onClick="{{c.pick}}" disabled="{{c.past}}" aria-label="{{c.aria}}" aria-pressed="{{c.selected}}" style="height: 44px; padding: 0; border: {{c.border}}; border-radius: 12px; background: {{c.bg}}; color: {{c.fg}}; font-family: inherit; font-size: 15px; font-weight: {{c.weight}}; cursor: pointer">{{c.label}}</button>
+</sc-if>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{chipsVisible}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; align-items: center; gap: 6px">
+<div role="group" aria-label="Когда" ref="{{setChipRow}}" onWheel="{{onChipWheel}}" onScroll="{{onChipScroll}}" style="position: relative; flex: 1; min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #4A4F57 transparent; padding: 2px 28px 8px 0; mask-image: {{chipMask}}">
+<sc-for list="{{chips}}" as="ch" hint-placeholder-count="7">
+<button type="button" onClick="{{ch.choose}}" aria-pressed="{{ch.on}}" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: {{ch.border}}; border-radius: 999px; background: {{ch.bg}}; color: {{ch.fg}}; font-family: inherit; font-size: 14px; font-weight: {{ch.weight}}; white-space: nowrap; cursor: pointer">{{ch.label}}</button>
+</sc-for>
+<button type="button" onClick="{{openDate}}" aria-pressed="{{dateChip.on}}" style="flex-shrink: 0; height: 44px; padding: 0 14px; border: {{dateChip.border}}; border-radius: 999px; background: {{dateChip.bg}}; color: {{dateChip.fg}}; font-family: inherit; font-size: 14px; font-weight: {{dateChip.weight}}; white-space: nowrap; display: flex; align-items: center; gap: 6px; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18"></path><path d="M8 3v4"></path><path d="M16 3v4"></path></svg>
+<span>{{dateChip.label}}</span>
+</button>
+</div>
+<button type="button" onClick="{{openRepeat}}" disabled="{{repeatDisabled}}" aria-label="{{repeatAria}}" aria-pressed="{{repeatOn}}" style="width: 44px; height: 44px; flex-shrink: 0; border: {{repeatBorder}}; border-radius: 999px; background: {{repeatBg}}; color: {{repeatFg}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"></path><path d="M3 11V9a3 3 0 0 1 3-3h15"></path><path d="M7 22l-4-4 4-4"></path><path d="M21 13v2a3 3 0 0 1-3 3H3"></path></svg>
+</button>
+</div>
+</sc-if>
+
+<div style="display: flex; gap: 8px; align-items: center">
+<label for="quick-b2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap">{{inputLabel}}</label>
+<input id="quick-b2" type="text" ref="{{setInput}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" placeholder="Запиши мысль — разберёшь потом" style="flex: 1; min-width: 0; height: 52px; box-sizing: border-box; border: 1px solid {{inputBorder}}; border-radius: 16px; background: #1C1F24; color: #ECEDEF; font-family: inherit; font-size: 16px; padding: 0 16px; outline: none">
+<sc-if value="{{showMic}}" hint-placeholder-val="{{true}}">
+<button type="button" aria-label="Надиктовать голосом" onClick="{{listen}}" style="width: 52px; height: 52px; flex-shrink: 0; border: 0; border-radius: 16px; background: {{micBg}}; color: #111316; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg>
+</button>
+</sc-if>
+<sc-if value="{{showSend}}" hint-placeholder-val="{{false}}">
+<button type="button" aria-label="Добавить" onClick="{{send}}" style="width: 52px; height: 52px; flex-shrink: 0; border: 0; border-radius: 16px; background: {{accent}}; color: #111316; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+</button>
+</sc-if>
+<sc-if value="{{showSave}}" hint-placeholder-val="{{false}}">
+<button type="button" aria-label="Сохранить изменения" onClick="{{send}}" disabled="{{saveDisabled}}" style="width: 52px; height: 52px; flex-shrink: 0; border: 0; border-radius: 16px; background: {{saveBg}}; color: {{saveFg}}; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg>
+</button>
+</sc-if>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F36B","options":["#C6F36B","#7DD3FC","#FDBA74","#F0ABFC"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  L() {
+    return {
+      wd: ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'],
+      every: ['каждое вс', 'каждый пн', 'каждый вт', 'каждую ср', 'каждый чт', 'каждую пт', 'каждую сб'],
+      plural: ['по воскресеньям', 'по понедельникам', 'по вторникам', 'по средам', 'по четвергам', 'по пятницам', 'по субботам'],
+      mg: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+      ms: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+      mn: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+    };
+  }
+
+  dayAt(offset) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + offset);
+    return d;
+  }
+
+  offsetOf(date) {
+    const t = this.dayAt(0);
+    const d = new Date(date.getTime());
+    d.setHours(12, 0, 0, 0);
+    return Math.round((d.getTime() - t.getTime()) / 86400000);
+  }
+
+  monthShiftFor(offset) {
+    const t = this.dayAt(0);
+    const d = this.dayAt(offset);
+    return (d.getFullYear() - t.getFullYear()) * 12 + d.getMonth() - t.getMonth();
+  }
+
+  cap(text) {
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+  }
+
+  dayShort(offset) {
+    const L = this.L();
+    const d = this.dayAt(offset);
+    return d.getDate() + ' ' + L.ms[d.getMonth()];
+  }
+
+  dayLong(offset) {
+    const L = this.L();
+    const d = this.dayAt(offset);
+    const base = L.wd[d.getDay()] + ', ' + d.getDate() + ' ' + L.mg[d.getMonth()];
+    if (offset === 0) return 'сегодня, ' + base;
+    if (offset === 1) return 'завтра, ' + base;
+    return base;
+  }
+
+  repeatLabel(kind, offset) {
+    const L = this.L();
+    const d = this.dayAt(offset || 0);
+    if (kind === 'daily') return 'каждый день';
+    if (kind === 'weekdays') return 'по будням';
+    if (kind === 'weekly') return L.every[d.getDay()];
+    if (kind === 'monthly') return 'каждый месяц, ' + d.getDate() + '-го';
+    return '';
+  }
+
+  nextMonthDay(n) {
+    for (let i = 0; i < 62; i++) {
+      if (this.dayAt(i).getDate() === n) return i;
+    }
+    return null;
+  }
+
+  offsetForDate(day, mon) {
+    if (mon < 0 || mon > 11 || day < 1 || day > 31) return null;
+    const t = this.dayAt(0);
+    let d = new Date(t.getFullYear(), mon, day, 12);
+    if (d.getMonth() !== mon) return null;
+    if (d.getTime() < t.getTime()) d = new Date(t.getFullYear() + 1, mon, day, 12);
+    return this.offsetOf(d);
+  }
+
+  wdIndex(word) {
+    const x = String(word).toLowerCase();
+    if (x.indexOf('понедельник') === 0) return 1;
+    if (x.indexOf('вторник') === 0) return 2;
+    if (x.indexOf('сред') === 0) return 3;
+    if (x.indexOf('четверг') === 0) return 4;
+    if (x.indexOf('пятниц') === 0) return 5;
+    if (x.indexOf('суббот') === 0) return 6;
+    return 0;
+  }
+
+  parse(text) {
+    const L = this.L();
+    const WD = '(понедельник\\S*|вторник\\S*|сред\\S*|четверг\\S*|пятниц\\S*|суббот\\S*|воскресен\\S*)';
+    const todayWd = this.dayAt(0).getDay();
+    const nextWd = (wd, includeToday) => {
+      let diff = (wd - todayWd + 7) % 7;
+      if (diff === 0 && !includeToday) diff = 7;
+      return diff;
+    };
+    let rest = ' ' + String(text || '') + ' ';
+    let offset = null;
+    let repeat = null;
+    let hit = false;
+    let m = null;
+    const take = () => {
+      rest = rest.replace(m[0], ' ');
+      hit = true;
+    };
+    if ((m = rest.match(new RegExp('\\s(?:каждый|каждую|каждое|по)\\s+' + WD + '(?=\\s)', 'i')))) {
+      offset = nextWd(this.wdIndex(m[1]), true);
+      repeat = 'weekly';
+      take();
+    } else if ((m = rest.match(/\s(?:каждый\s+день|ежедневно)(?=\s)/i))) {
+      offset = 0;
+      repeat = 'daily';
+      take();
+    } else if ((m = rest.match(/\s(?:по\s+будням|каждый\s+будний\s+день)(?=\s)/i))) {
+      offset = todayWd === 6 ? 2 : (todayWd === 0 ? 1 : 0);
+      repeat = 'weekdays';
+      take();
+    } else if ((m = rest.match(/\sкаждое\s+(\d{1,2})(?:-?(?:е|го))?(?:\s+число)?(?=\s)/i))) {
+      const off = this.nextMonthDay(Number(m[1]));
+      if (off !== null) {
+        offset = off;
+        repeat = 'monthly';
+        take();
+      }
+    } else if ((m = rest.match(new RegExp('\\s(?:в|во)\\s+' + WD + '(?=\\s)', 'i')))) {
+      offset = nextWd(this.wdIndex(m[1]), false);
+      take();
+    } else if ((m = rest.match(/\sпослезавтра(?=\s)/i))) {
+      offset = 2;
+      take();
+    } else if ((m = rest.match(/\sзавтра(?=\s)/i))) {
+      offset = 1;
+      take();
+    } else if ((m = rest.match(/\sсегодня(?=\s)/i))) {
+      offset = 0;
+      take();
+    } else if ((m = rest.match(/\sчерез\s+(?:(\d+)\s+)?(день|дня|дней|неделю|недели|недель)(?=\s)/i))) {
+      const n = m[1] ? Number(m[1]) : 1;
+      offset = m[2].toLowerCase().indexOf('нед') === 0 ? n * 7 : n;
+      take();
+    } else if ((m = rest.match(/\s(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?=\s)/i))) {
+      const off = this.offsetForDate(Number(m[1]), L.mg.indexOf(m[2].toLowerCase()));
+      if (off !== null) {
+        offset = off;
+        take();
+      }
+    } else if ((m = rest.match(/\s(\d{1,2})\.(\d{1,2})(?=\s)/))) {
+      const off = this.offsetForDate(Number(m[1]), Number(m[2]) - 1);
+      if (off !== null) {
+        offset = off;
+        take();
+      }
+    }
+    return { title: rest.replace(/\s+/g, ' ').trim(), offset: offset, repeat: repeat, hit: hit };
+  }
+
+  seed() {
+    const tue = ((2 - this.dayAt(0).getDay() + 7) % 7) || 7;
+    const firstOfMonth = this.nextMonthDay(1) || 0;
+    const tueLabel = this.repeatLabel('weekly', tue);
+    return {
+      today: [
+        { id: 1, title: 'Проверить новые заказы', done: true, rep: '', rule: null },
+        { id: 2, title: 'Созвон с заказчиком', done: false, rep: '', rule: null },
+        { id: 3, title: 'Вёрстка формы заказа', done: false, rep: '', rule: null },
+        { id: 4, title: 'Прогулка', done: false, rep: 'каждый день', rule: 31 }
+      ],
+      inbox: [
+        { id: 11, title: 'Правки по макету', back: true },
+        { id: 12, title: 'Идея: тёмная тема для сайта', back: false },
+        { id: 13, title: 'Купить батарейки', back: false }
+      ],
+      plans: [
+        { id: 21, title: 'Созвониться с новым заказчиком', offset: 1, rep: '', rule: null },
+        { id: 22, title: 'Вынести мусор', offset: tue, rep: tueLabel, rule: 32 },
+        { id: 23, title: 'Оплатить интернет', offset: tue, rep: '', rule: null },
+        { id: 24, title: 'Продлить домен', offset: 10, rep: '', rule: null }
+      ],
+      rules: [
+        { id: 31, title: 'Прогулка', kind: 'daily', offset: 0, label: 'каждый день' },
+        { id: 32, title: 'Вынести мусор', kind: 'weekly', offset: tue, label: tueLabel },
+        { id: 33, title: 'Оплатить хостинг', kind: 'monthly', offset: firstOfMonth, label: this.repeatLabel('monthly', firstOfMonth) }
+      ]
+    };
+  }
+
+  data() {
+    const s = this.state || {};
+    const z = this.seed();
+    return {
+      today: s.today || z.today,
+      inbox: s.inbox || z.inbox,
+      plans: s.plans || z.plans,
+      rules: s.rules || z.rules
+    };
+  }
+
+  cur() {
+    const s = this.state || {};
+    const p = this.props || {};
+    const draft = s.draft !== undefined ? s.draft : (p.startDraft || '');
+    const parsed = this.parse(draft);
+    let offset = parsed.offset;
+    let fromText = parsed.hit;
+    const propPick = p.startPick !== undefined && p.startPick !== null && p.startPick !== '';
+    const pickSet = s.pickSet !== undefined ? s.pickSet : propPick;
+    if (pickSet) {
+      if (s.pickSet !== undefined) offset = s.pickOffset;
+      else offset = p.startPick === 'inbox' ? null : Number(p.startPick);
+      fromText = false;
+    }
+    let repeat = parsed.repeat;
+    const repeatSet = s.repeatSet !== undefined ? s.repeatSet : !!p.startRepeat;
+    if (repeatSet) {
+      if (s.repeatSet !== undefined) repeat = s.repeatKind || null;
+      else repeat = p.startRepeat === 'none' ? null : p.startRepeat;
+    }
+    if (offset === null || offset === undefined || isNaN(offset)) {
+      offset = null;
+      repeat = null;
+    }
+    let calMonth = 0;
+    if (s.calMonth !== undefined) calMonth = s.calMonth;
+    else if (offset !== null) calMonth = this.monthShiftFor(offset);
+    return {
+      draft: draft,
+      title: parsed.title,
+      offset: offset,
+      repeat: repeat,
+      fromText: fromText && offset !== null,
+      sheet: s.sheet !== undefined ? s.sheet : (p.startSheet || ''),
+      screen: s.screen || p.startScreen || 'today',
+      calMonth: calMonth
+    };
+  }
+
+  componentDidMount() {
+    this.syncChips();
+  }
+
+  componentDidUpdate() {
+    this.syncChips();
+    if (this.focusPending && this.inputEl) {
+      this.focusPending = false;
+      try {
+        this.inputEl.focus({ preventScroll: true });
+        const n = this.inputEl.value.length;
+        this.inputEl.setSelectionRange(n, n);
+      } catch (e) {
+        // фокус не обязателен
+      }
+    }
+  }
+
+  componentWillUnmount() {
+    this.clearUndoTimer();
+  }
+
+  undoMs() {
+    return 6000;
+  }
+
+  undoLeftNow(s) {
+    if (!s || !s.undo) return 0;
+    return s.undoLeft !== undefined ? s.undoLeft : this.undoMs();
+  }
+
+  clearUndoTimer() {
+    if (this.undoTimer) {
+      clearInterval(this.undoTimer);
+      this.undoTimer = null;
+    }
+  }
+
+  withUndo(text, patch) {
+    const d = this.data();
+    this.clearUndoTimer();
+    const undoId = Date.now();
+    const total = this.undoMs();
+    const started = Date.now();
+    this.undoTimer = setInterval(() => {
+      const u = this.state && this.state.undo;
+      if (!u || u.id !== undoId) {
+        this.clearUndoTimer();
+        return;
+      }
+      const left = Math.max(0, total - (Date.now() - started));
+      if (left <= 0) {
+        this.clearUndoTimer();
+        this.setState({ undo: null, undoLeft: 0 });
+      } else {
+        this.setState({ undoLeft: left });
+      }
+    }, 100);
+    this.setState(Object.assign({}, patch, {
+      undo: { id: undoId, text: text, snap: { today: d.today, inbox: d.inbox, plans: d.plans, rules: d.rules } },
+      undoLeft: total,
+      toast: ''
+    }));
+  }
+
+  undoLast() {
+    const u = this.state && this.state.undo;
+    if (!u) return;
+    this.clearUndoTimer();
+    this.setState({
+      today: u.snap.today,
+      inbox: u.snap.inbox,
+      plans: u.snap.plans,
+      rules: u.snap.rules,
+      undo: null,
+      toast: 'Вернул как было'
+    });
+  }
+
+  syncChips() {
+    const row = this.chipRow;
+    if (!row) {
+      this.lastChipKey = null;
+      if (this.state && this.state.chipFade) this.setState({ chipFade: 0 });
+      return;
+    }
+    const c = this.cur();
+    const key = c.offset === null ? 'later' : String(c.offset);
+    if (key === this.lastChipKey) return;
+    this.lastChipKey = key;
+    const on = row.querySelector('[aria-pressed="true"]');
+    if (!on) return;
+    const left = on.offsetLeft;
+    const right = left + on.offsetWidth;
+    if (left < row.scrollLeft || right > row.scrollLeft + row.clientWidth - 28) {
+      row.scrollLeft = Math.max(0, left - 48);
+    }
+  }
+
+  pick(offset) {
+    this.setState({ pickSet: true, pickOffset: offset, sheet: '' });
+  }
+
+  setRepeat(kind) {
+    this.setState({ repeatSet: true, repeatKind: kind, sheet: '' });
+  }
+
+  toggleSheet(name) {
+    const c = this.cur();
+    if (c.sheet === name) {
+      this.setState({ sheet: '' });
+      return;
+    }
+    this.setState({ sheet: name, calMonth: name === 'date' && c.offset !== null ? this.monthShiftFor(c.offset) : 0 });
+  }
+
+  resetComposer() {
+    return {
+      edit: null,
+      draft: '',
+      pickSet: false,
+      pickOffset: null,
+      repeatSet: false,
+      repeatKind: null,
+      sheet: '',
+      micNote: '',
+      listening: false
+    };
+  }
+
+  place(d, t, offset, repeat) {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    const out = { today: d.today, inbox: d.inbox, plans: d.plans, rules: d.rules, toast: '' };
+    if (offset === null) {
+      out.inbox = [{ id: id, title: t, back: false }].concat(d.inbox);
+      out.toast = 'Лежит в кармане. Разберёшь, когда будет минута';
+    } else if (repeat) {
+      const label = this.repeatLabel(repeat, offset);
+      out.rules = d.rules.concat([{ id: id, title: t, kind: repeat, offset: offset, label: label }]);
+      if (offset === 0) out.today = d.today.concat([{ id: id + 1, title: t, done: false, rep: label, rule: id }]);
+      else out.plans = d.plans.concat([{ id: id + 1, title: t, offset: offset, rep: label, rule: id }]);
+      out.toast = '↻ ' + this.cap(label) + ', начиная с ' + (offset === 0 ? 'сегодня' : this.dayShort(offset));
+    } else if (offset === 0) {
+      out.today = d.today.concat([{ id: id, title: t, done: false, rep: '', rule: null }]);
+      out.toast = 'Добавлено на сегодня';
+    } else {
+      out.plans = d.plans.concat([{ id: id, title: t, offset: offset, rep: '', rule: null }]);
+      out.toast = 'Запланировано: ' + this.dayLong(offset);
+    }
+    return out;
+  }
+
+  submitWith(title, offset, repeat) {
+    const t = String(title || '').replace(/\s+/g, ' ').trim();
+    if (!t) return;
+    if (this.state && this.state.edit) {
+      this.saveEdit(t, offset, repeat);
+      return;
+    }
+    this.setState(Object.assign(this.resetComposer(), this.place(this.data(), t, offset, repeat)));
+  }
+
+  submit() {
+    const c = this.cur();
+    this.submitWith(c.title, c.offset, c.repeat);
+  }
+
+  voice(text) {
+    if (this.state && this.state.edit) {
+      this.setState({ draft: String(text || ''), listening: false });
+      return;
+    }
+    const p = this.parse(text);
+    this.submitWith(p.title, p.offset, p.offset === null ? null : p.repeat);
+  }
+
+  startEdit(kind, id) {
+    const cur = this.state && this.state.edit;
+    if (cur && cur.from === kind && cur.itemId === id) {
+      this.cancelEdit();
+      return;
+    }
+    const d = this.data();
+    let k = kind;
+    let target = id;
+    let title = '';
+    let offset = null;
+    let repeat = null;
+    if (kind === 'today' || kind === 'plan') {
+      const list = kind === 'today' ? d.today : d.plans;
+      const it = list.find((x) => x.id === id);
+      if (!it) return;
+      const r = it.rule ? d.rules.find((x) => x.id === it.rule) : null;
+      if (r) {
+        k = 'rule';
+        target = r.id;
+        title = r.title;
+        offset = r.offset;
+        repeat = r.kind;
+      } else {
+        title = it.title;
+        offset = kind === 'today' ? 0 : it.offset;
+      }
+    } else if (kind === 'inbox') {
+      const it = d.inbox.find((x) => x.id === id);
+      if (!it) return;
+      title = it.title;
+    } else if (kind === 'rule') {
+      const r = d.rules.find((x) => x.id === id);
+      if (!r) return;
+      title = r.title;
+      offset = r.offset;
+      repeat = r.kind;
+    }
+    this.focusPending = true;
+    this.setState({
+      edit: { kind: k, id: target, from: kind, itemId: id },
+      draft: title,
+      pickSet: true,
+      pickOffset: offset,
+      repeatSet: true,
+      repeatKind: repeat,
+      sheet: '',
+      toast: '',
+      micNote: ''
+    });
+  }
+
+  cancelEdit() {
+    this.setState(this.resetComposer());
+  }
+
+  saveEdit(t, offset, repeat) {
+    const e = this.state && this.state.edit;
+    if (!e) return;
+    const d = this.data();
+    const base = { today: d.today, inbox: d.inbox, plans: d.plans, rules: d.rules };
+    let out = null;
+    if (e.kind === 'today') {
+      if (offset === 0 && !repeat) {
+        out = Object.assign(base, {
+          today: d.today.map((x) => (x.id === e.id ? Object.assign({}, x, { title: t }) : x)),
+          toast: 'Изменено'
+        });
+      } else {
+        base.today = d.today.filter((x) => x.id !== e.id);
+        out = this.place(base, t, offset, repeat);
+      }
+    } else if (e.kind === 'inbox') {
+      if (offset === null) {
+        out = Object.assign(base, {
+          inbox: d.inbox.map((x) => (x.id === e.id ? Object.assign({}, x, { title: t, back: false }) : x)),
+          toast: 'Изменено'
+        });
+      } else {
+        base.inbox = d.inbox.filter((x) => x.id !== e.id);
+        out = this.place(base, t, offset, repeat);
+      }
+    } else if (e.kind === 'plan') {
+      if (offset !== null && offset > 0 && !repeat) {
+        out = Object.assign(base, {
+          plans: d.plans.map((x) => (x.id === e.id ? Object.assign({}, x, { title: t, offset: offset }) : x)),
+          toast: 'Изменено: ' + this.dayLong(offset)
+        });
+      } else {
+        base.plans = d.plans.filter((x) => x.id !== e.id);
+        out = this.place(base, t, offset, repeat);
+      }
+    } else if (e.kind === 'rule') {
+      const r = d.rules.find((x) => x.id === e.id);
+      if (!r) {
+        out = base;
+      } else {
+        const todayInst = d.today.find((x) => x.rule === r.id);
+        base.plans = d.plans.filter((x) => x.rule !== r.id);
+        if (repeat && offset !== null) {
+          const label = this.repeatLabel(repeat, offset);
+          base.rules = d.rules.map((x) => (x.id === r.id ? Object.assign({}, x, { title: t, kind: repeat, offset: offset, label: label }) : x));
+          if (todayInst) {
+            base.today = d.today.map((x) => (x.id === todayInst.id ? Object.assign({}, x, { title: t, rep: label }) : x));
+          } else if (offset === 0) {
+            base.today = d.today.concat([{ id: Date.now(), title: t, done: false, rep: label, rule: r.id }]);
+          }
+          if (offset > 0) {
+            base.plans = base.plans.concat([{ id: Date.now() + 1, title: t, offset: offset, rep: label, rule: r.id }]);
+          }
+          out = Object.assign(base, { toast: 'Изменено для всех повторов' });
+        } else {
+          base.rules = d.rules.filter((x) => x.id !== r.id);
+          if (todayInst) {
+            base.today = d.today.map((x) => (x.id === todayInst.id ? Object.assign({}, x, { title: t, rep: '', rule: null }) : x));
+            out = Object.assign(base, { toast: 'Больше не повторяется' });
+          } else {
+            out = this.place(base, t, offset, null);
+          }
+        }
+      }
+    }
+    this.setState(Object.assign(this.resetComposer(), out || {}));
+  }
+
+  toggle(id) {
+    const d = this.data();
+    this.setState({ today: d.today.map((t) => (t.id === id ? Object.assign({}, t, { done: !t.done }) : t)) });
+  }
+
+  later(id) {
+    const d = this.data();
+    const item = d.today.find((t) => t.id === id);
+    if (!item) return;
+    this.setState({ today: d.today.filter((t) => t.id !== id).concat([item]) });
+  }
+
+  toToday(id) {
+    const d = this.data();
+    const item = d.inbox.find((x) => x.id === id);
+    if (!item) return;
+    this.setState({
+      inbox: d.inbox.filter((x) => x.id !== id),
+      today: d.today.concat([{ id: item.id, title: item.title, done: false, rep: '', rule: null }])
+    });
+  }
+
+  markDone(id) {
+    const d = this.data();
+    const item = d.inbox.find((x) => x.id === id);
+    if (!item) return;
+    this.withUndo('Сделано: ' + item.title, {
+      inbox: d.inbox.filter((x) => x.id !== id),
+      today: [{ id: item.id, title: item.title, done: true, rep: '', rule: null }].concat(d.today)
+    });
+  }
+
+  drop(id) {
+    const d = this.data();
+    const item = d.inbox.find((x) => x.id === id);
+    if (!item) return;
+    this.withUndo('Убрано: ' + item.title, { inbox: d.inbox.filter((x) => x.id !== id) });
+  }
+
+  dropPlan(id) {
+    const d = this.data();
+    const item = d.plans.find((x) => x.id === id);
+    if (!item) return;
+    this.withUndo('Убрано: ' + item.title, { plans: d.plans.filter((x) => x.id !== id) });
+  }
+
+  stopRule(id) {
+    const d = this.data();
+    const item = d.rules.find((x) => x.id === id);
+    if (!item) return;
+    this.withUndo('Повтор остановлен: ' + item.title, {
+      rules: d.rules.filter((x) => x.id !== id),
+      plans: d.plans.filter((x) => x.rule !== id),
+      today: d.today.map((x) => (x.rule === id ? Object.assign({}, x, { rule: null, rep: '' }) : x))
+    });
+  }
+
+  listen() {
+    if (this.state && this.state.listening) return;
+    const fail = 'Микрофон в этом окне недоступен. В приложении: сказал «каждый вторник вынести мусор» — и готово.';
+    const R = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+    if (!R) {
+      this.setState({ micNote: fail });
+      return;
+    }
+    try {
+      const rec = new R();
+      rec.lang = 'ru-RU';
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      rec.onresult = (ev) => {
+        const text = ev.results && ev.results[0] && ev.results[0][0] ? ev.results[0][0].transcript : '';
+        this.voice(text);
+      };
+      rec.onerror = () => this.setState({ listening: false, micNote: fail });
+      rec.onend = () => this.setState({ listening: false });
+      this.setState({ listening: true, micNote: '' });
+      rec.start();
+    } catch (e) {
+      this.setState({ listening: false, micNote: fail });
+    }
+  }
+
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props || {};
+    const L = this.L();
+    const accent = p.accent ?? '#C6F36B';
+    const c = this.cur();
+    const d = this.data();
+    const typing = c.draft.trim().length > 0;
+    const ed = s.edit || null;
+    const isEd = (from, id) => !!ed && ed.from === from && ed.itemId === id;
+    const ring = (on) => (on ? '1px solid ' + accent : 'none');
+
+    const open = d.today.filter((t) => !t.done);
+    const current = open[0] || null;
+    const restRaw = d.today
+      .filter((t) => !t.done && t !== current)
+      .concat(d.today.filter((t) => t.done));
+    const rest = restRaw.map((t) => {
+      const editing = isEd('today', t.id);
+      return {
+        id: t.id,
+        title: t.title,
+        done: !!t.done,
+        hasRep: !!t.rep,
+        repText: t.done ? '↻ ' + t.rep + ' · на сегодня готово' : '↻ ' + (t.rep || ''),
+        repColor: t.done ? accent : '#9BA0A8',
+        titleColor: t.done ? '#80868F' : '#ECEDEF',
+        titleDeco: t.done ? 'line-through' : 'none',
+        boxBg: t.done ? accent : 'transparent',
+        boxBorder: t.done ? '0' : '2px solid #5F656E',
+        rowBg: editing ? '#1C1F24' : 'transparent',
+        ring: ring(editing),
+        checkLabel: (t.done ? 'Вернуть: ' : 'Готово: ') + t.title,
+        editLabel: 'Изменить: ' + t.title,
+        toggle: () => this.toggle(t.id),
+        edit: () => this.startEdit('today', t.id)
+      };
+    });
+
+    const inbox = d.inbox.map((x) => ({
+      id: x.id,
+      title: x.title,
+      back: !!x.back,
+      ring: ring(isEd('inbox', x.id)),
+      editLabel: 'Изменить: ' + x.title,
+      doneLabel: 'Уже сделал: ' + x.title,
+      todayLabel: 'На сегодня: ' + x.title,
+      dropLabel: 'Убрать: ' + x.title,
+      edit: () => this.startEdit('inbox', x.id),
+      markDone: () => this.markDone(x.id),
+      toToday: () => this.toToday(x.id),
+      drop: () => this.drop(x.id)
+    }));
+
+    const groups = [];
+    d.plans.slice().sort((a, b) => a.offset - b.offset).forEach((pl) => {
+      let g = groups[groups.length - 1];
+      if (!g || g.offset !== pl.offset) {
+        g = { key: 'g' + pl.offset, offset: pl.offset, label: this.cap(this.dayLong(pl.offset)), items: [] };
+        groups.push(g);
+      }
+      g.items.push({
+        id: pl.id,
+        title: pl.title,
+        rep: pl.rep || '',
+        hasRep: !!pl.rep,
+        ring: ring(isEd('plan', pl.id)),
+        editLabel: 'Изменить: ' + pl.title,
+        dropLabel: 'Убрать: ' + pl.title,
+        edit: () => this.startEdit('plan', pl.id),
+        drop: () => this.dropPlan(pl.id)
+      });
+    });
+
+    const rules = d.rules.map((r) => ({
+      id: r.id,
+      title: r.title,
+      label: r.label,
+      ring: ring(isEd('rule', r.id)),
+      editLabel: 'Изменить: ' + r.title,
+      stopLabel: 'Остановить повтор: ' + r.title,
+      edit: () => this.startEdit('rule', r.id),
+      stop: () => this.stopRule(r.id)
+    }));
+
+    const chipStyle = (on) => ({
+      on: on,
+      bg: on ? accent : '#1C1F24',
+      fg: on ? '#111316' : '#ECEDEF',
+      border: '1px solid ' + (on ? accent : '#2C3037'),
+      weight: on ? '600' : '500'
+    });
+
+    const chipDefs = [
+      { key: 'inbox', label: 'В карман', offset: null },
+      { key: 'd0', label: 'Сегодня', offset: 0 },
+      { key: 'd1', label: 'Завтра', offset: 1 }
+    ];
+    for (let i = 2; i <= 6; i++) {
+      const day = this.dayAt(i);
+      chipDefs.push({ key: 'd' + i, label: this.cap(L.wd[day.getDay()]) + ' ' + day.getDate(), offset: i });
+    }
+    const chips = chipDefs.map((ch) => Object.assign(
+      { key: ch.key, label: ch.label, choose: () => this.pick(ch.offset) },
+      chipStyle(ch.offset === c.offset)
+    ));
+    const dateOn = c.offset !== null && c.offset > 6;
+    const dateChip = Object.assign({ label: dateOn ? this.dayShort(c.offset) : 'Дата' }, chipStyle(dateOn));
+
+    const repeatOn = !!c.repeat;
+    const repeatDisabled = c.offset === null;
+    const repLabel = repeatOn ? this.repeatLabel(c.repeat, c.offset) : '';
+    const baseDay = this.dayAt(c.offset === null ? 0 : c.offset);
+    const repeatOptions = [
+      { kind: null, label: 'Один раз' },
+      { kind: 'daily', label: 'Каждый день' },
+      { kind: 'weekdays', label: 'По будням' },
+      { kind: 'weekly', label: 'Каждую неделю · ' + L.plural[baseDay.getDay()] },
+      { kind: 'monthly', label: 'Каждый месяц · ' + baseDay.getDate() + '-го' }
+    ].map((o) => {
+      const on = (c.repeat || null) === o.kind;
+      return {
+        key: 'r' + (o.kind || 'once'),
+        label: o.label,
+        on: on,
+        bg: on ? '#262A31' : 'transparent',
+        choose: () => this.setRepeat(o.kind)
+      };
+    });
+
+    const t0 = this.dayAt(0);
+    const first = new Date(t0.getFullYear(), t0.getMonth() + c.calMonth, 1, 12);
+    const lead = (first.getDay() + 6) % 7;
+    const daysIn = new Date(first.getFullYear(), first.getMonth() + 1, 0, 12).getDate();
+    const calCells = [];
+    for (let i = 0; i < lead; i++) {
+      calCells.push({ key: 'e' + i, empty: true, real: false, label: '', past: true, selected: false, aria: '', bg: 'transparent', fg: 'transparent', border: '0', weight: '400', pick: () => {} });
+    }
+    for (let day = 1; day <= daysIn; day++) {
+      const date = new Date(first.getFullYear(), first.getMonth(), day, 12);
+      const off = this.offsetOf(date);
+      const past = off < 0;
+      const selected = off === c.offset;
+      const isToday = off === 0;
+      calCells.push({
+        key: 'c' + day,
+        empty: false,
+        real: true,
+        label: String(day),
+        past: past,
+        selected: selected,
+        aria: day + ' ' + L.mg[first.getMonth()],
+        bg: selected ? accent : 'transparent',
+        fg: selected ? '#111316' : (past ? '#4A4F57' : '#ECEDEF'),
+        border: '1px solid ' + (selected ? accent : (isToday ? '#5F656E' : 'transparent')),
+        weight: selected || isToday ? '600' : '400',
+        pick: () => {
+          if (!past) this.pick(off);
+        }
+      });
+    }
+
+    const where = c.offset === null
+      ? 'в карман'
+      : this.dayLong(c.offset) + (repeatOn ? ' · ↻ ' + repLabel : '');
+    let line = '';
+    let lineColor = '#9BA0A8';
+    if (s.listening) {
+      line = 'Слушаю… говори';
+    } else if (s.micNote) {
+      line = s.micNote;
+    } else if (ed) {
+      line = '→ ' + where + (ed.kind === 'rule' && repeatOn ? ' · для всех повторов' : '');
+      lineColor = c.offset === null ? '#9BA0A8' : accent;
+    } else if (typing) {
+      if (c.offset === null) {
+        line = 'Упадёт в карман, разберёшь потом';
+      } else {
+        line = '→ ' + where + (c.fromText ? ' · понял из текста' : '');
+        lineColor = accent;
+      }
+    } else if (s.toast) {
+      line = s.toast;
+    }
+
+    let dateLabel = '';
+    try {
+      dateLabel = this.cap(new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }));
+    } catch (e) {
+      dateLabel = '';
+    }
+
+    const undoLeft = this.undoLeftNow(s);
+    const undoTotal = this.undoMs();
+
+    return {
+      accent: accent,
+      isToday: c.screen !== 'ahead',
+      isAhead: c.screen === 'ahead',
+      dateLabel: dateLabel,
+      doneCount: d.today.filter((t) => t.done).length,
+      aheadCount: d.plans.length,
+      goAhead: () => this.setState({ screen: 'ahead' }),
+      goToday: () => this.setState({ screen: 'today' }),
+      hasCurrent: !!current,
+      noCurrent: !current,
+      currentTitle: current ? current.title : '',
+      currentRep: current && current.rep ? current.rep : '',
+      currentHasRep: !!(current && current.rep),
+      currentRing: ring(!!current && isEd('today', current.id)),
+      currentEditLabel: current ? 'Изменить: ' + current.title : '',
+      editCurrent: () => {
+        if (current) this.startEdit('today', current.id);
+      },
+      finishCurrent: () => {
+        if (current) this.toggle(current.id);
+      },
+      postpone: () => {
+        if (current) this.later(current.id);
+      },
+      inbox: inbox,
+      inboxCount: inbox.length,
+      inboxEmpty: inbox.length === 0,
+      rest: rest,
+      hasRest: rest.length > 0,
+      groups: groups,
+      noPlans: groups.length === 0,
+      rules: rules,
+      hasRules: rules.length > 0,
+      editing: !!ed,
+      editTitle: ed && ed.kind === 'rule' ? 'Правка повтора' : 'Правка',
+      cancelEdit: () => this.cancelEdit(),
+      chipsVisible: typing || !!ed,
+      setChipRow: (el) => {
+        this.chipRow = el;
+      },
+      setInput: (el) => {
+        this.inputEl = el;
+      },
+      onChipWheel: (e) => {
+        const el = e.currentTarget;
+        if (el && Math.abs(e.deltaY) > Math.abs(e.deltaX)) el.scrollLeft += e.deltaY;
+      },
+      onChipScroll: (e) => {
+        const el = e.currentTarget;
+        const lvl = el ? Math.min(5, Math.round(el.scrollLeft / 5)) : 0;
+        if (lvl !== ((this.state && this.state.chipFade) || 0)) this.setState({ chipFade: lvl });
+      },
+      chipMask: (() => {
+        const lvl = s.chipFade || 0;
+        if (!lvl) return 'linear-gradient(to right, #000 calc(100% - 28px), transparent 100%)';
+        const a = 1 - 0.1 * lvl;
+        const mid1 = (a + (1 - a) * 0.55).toFixed(3);
+        const mid2 = (a + (1 - a) * 0.88).toFixed(3);
+        return 'linear-gradient(to right, rgba(0,0,0,' + a.toFixed(3) + ') 0, rgba(0,0,0,' + mid1 + ') 3px, rgba(0,0,0,' + mid2 + ') 6px, #000 10px, #000 calc(100% - 28px), transparent 100%)';
+      })(),
+      chips: chips,
+      dateChip: dateChip,
+      openDate: () => this.toggleSheet('date'),
+      repeatDisabled: repeatDisabled,
+      repeatOn: repeatOn,
+      repeatAria: repeatOn ? 'Повтор: ' + repLabel : 'Повторять',
+      repeatBg: repeatOn ? accent : (repeatDisabled ? 'transparent' : '#1C1F24'),
+      repeatFg: repeatOn ? '#111316' : (repeatDisabled ? '#4A4F57' : '#ECEDEF'),
+      repeatBorder: '1px solid ' + (repeatOn ? accent : (repeatDisabled ? '#23272D' : '#2C3037')),
+      openRepeat: () => {
+        if (!repeatDisabled) this.toggleSheet('repeat');
+      },
+      sheetRepeat: (typing || !!ed) && c.sheet === 'repeat',
+      sheetDate: (typing || !!ed) && c.sheet === 'date',
+      repeatOptions: repeatOptions,
+      calTitle: L.mn[first.getMonth()] + ' ' + first.getFullYear(),
+      calCells: calCells,
+      calPrevDisabled: c.calMonth <= 0,
+      calPrevColor: c.calMonth <= 0 ? '#4A4F57' : '#ECEDEF',
+      calPrev: () => this.setState({ calMonth: Math.max(0, c.calMonth - 1) }),
+      calNext: () => this.setState({ calMonth: Math.min(12, c.calMonth + 1) }),
+      hasLine: line.length > 0,
+      line: line,
+      lineColor: lineColor,
+      draft: c.draft,
+      inputLabel: ed ? 'Текст задачи' : 'Записать мысль',
+      inputBorder: ed ? accent : '#2C3037',
+      showMic: !typing && !ed,
+      showSend: typing && !ed,
+      showSave: !!ed,
+      saveDisabled: !typing,
+      saveBg: typing ? accent : '#2C3037',
+      saveFg: typing ? '#111316' : '#5F656E',
+      onDraft: (e) => {
+        const v = e.target.value;
+        const prev = this.parse(this.cur().draft);
+        const next = this.parse(v);
+        const patch = { draft: v, toast: '', micNote: '' };
+        if (next.hit && (next.offset !== prev.offset || next.repeat !== prev.repeat)) {
+          patch.pickSet = false;
+          patch.repeatSet = false;
+        }
+        this.setState(patch);
+      },
+      onKey: (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.submit();
+        } else if (e.key === 'Escape' && this.state && this.state.edit) {
+          e.preventDefault();
+          this.cancelEdit();
+        }
+      },
+      send: () => this.submit(),
+      listen: () => this.listen(),
+      micBg: s.listening ? '#F87171' : accent,
+      hasUndo: !!s.undo,
+      undoText: s.undo ? s.undo.text : '',
+      undoSec: String(Math.max(1, Math.ceil(undoLeft / 1000))),
+      undoPct: ((undoLeft / undoTotal) * 100).toFixed(1) + '%',
+      undoDash: (69.115 * (1 - undoLeft / undoTotal)).toFixed(2),
+      undoOpacity: undoLeft < 1000 ? (0.45 + (0.55 * undoLeft) / 1000).toFixed(2) : '1',
+      undoLast: () => this.undoLast()
+    };
+  }
+}
+</script>
+</body>
+</html>

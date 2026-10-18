@@ -1,41 +1,108 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# AGENTS.md — Планировщик дня
 
-## Expo has changed — do not trust your training data
+Инструкции для ИИ-агентов (Claude Code, Cursor, Codex и др.), которые работают в этом репозитории.
+Читай этот файл целиком в начале каждой сессии. Подробности продукта — в `docs/SPEC.md`.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## Что это
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+Мобильный планировщик дня на React Native (Expo) с одной главной идеей: **записать мысль за пару секунд, не отрываясь от работы**, а разобрать потом.
+Главный враг — лишние нажатия. Любая фича, которая добавляет тап в сценарий записи, требует обсуждения.
 
-## Commands
+## Как работать со мной
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+- Я — один фронтенд-разработчик (React/Next.js), расту от junior к middle. В React Native был небольшой опыт год назад. Хочу понимать архитектуру, а не только получать код.
+- **Объясняй решения**: коротко, почему сделано так и как это работает. Особенно там, где React Native отличается от веба. Общение — на русском.
+- Большую задачу сначала разбей на шаги и покажи план. Код — после моего «ок».
+- Работаем маленькими этапами (см. «Этапы» в `docs/SPEC.md`). Один этап — один коммит с понятным сообщением.
+- Не меняй продуктовые решения из `docs/SPEC.md` молча. Если считаешь, что решение плохое, — скажи и предложи альтернативу.
+- Интернет слабый: **не устанавливай пакеты без спроса**, предпочитай минимум зависимостей и то, что уже есть в Expo.
+- ОС: Windows. Тестирую на своём Android-телефоне через Expo Go по Wi-Fi, без эмулятора.
+
+## Стек
+
+- React Native + Expo (managed workflow), TypeScript (`strict: true`)
+- Навигация: Expo Router (файл в `app/` = экран)
+- Хранение: `expo-sqlite` — база на устройстве. Бэкенда в v1 нет
+- Стили: `StyleSheet` + токены из `src/theme.ts`. Без UI-китов
+- Шрифты: Golos Text и JetBrains Mono через `@expo-google-fonts/*`; если пакета нет — локальные файлы через `expo-font`
+- Иконки: `react-native-svg` (линейные иконки, как в прототипе)
+- Эффекты: `expo-blur` (полупрозрачная плашка), `expo-linear-gradient` (затухание краёв бегунка), `react-native-reanimated` (таймер, появление/исчезание)
+- Тесты: Jest (`jest-expo`) для логики из `src/lib`
+- Пакеты Expo ставим **только через `npx expo install <пакет>`** — он подбирает версию под текущий SDK. Перед установкой — спроси.
+
+## Команды
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npx expo start      # dev-сервер; QR-код открываю в Expo Go на телефоне
+npm test            # Jest
+npm run lint        # ESLint (настраивается через npx expo lint)
+npm run typecheck   # tsc --noEmit
 ```
 
-Run lint and typecheck before declaring any task done.
+Если какой-то команды нет в `package.json` — добавь её, когда настраиваешь соответствующий инструмент.
 
-## Navigation & Routing
+## Структура
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+```
+app/                # Expo Router — только экраны и раскладка, без бизнес-логики
+  _layout.tsx       # шрифты, safe area, тема
+  index.tsx         # «Сегодня»
+  ahead.tsx         # «Впереди»
+src/
+  components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
+  hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
+  lib/
+    copy.ts         # ВСЕ тексты интерфейса на русском — в одном месте
+    dates.ts        # локальные даты 'YYYY-MM-DD', сдвиги, подписи дней
+    parse-when.ts   # разбор «завтра», «во вторник», «каждый вт», «27 августа» из текста
+    rules.ts        # повторы: срабатывает ли правило в дату, следующая дата
+    rollover.ts     # смена дня: несделанное → Карман, экземпляры повторов
+    db.ts           # схема SQLite и миграции
+  theme.ts          # цвета, отступы, радиусы, шрифты
+docs/
+  SPEC.md           # продукт: экраны, поведение, решения, модель данных, этапы
+  DECISIONS.md      # журнал решений: дата, что решили, почему (веди его)
+  prototype/        # интерактивный HTML-прототип из дизайна — образец, НЕ код проекта
+```
 
-## Building with EAS
+## Правила кода
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+- Бизнес-логика — чистые функции в `src/lib`, без React, React Native и базы. Компоненты только показывают и вызывают.
+- Логика из `src/lib` (особенно `parse-when`, `rules`, `rollover`) покрыта тестами. Новое правило разбора дат = новый тест.
+- **Даты храним как локальные строки `'YYYY-MM-DD'`**, а не timestamp: так нет ошибок с часовыми поясами и полночью.
+  Текущую дату получай через одну функцию (`today()` в `dates.ts`), чтобы её можно было подменить в тестах.
+- Тексты интерфейса — только из `src/lib/copy.ts`. Название раздела «Карман» рабочее и может поменяться: переименование должно быть правкой одной строки.
+- Цвета и размеры — только из `src/theme.ts`, никаких «магических» `#1C1F24` в компонентах.
+- Никаких веб-API (`window`, `document`, `localStorage`) — это не браузер.
+- Имена переменных и функций — на английском. Комментарии — на русском, только там, где неочевидно «почему».
+- Никаких `any` без комментария, зачем он нужен.
 
-## Rules
+## Интерфейс (React Native)
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- Тёмная тема. Токены (перенеси в `theme.ts`):
+  - фон `#111316`, поверхность `#1C1F24`, строки `#181B1F`, футер `#16191D`, линии `#23272D` / `#2C3037`
+  - текст `#ECEDEF`, вторичный `#9BA0A8`, выполненное `#80868F`
+  - акцент `#C6F36B` (текст на акценте — `#111316`), предупреждение `#FDBA74`
+- Шрифты: Golos Text — интерфейс; JetBrains Mono — цифры, даты, счётчики.
+- Размеры в прототипе указаны в px — в React Native это те же числа в dp.
+- Зоны нажатия не меньше 44×44. Если элемент визуально меньше — добавь `hitSlop`.
+- **Поле ввода внизу всегда над клавиатурой**: `KeyboardAvoidingView`; если не хватит — предложи `react-native-keyboard-controller`.
+- Отступы от выреза и системных панелей — через `react-native-safe-area-context`.
+- Длинный текст без пробелов не должен ломать строку (проверять «фывфывфыв…»).
+- Никаких `Alert.alert` с «Вы уверены?». Для действий, которые убирают что-то с экрана, — плашка «Вернуть» с таймером (см. SPEC).
+- Доступность: `accessibilityRole="button"`, `accessibilityLabel` у кнопок-иконок, `accessibilityState` у галочек и чипов.
+
+## Готово, когда
+
+- `npm run lint`, `npm run typecheck`, `npm test` проходят.
+- Проверено на телефоне в Expo Go: клавиатура не перекрывает поле, ничего не вылезает за экран, длинный текст переносится.
+- Поведение совпадает с `docs/SPEC.md`. Если пришлось отступить — запись в `docs/DECISIONS.md`.
+- Ты коротко объяснил, что сделал и почему.
+
+## Чего не делать
+
+- Не добавлять регистрацию, бэкенд, синхронизацию — это не v1.
+- Не добавлять экраны, настройки и поля задачи, которых нет в SPEC.
+- Не добавлять шаги в сценарий записи задачи.
+- Не делать `npx expo prebuild` и не переходить на development build без спроса — пока работаем в Expo Go.
+- Не копировать прототип из `docs/prototype/`: он на HTML и особом рантайме дизайн-холста. Бери оттуда поведение, тексты, размеры и логику разбора дат, а компоненты пиши заново на React Native.
