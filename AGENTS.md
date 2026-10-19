@@ -44,11 +44,11 @@ npm run typecheck   # tsc --noEmit
 ## Структура
 
 ```
-app/                # Expo Router — только экраны и раскладка, без бизнес-логики
-  _layout.tsx       # шрифты, safe area, тема
-  index.tsx         # «Сегодня»
-  ahead.tsx         # «Впереди»
 src/
+  app/              # Expo Router — только экраны и раскладка, без бизнес-логики
+    _layout.tsx     # шрифты, safe area, тема
+    index.tsx       # «Сегодня»
+    ahead.tsx       # «Впереди»
   components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
   hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
   lib/
@@ -64,6 +64,10 @@ docs/
   DECISIONS.md      # журнал решений: дата, что решили, почему (веди его)
   prototype/        # интерактивный HTML-прототип из дизайна — образец, НЕ код проекта
 ```
+
+- Алиас `@/` → `src/`: `import { colors } from '@/theme'`.
+- В `src/app/` каждый файл — маршрут. Тесты, хелперы и компоненты туда не кладём; тесты лежат рядом с кодом (`src/lib/dates.test.ts`).
+- Имена файлов — kebab-case: `now-card.tsx` экспортирует `NowCard`, `use-tasks.ts` — `useTasks`. Windows не различает регистр в именах файлов, и переименование `nowCard.tsx` → `NowCard.tsx` ломает git.
 
 ## Правила кода
 

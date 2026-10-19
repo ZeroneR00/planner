@@ -2,6 +2,17 @@
 
 Формат: дата — что решили — почему. Новые записи сверху.
 
+## 2026-10-18 — этап 0 (скелет)
+
+- **Экраны в `src/app/`, а не в `app/`** — так кладёт шаблон Expo SDK 58; весь код в `src/`, алиас `@/` → `src/`. Раздел «Структура» в AGENTS.md обновлён.
+- **Убраны демо-пакеты шаблона и web** (`@expo/ui`, `expo-glass-effect`, `expo-symbols`, `expo-device`, `expo-image`, `expo-web-browser`, `react-native-web`, `react-dom`) — приложение только для телефона, web с `expo-sqlite` без доп. настройки не работает. Часть из них остаётся в `node_modules` как необязательные зависимости `expo`/`expo-router`, но наш код их не импортирует.
+- **Шрифты грузятся в рантайме через `useFonts`**, сплэш держится до загрузки — встроить их в сборку (config plugin `expo-font`) можно только в development build, а мы в Expo Go. Импорт по начертаниям (`@expo-google-fonts/golos-text/600SemiBold`), чтобы в сборку не попадали неиспользуемые файлы.
+- **В `theme.ts` добавлены цвета из прототипа, которых не было в AGENTS.md**: `textHint`, `outline`, `control`, `disabled`, `surfaceSelected`, `danger` — иначе их пришлось бы вписывать в компоненты «магией».
+- **`noUncheckedIndexedAccess`** в tsconfig — `arr[i]` и группы регулярок имеют тип `T | undefined`; в `parse-when` это ловит обращения к несуществующей группе.
+- **`types: ["jest"]`** в tsconfig — в TypeScript 6 глобальные типы из `@types/*` больше не подключаются автоматически.
+- **Правила AGENTS.md в ESLint** без новых пакетов: запрет `any`, `window`/`document`/`localStorage` и hex-цветов вне `theme.ts`.
+- **Имена файлов — kebab-case** — Windows не различает регистр, переименования вида `nowCard.tsx` → `NowCard.tsx` ломают git.
+
 ## 2026-10-17 — платформа
 
 - **React Native (Expo) вместо PWA на Next.js** — главная ценность приложения в скорости записи, а самые быстрые способы записи нативные: виджет на рабочем столе и локальные напоминания без сервера. PWA этого не умеет. Опыт RN у меня уже был.
