@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# рабочий план между сессиями ИИ — не история проекта
+/docs/PLAN.md
