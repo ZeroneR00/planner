@@ -52,6 +52,7 @@ src/
   components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
   hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
   lib/
+    types.ts        # Task, Rule, RepeatPattern
     copy.ts         # ВСЕ тексты интерфейса на русском — в одном месте
     dates.ts        # локальные даты 'YYYY-MM-DD', сдвиги, подписи дней
     parse-when.ts   # разбор «завтра», «во вторник», «каждый вт», «27 августа» из текста
