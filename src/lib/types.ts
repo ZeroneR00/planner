@@ -27,3 +27,9 @@ export type Task = {
   createdAt: string;
   updatedAt: string;
 };
+
+/** Всё, что держим в памяти. today — день последней смены дня; «сегодня» экраны берут отсюда. */
+export type PlannerData = { today: string; tasks: Task[]; rules: Rule[] };
+
+/** «Нечистое», что нужно чистым функциям: день, время, генератор id. В тестах — фиксированное. */
+export type Env = { today: string; now: string; makeId: () => string };

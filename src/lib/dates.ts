@@ -24,6 +24,11 @@ export function today(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+/** Текущее время для createdAt/updatedAt/doneAt — через одну функцию, как today(). */
+export function nowIso(): string {
+  return new Date().toISOString();
+}
+
 export function dateParts(date: string): { year: number; month: number; day: number } {
   return {
     year: Number(date.slice(0, 4)),

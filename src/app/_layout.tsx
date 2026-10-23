@@ -6,9 +6,11 @@ import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Me
 import { useFonts } from 'expo-font';
 import { DarkTheme, Stack, ThemeProvider, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { DB_NAME, PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
 import { colors, fonts } from '@/theme';
 
 // Держим сплэш, пока не загрузятся шрифты, — иначе первый кадр нарисуется системным шрифтом и «прыгнет».
@@ -52,7 +54,12 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      {/* Пока база не открыта и не мигрирована, SQLiteProvider ничего не рисует — это миллисекунды */}
+      <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
+        <PlannerProvider>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+        </PlannerProvider>
+      </SQLiteProvider>
     </ThemeProvider>
   );
 }
