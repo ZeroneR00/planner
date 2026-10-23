@@ -1,280 +1,315 @@
-# ПЛАН ЭТАПА 1 — логика без UI + тесты
+# ПЛАН ЭТАПА 2 — база: SQLite, схема, миграции, данные в памяти
 
-**Статус:** выполнен, коммит 2b11482.
+**Статус:** утверждён, не выполнен. Выполнять в новой сессии по слову «погнали».
+
+## Контекст
+Этап 1 дал чистую логику: `dates`, `parse-when`, `rules`, `rollover`. Теперь её нужно связать с хранилищем на телефоне. Нужны:
+- `expo-sqlite`;
+- схема и миграции через `PRAGMA user_version`;
+- загрузка данных при запуске со сменой дня;
+- один путь записи, через который пойдут все действия этапов 3–7.
+
+Новых экранов нет. Экран «Сегодня» не меняется. Всё работает офлайн: база на телефоне, сети не нужно.
 
 ## Как выполнять
-- План готовый: SPEC, прототип и код целиком не перечитывать. Всё нужное — ниже.
-- Новых пакетов нет.
-- UI не меняется, поэтому телефон не нужен: коммит сразу после зелёных проверок.
-- Порядок: `types` → `copy` → `dates` → `rules` → `parse-when` → `rollover`. Каждый следующий файл опирается на предыдущие. Тесты — сразу после своего файла.
+- План готовый. SPEC, прототип и код целиком не перечитывать: всё нужное — ниже.
+- **Первый шаг — `npx expo install expo-sqlite`.** Установка согласована этим планом. Если команда допишет плагин в `app.json`, оставить.
+- Если API `expo-sqlite` отличается от описанного ниже, сверить с `node_modules/expo-sqlite/build/*.d.ts`. Нужны: `SQLiteProvider`, `useSQLiteContext` и синхронные методы `execSync`, `runSync`, `getAllSync`, `getFirstSync`, `withTransactionSync`.
+- Порядок: `types` → `dates` (`nowIso`) → `id` → `changes` → `db` → `demo` → `use-planner` → `_layout`. Тесты — сразу после своего файла.
+- Этап меняет запуск приложения, поэтому нужна проверка на телефоне. Коммит — после «работает».
 
 ## Общие решения
-- Все функции чистые, «сегодня» приходит параметром `today: string`. Функцию `today()` вызывают только хуки (с этапа 2).
-- Даты — строки `'YYYY-MM-DD'`.
-  - Арифметика: строка → `Date.UTC(y, m - 1, d)` → сдвиг → `toISOString().slice(0, 10)`.
-  - Локальный часовой пояс трогает только `today()`. Так нет ошибок вокруг полуночи и перехода на летнее время.
-- Даты сравниваем обычным сравнением строк (`a < b`): формат `'YYYY-MM-DD'` сортируется как текст.
-- День недели — число 0–6, где 0 = воскресенье (как `Date.getDay()` и `Rule.weekday` в SPEC).
-- Названия дней и месяцев и подписи повторов — в `copy.ts`. Ключевые слова парсера (регулярки) — в `parse-when.ts`: это не тексты интерфейса.
-- Из-за `noUncheckedIndexedAccess` обращение к массиву по индексу имеет тип `T | undefined`. Поэтому в `dates.ts` нужен хелпер `at(list, i)`, который бросает ошибку при выходе за границы.
+- **Данные в памяти, база — хранилище.** `PlannerProvider` при запуске делает смену дня. Он держит `{ today, tasks, rules }` в React-состоянии. Экраны читают через `usePlanner()` и сами считают свои списки чистыми функциями (этап 3+).
+- **Единственный путь записи — `commit(changes)`.**
+  - Сначала `writeChanges(db, changes)`: одна транзакция SQLite.
+  - Потом `setData(d => applyChanges(d, changes))`: то же самое в памяти.
+  - Сначала база: если запись упала, память не меняется.
+  - Отмена на этапе 6 — это просто обратные `Changes`.
+- **Синхронный API `expo-sqlite` (`*Sync`).** Данных мало (сотни строк), вызов занимает доли миллисекунды. Зато нет гонок между записями и состояний «загрузка».
+- **`src/lib/db.ts` не импортирует `expo-sqlite`.** Он работает через свой интерфейс `Db` — подмножество методов `SQLiteDatabase`. Настоящая база подходит под него структурно.
+  - В Jest вместо неё — встроенный в Node `node:sqlite`. Он есть в Node 22.14, проверено: `ON CONFLICT` работает, SQLite 3.47.
+  - Так SQL покрыт тестами на настоящем SQLite без новых пакетов.
+- **Колонки в SQL — snake_case, в TS — camelCase.** Маппинг — в `db.ts`. `order` → `sort_order`, потому что `ORDER` — слово SQL.
+- **Без внешних ключей и `CHECK`.** Целостность держит логика. `CHECK` в SQLite нельзя поменять без пересборки таблицы.
+- **В память не грузим выполненные задачи прошлых дней.** Это история, экраны её не показывают, а в базе она остаётся. Запрос: `done = 0 OR date IS NULL OR date >= today`.
+- **Смена дня пока только при запуске.** `AppState` и полночь — этап 8.
+- **id — свой генератор** в формате uuid v4 на `Math.random`, без пакета. Уникальности в пределах телефона хватает.
+- **Демо-данные:** только в `__DEV__` и только при создании базы (миграция с версии 0). Это задачи из прототипа. В APK база будет пустой. Чтобы получить демо заново — «Очистить данные» у Expo Go.
+- **`Env` — всё «нечистое», что нужно чистым функциям:** `today`, `now`, `makeId`. Снаружи его собирает только `use-planner.tsx`. На этапах 3–7 действия будут выглядеть как `(data, env, …) => Changes`.
 
 ## Файлы
 
-### `src/lib/types.ts` (новый)
+### `src/lib/types.ts` (дописать)
 ```ts
-export type RepeatPattern =
-  | { kind: 'daily' }
-  | { kind: 'weekdays' }
-  | { kind: 'weekly'; weekday: number }    // 0–6, 0 = вс
-  | { kind: 'monthly'; monthDay: number }; // 1–31
-export type RepeatKind = RepeatPattern['kind'];
-export type Rule = RepeatPattern & { id: string; title: string; startDate: string; active: boolean };
-export type Task = {
-  id: string; title: string; date: string | null; done: boolean; doneAt?: string;
-  order: number; ruleId?: string; returned?: boolean; createdAt: string; updatedAt: string;
+/** Всё, что держим в памяти. today — день последней смены дня; «сегодня» экраны берут отсюда. */
+export type PlannerData = { today: string; tasks: Task[]; rules: Rule[] };
+
+/** «Нечистое», что нужно чистым функциям: день, время, генератор id. В тестах — фиксированное. */
+export type Env = { today: string; now: string; makeId: () => string };
+```
+
+### `src/lib/dates.ts` (дописать)
+`nowIso(): string` → `new Date().toISOString()`. Текущее время берётся через одну функцию — по аналогии с `today()`.
+
+### `src/lib/id.ts` (новый)
+```ts
+// uuid v4 на Math.random: id нужны уникальные только в пределах одного телефона,
+// криптостойкость не важна, а пакет ради этого не ставим
+export function makeId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+```
+
+### `src/lib/changes.ts` (новый)
+```ts
+/** Единственный способ поменять данные: база и память применяют одно и то же. */
+export type Changes = {
+  putTasks?: readonly Task[];      // вставить или заменить целиком по id
+  removeTasks?: readonly string[];
+  putRules?: readonly Rule[];
+  removeRules?: readonly string[];
+};
+export function applyChanges(data: PlannerData, changes: Changes): PlannerData
+```
+- Внутри обобщённый хелпер `applyTo<T extends { id: string }>(list, put = [], remove = [])`:
+  - **сначала** убирает элементы из `remove`;
+  - **потом** каждый `put` заменяет элемент на его месте, а если такого id нет — добавляет в конец.
+- Входные массивы не мутируются.
+- Тот же порядок «сначала удалить, потом записать» соблюдает `writeChanges`.
+
+### `src/lib/db.ts` (новый)
+```ts
+export type BindValue = string | number | null;
+
+/** Подмножество SQLiteDatabase из expo-sqlite. Настоящая база подходит структурно, в тестах — node:sqlite. */
+export type Db = {
+  execSync(sql: string): void;
+  runSync(sql: string, params: BindValue[]): unknown;
+  getAllSync<T>(sql: string, params: BindValue[]): T[];
+  getFirstSync<T>(sql: string, params: BindValue[]): T | null;
+  withTransactionSync(task: () => void): void;
 };
 ```
-`Rule` здесь — дискриминированное объединение, а не плоский тип из SPEC: TS сам следит, что у `weekly` есть `weekday`. В SQLite на этапе 2 колонки те же, `weekday` и `monthDay` — nullable.
 
-### `src/lib/copy.ts` (дописать)
-```ts
-dates: {
-  today: 'сегодня', tomorrow: 'завтра',
-  weekdayShort: ['вс','пн','вт','ср','чт','пт','сб'],
-  weekdayFull: ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'],
-  monthGenitive: ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'],
-  monthShort: ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'],
-  monthName: ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
-},
-repeat: {
-  daily: 'каждый день', weekdays: 'по будням',
-  weekly: ['каждое вс','каждый пн','каждый вт','каждую ср','каждый чт','каждую пт','каждую сб'],
-  weeklyPlural: ['по воскресеньям','по понедельникам','по вторникам','по средам','по четвергам','по пятницам','по субботам'],
-  monthly: (day: number) => `каждый месяц, ${day}-го`,
-},
+**Миграции.** `MIGRATIONS: readonly string[]`. Индекс 0 — миграция на версию 1:
+```sql
+CREATE TABLE tasks (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  date TEXT,                       -- 'YYYY-MM-DD'; NULL — в Кармане
+  done INTEGER NOT NULL DEFAULT 0,
+  done_at TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  rule_id TEXT,
+  returned INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX tasks_date ON tasks (date);
+CREATE INDEX tasks_rule ON tasks (rule_id);
+CREATE TABLE rules (
+  id TEXT PRIMARY KEY NOT NULL,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  weekday INTEGER,                 -- только weekly
+  month_day INTEGER,               -- только monthly
+  start_date TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 1
+);
 ```
 
-### `src/lib/dates.ts` (новый)
-- `at<T>(list: readonly T[], i: number): T`
-- `today(): string` — локальная дата устройства через `getFullYear` / `getMonth` / `getDate`. **Не** `toISOString`: он отдаёт дату по UTC, и с 00:00 до 03:00 по Москве вернёт вчерашний день.
-- `addDays(date, n): string`, `diffDays(from, to): number` (сколько дней от `from` до `to`), `weekdayOf(date): number`
-- `daysInMonth(year, month)`, где month 1–12; `makeDate(year, month, day): string | null` — `null`, если такой даты нет (31.11, 29.02 в невисокосный год)
-- Подписи:
-  - `formatHeaderDate` → «Суббота, 17 октября»
-  - `formatDayLong(date, today)` → «сегодня, сб, 17 октября» / «завтра, вс, 18 октября» / «вт, 20 октября»
-  - `capitalize` — для групп во «Впереди»: «Завтра, вс, 18 октября»
-  - `formatDayChip` → «Пн 19»
-  - `formatDayShort` → «27 окт»
-  - `formatMonthTitle` → «Октябрь 2026»
+**`migrate(db): number`** — возвращает версию **до** миграции; 0 означает, что база только что создана.
+- `PRAGMA journal_mode = WAL` — вне транзакции: внутри её менять нельзя.
+- Версия: `getFirstSync<{ user_version: number }>('PRAGMA user_version', [])`.
+- Пока версия < `MIGRATIONS.length`: в одной `withTransactionSync` выполнить `execSync(миграция)` и `PRAGMA user_version = N+1`. Миграция и номер версии применяются вместе или не применяются вовсе.
+- Брать миграцию через `at(MIGRATIONS, version)` из `dates.ts`.
 
-### `src/lib/rules.ts` (новый)
-- `occursOn(p: RepeatPattern, date): boolean`
-  - `daily` — всегда;
-  - `weekdays` — пн–пт;
-  - `weekly` — `weekdayOf(date) === weekday`;
-  - `monthly` — `day === min(monthDay, daysInMonth)`. **Решение:** если в месяце нет 31-го (30-го, 29-го), повтор срабатывает в последний день месяца.
-- `ruleOccursOn(rule, date)` — `active && date >= startDate && occursOn(...)`.
-- `nextOccurrence(p, from, inclusive = true): string` — перебор вперёд до 62 дней (за это время любой шаблон срабатывает). Не нашли — `throw`.
-- `patternFor(kind, date): RepeatPattern` — шаблон для пункта меню ↻ при выбранном дне: `weekly` берёт день недели, `monthly` — число.
-- `repeatLabel(p)` → «каждый день» / «по будням» / «каждый вт» / «каждую ср» / «каждое вс» / «каждый месяц, 20-го».
+**Строки ↔ объекты.** Типы `TaskRow` и `RuleRow` — колонки как есть.
+- `taskFromRow`: `done: row.done === 1`, `order: row.sort_order`.
+  - Необязательные поля **появляются, только если есть значение**: `doneAt` (не NULL), `ruleId` (не NULL), `returned: true` (если 1).
+  - Так задача из базы равна задаче, созданной в коде, где этих полей нет. Нужен комментарий.
+- `taskToParams(task): BindValue[]` — в порядке колонок. Булевы → 0/1, `undefined` → `null`.
+- `ruleFromRow` — `switch (row.kind)`:
+  - `daily` / `weekdays` → без доп. полей;
+  - `weekly` → `weekday`, `monthly` → `monthDay`. Если поле NULL — `throw`;
+  - неизвестный `kind` → `throw new Error(...)`.
 
-### `src/lib/parse-when.ts` (новый — порт `parse()` из прототипа)
-`parseWhen(text, today): { title: string; date: string | null; repeat: RepeatPattern | null; hit: boolean }`
+  Битые строки могут появиться только из-за нашей ошибки — лучше узнать о ней сразу.
+- `ruleToParams(rule)` — `weekday` только у `weekly`, `month_day` только у `monthly`, иначе `null`. `active` → 0/1.
 
-**Как работает:**
-- Текст оборачивается пробелами: `' ' + text + ' '`.
-- Список матчеров проверяется по порядку. **Берётся первый, который вернул результат.** Если матчер вернул `null` (например, даты не существует), идём к следующему. В прототипе в этом случае цепочка обрывалась.
-- Найденная фраза заменяется пробелом. `title` = остаток, пробелы схлопнуты, `trim`. `hit` = фраза найдена.
-- Все регулярки с флагом `i`.
-- Границы слов — `\s` и обёртка пробелами, потому что `\b` в JS без флага `u` не видит кириллицу. В коде об этом нужен комментарий.
+**Запросы:**
+- **`loadData(db, today): PlannerData`**
+  - задачи: `SELECT * FROM tasks WHERE done = 0 OR date IS NULL OR date >= ? ORDER BY created_at, id`;
+  - правила: `SELECT * FROM rules`.
+- **`writeChanges(db, changes): void`** — всё в одной `withTransactionSync`:
+  1. `DELETE ... WHERE id = ?` для `removeTasks` и `removeRules`;
+  2. `INSERT OR REPLACE INTO tasks (…колонки…) VALUES (?, …)` для `putTasks`, то же для `putRules`.
 
-**День недели:**
-- `WD = '(понедельник\S*|вторник\S*|сред\S*|четверг\S*|пятниц\S*|суббот\S*|воскресен\S*)'`
-- Номер по началу слова: понедельник → 1, вторник → 2, сред → 3, четверг → 4, пятниц → 5, суббот → 6, иначе 0.
+  `REPLACE` = удалить и вставить заново. Это ровно смысл `put`, а триггеров и внешних ключей у нас нет.
+- **`startDay(db, env: Env): PlannerData`** — смена дня прямо в базе:
+  1. `loadData(db, env.today)`;
+  2. `rollover({ ...data, now: env.now, makeId: env.makeId })`;
+  3. собрать changes: `{ putTasks: [...created, ...updated], removeTasks: removed }`;
+  4. `writeChanges`;
+  5. вернуть `applyChanges(data, changes)`.
 
-| # | Регулярка | Результат |
-|---|---|---|
-| 1 | `\s(?:каждый\|каждую\|каждое\|по)\s+WD(?=\s)` | weekly(wd); date = `nextOccurrence`, сегодня включается |
-| 2 | `\s(?:каждый\s+день\|ежедневно)(?=\s)` | daily; date = today |
-| 3 | `\s(?:по\s+будням\|каждый\s+будний\s+день)(?=\s)` | weekdays; date = `nextOccurrence`, сегодня включается |
-| 4 | `\sкаждое\s+(\d{1,2})(?:-?(?:е\|го))?(?:\s+число)?(?=\s)` | если n от 1 до 31 — monthly(n), date = `nextOccurrence`, сегодня включается; иначе `null` |
-| 5 | `\s(?:в\|во)\s+WD(?=\s)` | ближайший такой день; **сегодня не считается** (тот же день недели → +7) |
-| 6 | `\sпослезавтра(?=\s)` | today + 2 |
-| 7 | `\sзавтра(?=\s)` | today + 1 |
-| 8 | `\sсегодня(?=\s)` | today |
-| 9 | `\sчерез\s+(?:(\d+)\s+)?(день\|дня\|дней\|неделю\|недели\|недель)(?=\s)` | n дней или n×7 (без числа n = 1) |
-| 10 | `\s(\d{1,2})\s+(января\|…\|декабря)(?=\s)` | `makeDate` в году today; если раньше today — следующий год; если даты нет (в том числе 29.02 в следующем году) — `null` |
-| 11 | `\s(\d{1,2})\.(\d{1,2})(?=\s)` | так же, для формата «27.08» |
+### `src/lib/demo.ts` (новый)
+`demoChanges(env: Env): Changes` — данные из прототипа (`seed()`) для проверки на телефоне. Это не тексты интерфейса, поэтому они не в `copy.ts`: нужен комментарий. Все задачи получают `createdAt` / `updatedAt` = `env.now`, все правила — `startDate` = `env.today`, `active: true`.
 
-`\|` в таблице — экранирование для markdown, в коде пишется просто `|`.
+- **Сегодня** (`date = today`), `order` 0, 1, 2:
+  - «Проверить новые заказы» — `done: true`, `doneAt: now`;
+  - «Созвон с заказчиком»;
+  - «Вёрстка формы заказа».
+- **Карман** (`date: null`), `order` 0, 1, 2:
+  - «Правки по макету» — `returned: true`;
+  - «Идея: тёмная тема для сайта»;
+  - «Купить батарейки».
+- **Впереди:**
+  - «Созвониться с новым заказчиком» — today + 1;
+  - «Оплатить интернет» — `nextOccurrence({ kind: 'weekly', weekday: 2 }, today, false)`;
+  - «Продлить домен» — today + 10.
+- **Правила:**
+  - «Прогулка» — `daily`;
+  - «Вынести мусор» — `weekly`, вт (2);
+  - «Оплатить хостинг» — `monthly`, 1-го.
 
-В прототипе была ошибка: для 29 февраля следующего года не проверялось, существует ли дата, и получалось 1 марта. Здесь это исправлено.
+Экземпляр «Прогулки» на сегодня demo **не создаёт**: его создаст `startDay`. Так на первом же запуске проверяется rollover.
 
-## Тесты (`src/lib/*.test.ts`)
+### `src/hooks/use-planner.tsx` (новый)
+```tsx
+export const DB_NAME = 'planner.db';
 
-### `dates.test.ts`
-В первой строке файла: `process.env.TZ = 'Europe/Moscow'`.
+// Вне компонента: время, id и запись в базу — «нечистые», в теле рендера им не место
+function currentEnv(): Env { return { today: today(), now: nowIso(), makeId }; }
+
+/** onInit у SQLiteProvider: схема и (только в dev, при создании базы) демо-данные. */
+export async function prepareDatabase(db: SQLiteDatabase): Promise<void> {
+  const from = migrate(db);
+  if (__DEV__ && from === 0) writeChanges(db, demoChanges(currentEnv()));
+}
+
+function startToday(db: Db): PlannerData {
+  const data = startDay(db, currentEnv());
+  if (__DEV__) console.log(`[база] ${data.today}: задач ${data.tasks.length}, повторов ${data.rules.length}`);
+  return data;
+}
+
+type Planner = PlannerData & { commit: (changes: Changes) => void };
+const PlannerContext = createContext<Planner | null>(null);
+
+export function PlannerProvider({ children }: { children: ReactNode }) {
+  const db = useSQLiteContext();
+  // Один раз при запуске. Если React вызовет инициализатор дважды (StrictMode в dev),
+  // второй вызов ничего не изменит: rollover идемпотентен
+  const [data, setData] = useState(() => startToday(db));
+  const commit = (changes: Changes) => {
+    writeChanges(db, changes); // сначала база: упала запись — память не трогаем
+    setData((d) => applyChanges(d, changes));
+  };
+  return <PlannerContext value={{ ...data, commit }}>{children}</PlannerContext>;
+}
+
+export function usePlanner(): Planner  // use(PlannerContext); null → throw 'usePlanner вне PlannerProvider'
+```
+- React Compiler включён, поэтому `useCallback` / `useMemo` не нужны.
+- `<Context value>` и `use()` — синтаксис React 19.
+
+### `src/app/_layout.tsx` (правка)
+Внутри `ThemeProvider` обернуть `Stack`:
+```tsx
+<SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
+  <PlannerProvider>
+    <Stack … />
+  </PlannerProvider>
+</SQLiteProvider>
+```
+- `SQLiteProvider` ничего не рисует, пока база не открыта и `onInit` не закончился. Это миллисекунды, а фон под ним уже наш.
+- Ошибку миграции `SQLiteProvider` по умолчанию пробрасывает: в dev будет красный экран. Для v1 этого достаточно.
+
+## Тесты
+
+### `id.test.ts`
+- Формат: `/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/`.
+- 1000 вызовов — 1000 разных id.
+
+### `changes.test.ts`
+Данные: `{ today: '2026-10-18', tasks, rules }`, хелперы `task()` / `rule()` как в `rollover.test.ts`.
 
 | Что проверяем | Ожидание |
 |---|---|
-| `today()` при фейковом времени `2026-10-17T21:30:00Z` (00:30 по Москве) | `'2026-10-18'` |
-| `addDays('2026-12-31', 1)` | `'2027-01-01'` |
-| `addDays('2028-02-28', 1)` | `'2028-02-29'` |
-| `addDays('2026-03-01', -1)` | `'2026-02-28'` |
-| `diffDays('2026-10-17', '2026-10-31')` | 14 (и отрицательная разница в обратную сторону) |
-| `weekdayOf('2026-10-17')` / `weekdayOf('2026-10-18')` | 6 / 0 |
-| `daysInMonth(2026, 2)` / `(2028, 2)` / `(2026, 11)` | 28 / 29 / 30 |
-| `makeDate(2026, 11, 31)` / `(2027, 2, 29)` | `null` / `null` |
-| `makeDate(2028, 2, 29)` | `'2028-02-29'` |
-| `formatHeaderDate('2026-10-17')` | «Суббота, 17 октября» |
-| `formatDayLong` при today `2026-10-17`: сам today / `10-18` / `10-20` | «сегодня, сб, 17 октября» / «завтра, вс, 18 октября» / «вт, 20 октября» |
-| `capitalize` | первая буква заглавная |
-| `formatDayChip('2026-10-19')` | «Пн 19» |
-| `formatDayShort('2026-10-27')` | «27 окт» |
-| `formatMonthTitle('2026-10-17')` | «Октябрь 2026» |
+| put новой задачи | в конце списка |
+| put существующей | заменена на своём месте, длина та же |
+| remove | задачи нет |
+| remove и put одного id | put побеждает |
+| то же для правил | работает |
+| вход через `Object.freeze` (и массивы) | не мутируется, `today` сохраняется |
+| пустой `{}` | данные равны исходным |
 
-### `rules.test.ts`
-**`occursOn`:**
-- `weekdays`: пн `10-19` — true; сб `10-17` и вс `10-18` — false.
-- `weekly{2}`: `10-20` — true; `10-21` — false.
-- `monthly{31}`:
+### `db.test.ts` — на настоящем SQLite
+- Первая строка — докблок `/** @jest-environment node */`: тест работает в чистом Node.
+- Адаптер `openTestDb(): Db` поверх `node:sqlite`, в самом тест-файле:
+```ts
+type NodeStatement = { run(...p: BindValue[]): unknown; all(...p: BindValue[]): unknown[]; get(...p: BindValue[]): unknown };
+type NodeDatabase = { exec(sql: string): void; prepare(sql: string): NodeStatement };
+// Типов Node в проекте нет (приложение не для Node) — описываем только нужное тесту
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- встроенный модуль Node, только в тесте
+const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: new (path: string) => NodeDatabase };
+```
+- Методы адаптера:
+  - `execSync` → `exec`;
+  - `runSync` / `getAllSync` → `prepare(sql).run/all(...params)`;
+  - `getFirstSync` → `get(...) ?? null`;
+  - `withTransactionSync` → `BEGIN` / `COMMIT`, при ошибке `ROLLBACK` + `throw`.
+- База `':memory:'`, новая в каждом тесте.
+- Предупреждение `ExperimentalWarning: SQLite` в выводе Jest ожидаемо.
 
-  | Дата | Ожидание |
-  |---|---|
-  | `2026-11-30` | true |
-  | `2026-11-29` | false |
-  | `2026-10-31` | true |
-  | `2026-10-30` | false |
-  | `2026-02-28` | true |
-  | `2028-02-29` | true |
-  | `2028-02-28` | false |
+Сегодня `2026-10-18`, `env` фиксированный, `makeId` → `new-1`, `new-2`…
 
-- `monthly{30}`: `2026-02-28` — true.
-
-**`ruleOccursOn`:**
-- неактивное правило — false;
-- дата раньше `startDate` — false;
-- дата равна `startDate` — true.
-
-**`nextOccurrence`:**
-
-| Вызов | Ожидание |
-|---|---|
-| `weekly{6}` от `2026-10-17`, inclusive | `2026-10-17` |
-| то же, exclusive | `2026-10-24` |
-| `weekdays` от сб `10-17` | `10-19` |
-| `monthly{31}` от `2026-11-05` | `2026-11-30` |
-| `monthly{15}` от `2026-10-17` | `2026-11-15` |
-
-**`patternFor`:**
-- `weekly` при `10-20` → `{ weekly, 2 }`;
-- `monthly` → `{ monthly, 20 }`;
-- `daily` → `{ daily }`.
-
-**`repeatLabel`:** все варианты из списка выше.
-
-### `parse-when.test.ts`
-Сегодня `2026-10-17` (суббота).
-
-**Одноразовые даты:**
-
-| Ввод | title | date |
+| # | Что проверяем | Ожидание |
 |---|---|---|
-| `позвонить в банк завтра` | `позвонить в банк` | `2026-10-18` |
-| `Завтра позвонить` | `позвонить` | `10-18` |
-| `сегодня` / `послезавтра` | `''` | `10-17` / `10-19` |
-| `во вторник созвон` | `созвон` | `10-20` |
-| `в субботу` | `''` | `10-24` (сегодня суббота → через неделю) |
-| `в воскресенье` / `в среду` | `''` | `10-18` / `10-21` |
-| `через день` / `через 3 дня` / `через неделю` / `через 2 недели` | `''` | `10-18` / `10-20` / `10-24` / `10-31` |
-| `27 августа` / `27.08` | `''` | `2027-08-27` |
-| `17 октября` | `''` | `2026-10-17` |
-| `31 декабря` | `''` | `2026-12-31` |
-
-**Повторы:**
-
-| Ввод | title | repeat | date |
-|---|---|---|---|
-| `каждый вторник вынести мусор` | `вынести мусор` | weekly 2 | `10-20` |
-| `каждую субботу` | `''` | weekly 6 | `10-17` (сегодня включается) |
-| `по средам` | `''` | weekly 3 | `10-21` |
-| `каждое воскресенье` | `''` | weekly 0 | `10-18` |
-| `каждый день зарядка` / `ежедневно` | `зарядка` / `''` | daily | `10-17` |
-| `по будням` / `каждый будний день` | `''` | weekdays | `10-19` |
-| `оплатить хостинг каждое 20-го` | `оплатить хостинг` | monthly 20 | `10-20` |
-| `каждое 1 число` | `''` | monthly 1 | `11-01` |
-| `каждое 15-е` | `''` | monthly 15 | `11-15` |
-| `каждое 17 число` | `''` | monthly 17 | `10-17` (сегодня) |
-| `каждое 31-е` при today `2026-11-05` | `''` | monthly 31 | `2026-11-30` |
-
-**Ничего не распознано** (`hit: false`, title не меняется):
-- `каждое 32 число`;
-- `31.11`;
-- `29 февраля` при today `2028-03-01` — исправленная ошибка прототипа;
-- `сегодняшний отчёт`;
-- `созвон в 15:00`;
-- пустая строка.
-
-**Особые случаи:**
-- `завтра во вторник` → date `10-20`, title `завтра`: берётся только первая фраза, а матчер 5 стоит раньше 7.
-- `  купить   хлеб  завтра ` → title `купить хлеб`.
-
-### `rollover.test.ts`
-Сегодня `2026-10-18`. `now` зафиксирован, `makeId` → `new-1`, `new-2`… Для проверки идемпотентности в тестовом файле нужен хелпер `applyDiff`.
-
-| # | Ситуация | Ожидание |
-|---|---|---|
-| 1 | Несделанная вчерашняя задача, а также несделанная трёхдневной давности | updated: `{ date: null, returned: true, updatedAt: now }` |
-| 2 | Выполненная вчерашняя; сегодняшняя; будущая; задача в Кармане | не трогаются |
-| 3 | `daily`-правило без экземпляра на сегодня | created: title правила, date today, ruleId, order = max(order сегодняшних) + 1, а если сегодняшних задач нет — 0 |
-| 4 | Экземпляр на сегодня уже есть, даже выполненный | ничего |
-| 5 | Правило `weekly` не на сегодня; неактивное правило; `startDate` позже today | ничего |
-| 6 | Пропущен вчерашний экземпляр | он уходит в Карман (`returned`), и создаётся экземпляр на сегодня |
-| 7 | В Кармане уже лежит `returned`-экземпляр этого правила, и появился новый пропуск | старый — в `removed`, новый — в Карман |
-| 8 | Два пропущенных экземпляра одного правила с разными датами | поздний — в Карман, ранний — в `removed` |
-| 9 | `returned`-экземпляр в Кармане, нового пропуска нет | не трогается |
-| 10 | Применить diff и запустить смену дня ещё раз | пустой diff |
-
-### `src/lib/rollover.ts` (новый)
-`rollover({ tasks, rules, today, now, makeId }): { created: Task[]; updated: Task[]; removed: string[] }`
-
-`now` (ISO) и `makeId` передаются снаружи ради чистоты и тестов. Источник uuid выберем на этапе 2.
-
-1. **Пропущенные задачи** — это `!done && date !== null && date < today`.
-   - Без `ruleId`: попадает в `updated` с `{ date: null, returned: true, updatedAt: now }`.
-   - С `ruleId`: группируем по правилу.
-     - Самый поздний пропущенный экземпляр → в Карман, как выше.
-     - Остальные пропущенные экземпляры этого правила → `removed`.
-     - Уже лежащие в Кармане `returned && !done` экземпляры этого правила → тоже `removed`.
-     
-     Так в Кармане остаётся не больше одного пропуска на правило.
-2. **Экземпляры повторов.** Для каждого правила, у которого `ruleOccursOn(rule, today)` и нет задачи `(ruleId, date === today)`, создаём задачу:
-   ```ts
-   { id: makeId(), title: rule.title, date: today, done: false,
-     order: (максимальный order сегодняшних задач) + 1, ruleId,
-     createdAt: now, updatedAt: now }
-   ```
-   Если сегодняшних задач нет, `order` = 0. При нескольких новых экземплярах `order` растёт по порядку.
-3. Выполненные задачи прошлых дней не трогаем. Их скрывает запрос экрана (этап 3).
-4. Функция идемпотентна: повторный запуск на уже применённом результате возвращает пустой diff.
+| 1 | `migrate` на пустой базе | вернул 0; `PRAGMA user_version` = `MIGRATIONS.length`; таблицы `tasks` и `rules` есть (`sqlite_master`) |
+| 2 | второй `migrate` | вернул `MIGRATIONS.length`, без ошибок |
+| 3 | круг «записал → прочитал»: полная задача (`doneAt`, `ruleId`, `returned`) и минимальная | `loadData` возвращает равные объекты; у минимальной нет `doneAt` / `ruleId` / `returned` |
+| 4 | круг для правил: daily, weekdays, weekly{2}, monthly{31}, неактивное | равны исходным |
+| 5 | put существующего id | заменено, строк по-прежнему одна |
+| 6 | `removeTasks` и `removeRules` | строк нет |
+| 7 | фильтр `loadData`: выполненная вчерашняя / несделанная вчерашняя / выполненная сегодняшняя / Карман / будущая | грузятся все, кроме выполненной вчерашней |
+| 8 | транзакция: put хорошей задачи и задачи с `title: null as unknown as string` | `writeChanges` бросает ошибку; в базе пусто — хорошая задача тоже откатилась |
+| 9 | `startDay`: вчерашняя несделанная + daily-правило | в базе и в результате вчерашняя в Кармане (`returned`) и есть экземпляр на сегодня; `loadData` совпадает с результатом |
+| 10 | `startDay` второй раз | результат тот же, новых строк нет |
+| 11 | демо: `migrate` → `writeChanges(demoChanges(env))` → `startDay` | правил 3; на сегодня есть экземпляр «Прогулка» с `ruleId`; в Кармане 3 задачи |
+| 12 | `ruleFromRow` через базу: строка `kind = 'yearly'`, вставленная SQL-ом напрямую | `loadData` бросает ошибку |
 
 ## Документация
-- **`docs/DECISIONS.md`** — запись от 2026-10-19 «этап 1»:
-  - 31-е в коротком месяце → последний день месяца;
-  - функции чистые, `today` приходит параметром;
-  - арифметика дат — через UTC на строках;
-  - `Rule` — дискриминированное объединение;
-  - `parseWhen` возвращает дату, а не сдвиг в днях;
-  - если матчер вернул `null`, цепочка идёт дальше (в прототипе обрывалась);
-  - исправлена ошибка с 29 февраля;
-  - из текста берётся только первая фраза.
-- **`docs/SPEC.md`:**
-  - в «Модели данных» после списка про таблицы — строка: «monthly: если числа нет в месяце — последний день месяца»;
-  - из «Открытых вопросов» убрать пункт про 31-е.
-- **`AGENTS.md` → «Структура»:** в `lib/` добавить строку `types.ts  # Task, Rule, RepeatPattern`.
+- **`docs/DECISIONS.md`** — запись «2026-10-23 — этап 2 (база)»:
+  - данные в памяти, база — хранилище; один путь записи `commit(changes)`;
+  - синхронный API `expo-sqlite`;
+  - интерфейс `Db` и тесты на `node:sqlite`;
+  - свой генератор id;
+  - `sort_order`, snake_case;
+  - без внешних ключей и `CHECK`;
+  - выполненное прошлых дней в память не грузим;
+  - демо-данные в dev при создании базы;
+  - смена дня пока только при запуске.
+- **`docs/SPEC.md` → «Модель данных»**, после строки про таблицы: «Колонки в SQLite — snake_case; `order` → `sort_order` (ORDER — слово SQL)».
+- **`AGENTS.md`:**
+  - в «Структуре», в `lib/`, добавить строки:
+    - `changes.ts  # Changes и applyChanges — единственный путь записи`
+    - `id.ts       # makeId — uuid без пакета`
+    - `demo.ts     # демо-данные для dev`
+  - у `db.ts` комментарий: `# схема, миграции, запросы — через интерфейс Db`;
+  - в `hooks/` — `use-planner.tsx  # PlannerProvider, usePlanner: данные в памяти, commit → база`;
+  - в «Правилах кода» строку про `src/lib` уточнить: «…без React и React Native. К базе обращается только `db.ts` — через интерфейс `Db`, без импорта `expo-sqlite`».
 
 ## Проверка
-`npm run typecheck`, `npm run lint` и `npm test` — все зелёные. Телефон не нужен.
+1. `npm run typecheck`, `npm run lint`, `npm test` — все зелёные.
+2. **Телефон:** `npx expo start`, открыть в Expo Go.
+   - Экран «Сегодня» как раньше, без ошибок.
+   - В терминале Expo: `[база] 2026-10-…: задач 10, повторов 3`. Задач на 1–2 больше, если сегодня вторник или 1-е число.
+3. Закрыть Expo Go полностью и открыть снова: те же числа. База сохранилась, повторная смена дня ничего не добавила.
 
 ## Коммит
-«Этап 1: даты, разбор текста, повторы, смена дня + тесты». После коммита — статус этого файла «выполнен, коммит …».
+«Этап 2: SQLite — схема, миграции, данные в памяти, commit + тесты». Коммит — после «работает» с телефона. Затем в этом файле статус «выполнен, коммит …».
