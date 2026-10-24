@@ -1,6 +1,9 @@
 // Все тексты интерфейса — здесь. Переименование раздела или кнопки = правка одной строки.
 
+// Формы названия раздела: что / куда / где. Переименование — правка этих трёх строк
 const POCKET = 'Карман';
+const POCKET_ACC = 'карман';
+const POCKET_LOC = 'кармане';
 
 export const copy = {
   today: {
@@ -21,6 +24,30 @@ export const copy = {
     empty: `${POCKET} пуст — всё разобрано`,
     returned: 'вчера не отмечено', // иконка ↩ рисуется отдельно
     toToday: 'Сегодня',
+  },
+  composer: {
+    placeholder: 'Запиши мысль — разберёшь потом',
+    inputLabel: 'Записать мысль',
+    send: 'Добавить',
+    chipPocket: `В ${POCKET_ACC}`,
+    chipToday: 'Сегодня',
+    chipTomorrow: 'Завтра',
+    calendar: 'Дата',
+    toPocket: `Упадёт в ${POCKET_ACC}, разберёшь потом`,
+    fromText: 'понял из текста',
+    addedToPocket: `Лежит в ${POCKET_LOC}. Разберёшь, когда будет минута`,
+    addedToday: 'Добавлено на сегодня',
+    scheduled: (day: string) => `Запланировано: ${day}`,
+    addedRepeat: (rule: string, from: string) => `${rule}, начиная с ${from}`,
+    repeat: 'Повторять',
+    repeatOn: (label: string) => `Повтор: ${label}`,
+    repeatOnce: 'Один раз',
+    repeatDaily: 'Каждый день',
+    repeatWeekdays: 'По будням',
+    repeatWeekly: (plural: string) => `Каждую неделю · ${plural}`,
+    repeatMonthly: (day: number) => `Каждый месяц · ${day}-го`,
+    prevMonth: 'Предыдущий месяц',
+    nextMonth: 'Следующий месяц',
   },
   // Индекс дня недели: 0 = вс, как Date.getDay()
   dates: {

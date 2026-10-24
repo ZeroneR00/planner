@@ -1,5 +1,7 @@
 import type { Changes } from '@/lib/changes';
-import type { PlannerData, Task } from '@/lib/types';
+import type { When } from '@/lib/composer';
+import { ruleOccursOn } from '@/lib/rules';
+import type { PlannerData, Rule, Task } from '@/lib/types';
 
 // Действия с задачей с экрана «Сегодня». Возвращают Changes, а не пишут сами:
 // так отмену (плашку «Вернуть») можно будет собрать из обратных Changes.
@@ -11,6 +13,41 @@ export function nextOrder(tasks: readonly Task[], date: string | null): number {
     if (t.date === date && t.order > max) max = t.order;
   }
   return max + 1;
+}
+
+/** order, с которым задача встаёт первой в дне (или в Кармане). Пустой день → 0. */
+export function firstOrder(tasks: readonly Task[], date: string | null): number {
+  let min = Infinity;
+  for (const t of tasks) {
+    if (t.date === date && t.order < min) min = t.order;
+  }
+  return min === Infinity ? 0 : min - 1;
+}
+
+/**
+ * Новая задача из поля записи. Карман — сверху, день — в конец.
+ * Повтор — правило и, если оно срабатывает сегодня, экземпляр на сегодня.
+ */
+export function addTask(data: PlannerData, when: When, now: string, makeId: () => string): Changes {
+  const base = { title: when.title, done: false, createdAt: now, updatedAt: now };
+  const { date, repeat } = when;
+  if (date === null) {
+    return { putTasks: [{ id: makeId(), ...base, date, order: firstOrder(data.tasks, null) }] };
+  }
+  if (repeat === null) {
+    return { putTasks: [{ id: makeId(), ...base, date, order: nextOrder(data.tasks, date) }] };
+  }
+  const rule: Rule = { ...repeat, id: makeId(), title: when.title, startDate: date, active: true };
+  // Смена дня пока только при запуске — экземпляр на сегодня создаём сразу, будущие создаст она
+  if (!ruleOccursOn(rule, data.today)) return { putRules: [rule] };
+  const instance: Task = {
+    id: makeId(),
+    ...base,
+    date: data.today,
+    order: nextOrder(data.tasks, data.today),
+    ruleId: rule.id,
+  };
+  return { putRules: [rule], putTasks: [instance] };
 }
 
 export function toggleDone(task: Task, now: string): Changes {

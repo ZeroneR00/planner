@@ -112,3 +112,33 @@ export function formatMonthTitle(date: string): string {
   const { year, month } = dateParts(date);
   return `${at(copy.dates.monthName, month - 1)} ${year}`;
 }
+
+/** Сколько месяцев от месяца `from` до месяца `to`; дни не учитываются. */
+export function monthShift(from: string, to: string): number {
+  const a = dateParts(from);
+  const b = dateParts(to);
+  return (b.year - a.year) * 12 + (b.month - a.month);
+}
+
+/** Первое число месяца через `shift` месяцев от месяца `date`: 'YYYY-MM-01'. */
+export function monthStart(date: string, shift: number): string {
+  const { year, month } = dateParts(date);
+  const index = year * 12 + (month - 1) + shift;
+  return `${Math.floor(index / 12)}-${pad((index % 12) + 1)}-01`;
+}
+
+/** Дни месяца для сетки календаря с понедельника; null — пустые клетки до 1-го. */
+export function monthGrid(first: string): (string | null)[] {
+  const { year, month } = dateParts(first);
+  const blanks = (weekdayOf(first) + 6) % 7;
+  const cells: (string | null)[] = Array.from({ length: blanks }, () => null);
+  for (let day = 1; day <= daysInMonth(year, month); day++) {
+    cells.push(`${year}-${pad(month)}-${pad(day)}`);
+  }
+  return cells;
+}
+
+/** «Пн» … «Вс» — шапка календаря. */
+export function weekdayHeaders(): string[] {
+  return [1, 2, 3, 4, 5, 6, 0].map((i) => capitalize(at(copy.dates.weekdayShort, i)));
+}

@@ -1,5 +1,8 @@
 import type { Changes } from '@/lib/changes';
+import type { When } from '@/lib/composer';
 import {
+  addTask,
+  firstOrder,
   markDoneFromPocket,
   moveToToday,
   nextOrder,
@@ -7,7 +10,7 @@ import {
   removeTask,
   toggleDone,
 } from '@/lib/task-actions';
-import type { PlannerData, Task } from '@/lib/types';
+import type { PlannerData, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18';
 const NOW = '2026-10-18T09:30:00.000Z';
@@ -114,5 +117,76 @@ describe('из Кармана в день', () => {
 describe('removeTask', () => {
   it('удаляет по id', () => {
     expect(removeTask(task({ id: 'p' }))).toEqual({ removeTasks: ['p'] });
+  });
+});
+
+describe('firstOrder', () => {
+  it('min − 1 среди задач этой даты, пусто → 0', () => {
+    const tasks = [task({ id: 'a', date: null, order: 3 }), task({ id: 'b', order: -5 })];
+    expect(firstOrder(tasks, null)).toBe(2);
+    expect(firstOrder(tasks, '2026-10-25')).toBe(0);
+  });
+});
+
+describe('addTask', () => {
+  let n = 0;
+  const makeId = () => `id${++n}`;
+  beforeEach(() => {
+    n = 0;
+  });
+
+  const tasks = [
+    task({ id: 'p0', date: null, order: 0 }),
+    task({ id: 'p2', date: null, order: 2 }),
+    task({ id: 'a', order: 4 }),
+    task({ id: 'later', date: '2026-10-21', order: 1 }),
+  ];
+
+  function when(overrides: Partial<When>): When {
+    return { title: 'купить хлеб', date: null, repeat: null, fromText: false, ...overrides };
+  }
+
+  const fresh = { title: 'купить хлеб', done: false, createdAt: NOW, updatedAt: NOW };
+
+  it('в Карман — сверху', () => {
+    expect(addTask(data(tasks), when({}), NOW, makeId)).toEqual({
+      putTasks: [{ id: 'id1', ...fresh, date: null, order: -1 }],
+    });
+  });
+
+  it('на сегодня — в конец дня', () => {
+    expect(only(addTask(data(tasks), when({ date: TODAY }), NOW, makeId))).toEqual({
+      id: 'id1',
+      ...fresh,
+      date: TODAY,
+      order: 5,
+    });
+  });
+
+  it('на будущий день — в конец своего дня', () => {
+    expect(only(addTask(data(tasks), when({ date: '2026-10-21' }), NOW, makeId)).order).toBe(2);
+  });
+
+  it('повтор, который срабатывает сегодня, — правило и экземпляр на сегодня', () => {
+    const changes = addTask(data(tasks), when({ date: TODAY, repeat: { kind: 'daily' } }), NOW, makeId);
+    const rule: Rule = {
+      kind: 'daily',
+      id: 'id1',
+      title: 'купить хлеб',
+      startDate: TODAY,
+      active: true,
+    };
+    expect(changes).toEqual({
+      putRules: [rule],
+      putTasks: [{ id: 'id2', ...fresh, date: TODAY, order: 5, ruleId: 'id1' }],
+    });
+  });
+
+  it('повтор с будущей даты — только правило', () => {
+    const repeat = { kind: 'weekly', weekday: 3 } as const;
+    const changes = addTask(data(tasks), when({ date: '2026-10-21', repeat }), NOW, makeId);
+    expect(changes).toEqual({
+      putRules: [{ ...repeat, id: 'id1', title: 'купить хлеб', startDate: '2026-10-21', active: true }],
+    });
   });
 });

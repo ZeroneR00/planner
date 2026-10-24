@@ -10,7 +10,11 @@ import {
   formatHeaderDate,
   formatMonthTitle,
   makeDate,
+  monthGrid,
+  monthShift,
+  monthStart,
   today,
+  weekdayHeaders,
   weekdayOf,
 } from '@/lib/dates';
 
@@ -88,5 +92,34 @@ describe('подписи', () => {
     expect(formatDayChip('2026-10-19')).toBe('Пн 19');
     expect(formatDayShort('2026-10-27')).toBe('27 окт');
     expect(formatMonthTitle('2026-10-17')).toBe('Октябрь 2026');
+  });
+});
+
+describe('календарь', () => {
+  it('monthShift считает месяцы, а не дни, и через год', () => {
+    expect(monthShift('2026-10-31', '2026-11-01')).toBe(1);
+    expect(monthShift('2026-10-17', '2027-01-05')).toBe(3);
+    expect(monthShift('2026-10-17', '2026-10-01')).toBe(0);
+  });
+
+  it('monthStart', () => {
+    expect(monthStart('2026-10-17', 0)).toBe('2026-10-01');
+    expect(monthStart('2026-10-17', 3)).toBe('2027-01-01');
+    expect(monthStart('2026-10-17', 14)).toBe('2027-12-01');
+  });
+
+  it('monthGrid начинается с понедельника', () => {
+    const october = monthGrid('2026-10-01'); // чт
+    expect(october.slice(0, 4)).toEqual([null, null, null, '2026-10-01']);
+    expect(october).toHaveLength(3 + 31);
+    expect(october.at(-1)).toBe('2026-10-31');
+    expect(monthGrid('2026-06-01')[0]).toBe('2026-06-01'); // пн
+    const november = monthGrid('2026-11-01'); // вс
+    expect(november.filter((c) => c === null)).toHaveLength(6);
+    expect(november).toHaveLength(6 + 30);
+  });
+
+  it('weekdayHeaders', () => {
+    expect(weekdayHeaders()).toEqual(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']);
   });
 });

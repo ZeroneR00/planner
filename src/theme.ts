@@ -75,6 +75,12 @@ export const size = {
   button: 48, // «Сделано» / «Позже»
   row: 52, // минимальная высота строки списка
   checkbox: 22, // кружок-галочка
+  menuItem: 48, // пункт меню повтора
+  field: 52, // поле записи и кнопка «Добавить»
+  fadeRight: 28, // затухание правого края бегунка
+  fadeLeft: 10, // затухание левого края бегунка
+  fadeLeftScroll: 25, // за столько dp прокрутки левое затухание проявляется полностью
+  chipLead: 48, // сколько оставить слева от чипа, когда бегунок сам к нему прокручивается
 } as const;
 
 // Готовые стили текста. letterSpacing и lineHeight в RN — в dp, а не в em и не множителем,
@@ -92,19 +98,30 @@ export const text = {
   },
   emptyTitle: { fontFamily: fonts.semibold, fontSize: 20, lineHeight: 26, color: colors.text },
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.text },
+  input: { fontFamily: fonts.regular, fontSize: 16, color: colors.text },
   row: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, color: colors.text },
   label: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
+  chipOn: { fontFamily: fonts.semibold, fontSize: 14, color: colors.onAccent },
   headerDate: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
   hint: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
   button: { fontFamily: fonts.semibold, fontSize: 16, color: colors.onAccent },
   buttonSecondary: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   action: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   note: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  status: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.textSecondary },
+  calendarTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.text },
   meta: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
   section: {
     fontFamily: fonts.semibold,
     fontSize: 13,
     letterSpacing: 1.04,
+    textTransform: 'uppercase',
+    color: colors.textSecondary,
+  },
+  sheetTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    letterSpacing: 0.96,
     textTransform: 'uppercase',
     color: colors.textSecondary,
   },
