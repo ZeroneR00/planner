@@ -25,6 +25,29 @@ function applyTo<T extends { id: string }>(
   return result;
 }
 
+// Каждый затронутый id: был — вернуть старую версию, не было — удалить
+function invertFor<T extends { id: string }>(
+  list: readonly T[],
+  put: readonly T[] = [],
+  remove: readonly string[] = [],
+): { put: T[]; remove: string[] } {
+  const touched = new Set([...remove, ...put.map((item) => item.id)]);
+  const result = { put: [] as T[], remove: [] as string[] };
+  for (const id of touched) {
+    const before = list.find((item) => item.id === id);
+    if (before === undefined) result.remove.push(id);
+    else result.put.push(before);
+  }
+  return result;
+}
+
+/** Обратные Changes, посчитанные от состояния до действия: из них собирается «Вернуть». */
+export function invertChanges(data: PlannerData, changes: Changes): Changes {
+  const tasks = invertFor(data.tasks, changes.putTasks, changes.removeTasks);
+  const rules = invertFor(data.rules, changes.putRules, changes.removeRules);
+  return { putTasks: tasks.put, removeTasks: tasks.remove, putRules: rules.put, removeRules: rules.remove };
+}
+
 export function applyChanges(data: PlannerData, changes: Changes): PlannerData {
   return {
     ...data,

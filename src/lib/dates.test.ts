@@ -4,6 +4,7 @@ import {
   capitalize,
   daysInMonth,
   diffDays,
+  formatDayBrief,
   formatDayChip,
   formatDayLong,
   formatDayShort,
@@ -81,6 +82,13 @@ describe('подписи', () => {
     expect(formatDayLong('2026-10-17', t)).toBe('сегодня, сб, 17 октября');
     expect(formatDayLong('2026-10-18', t)).toBe('завтра, вс, 18 октября');
     expect(formatDayLong('2026-10-20', t)).toBe('вт, 20 октября');
+  });
+
+  it('formatDayBrief', () => {
+    const t = '2026-10-17';
+    expect(formatDayBrief('2026-10-17', t)).toBe('сегодня');
+    expect(formatDayBrief('2026-10-18', t)).toBe('завтра');
+    expect(formatDayBrief('2026-10-20', t)).toBe('вт, 20 октября');
   });
 
   it('capitalize', () => {

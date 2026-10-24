@@ -70,17 +70,17 @@ export function postpone(data: PlannerData, task: Task, now: string): Changes {
 
 // Из Кармана в конец дня. ruleId и returned снимаем: иначе вернувшийся экземпляр повтора
 // и сегодняшний экземпляр того же правила показали бы два «↻» в одном дне
-function pocketToDay(data: PlannerData, task: Task, now: string): Task {
+function pocketToDay(data: PlannerData, task: Task, date: string, now: string): Task {
   const { returned, ruleId, ...rest } = task;
-  return { ...rest, date: data.today, order: nextOrder(data.tasks, data.today), updatedAt: now };
+  return { ...rest, date, order: nextOrder(data.tasks, date), updatedAt: now };
 }
 
-export function moveToToday(data: PlannerData, task: Task, now: string): Changes {
-  return { putTasks: [pocketToDay(data, task, now)] };
+export function moveToDay(data: PlannerData, task: Task, date: string, now: string): Changes {
+  return { putTasks: [pocketToDay(data, task, date, now)] };
 }
 
 export function markDoneFromPocket(data: PlannerData, task: Task, now: string): Changes {
-  return { putTasks: [{ ...pocketToDay(data, task, now), done: true, doneAt: now }] };
+  return { putTasks: [{ ...pocketToDay(data, task, data.today, now), done: true, doneAt: now }] };
 }
 
 export function removeTask(task: Task): Changes {

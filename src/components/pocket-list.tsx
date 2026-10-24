@@ -10,12 +10,13 @@ type Props = {
   tasks: readonly Task[];
   editingId: string | null;
   onMarkDone: (task: Task) => void;
-  onToToday: (task: Task) => void;
+  movingId: string | null;
+  onWhen: (task: Task) => void;
   onRemove: (task: Task) => void;
   onEdit: (task: Task) => void;
 };
 
-export function PocketList({ tasks, editingId, onMarkDone, onToToday, onRemove, onEdit }: Props) {
+export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onRemove, onEdit }: Props) {
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
@@ -54,12 +55,12 @@ export function PocketList({ tasks, editingId, onMarkDone, onToToday, onRemove, 
               </Pressable>
             )}
             <Pressable
-              onPress={() => onToToday(task)}
+              onPress={() => onWhen(task)}
               accessibilityRole="button"
-              accessibilityLabel={copy.a11y.toToday(task.title)}
-              style={({ pressed }) => [styles.toToday, pressed && styles.pressed]}
+              accessibilityLabel={copy.a11y.when(task.title)}
+              style={({ pressed }) => [styles.when, pressed && styles.pressed]}
             >
-              <Text style={text.action}>{copy.pocket.toToday}</Text>
+              <Text style={text.action}>{copy.pocket.when}</Text>
             </Pressable>
             <Pressable
               onPress={() => onRemove(task)}
@@ -69,7 +70,7 @@ export function PocketList({ tasks, editingId, onMarkDone, onToToday, onRemove, 
             >
               <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2} />
             </Pressable>
-            {task.id === editingId && <FocusRing offset={0} radius={radius.row} />}
+            {(task.id === editingId || task.id === movingId) && <FocusRing offset={0} radius={radius.row} />}
           </View>
         ))
       )}
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toToday: {
+  when: {
     height: touch,
     paddingHorizontal: space[10],
     justifyContent: 'center',

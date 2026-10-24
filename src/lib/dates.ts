@@ -96,6 +96,14 @@ export function formatDayLong(date: string, today: string): string {
   return base;
 }
 
+/** «сегодня» / «завтра» / «вт, 20 октября» */
+export function formatDayBrief(date: string, today: string): string {
+  const diff = diffDays(today, date);
+  if (diff === 0) return copy.dates.today;
+  if (diff === 1) return copy.dates.tomorrow;
+  return formatDayLong(date, today);
+}
+
 /** «Пн 19» */
 export function formatDayChip(date: string): string {
   return `${capitalize(at(copy.dates.weekdayShort, weekdayOf(date)))} ${dateParts(date).day}`;

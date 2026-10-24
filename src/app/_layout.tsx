@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { DB_NAME, PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
+import { UndoProvider } from '@/hooks/use-undo';
 import { colors, fonts } from '@/theme';
 
 // Держим сплэш, пока не загрузятся шрифты, — иначе первый кадр нарисуется системным шрифтом и «прыгнет».
@@ -57,7 +58,9 @@ export default function RootLayout() {
       {/* Пока база не открыта и не мигрирована, SQLiteProvider ничего не рисует — это миллисекунды */}
       <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
         <PlannerProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+          <UndoProvider>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+          </UndoProvider>
         </PlannerProvider>
       </SQLiteProvider>
     </ThemeProvider>

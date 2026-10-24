@@ -1,9 +1,9 @@
 import { colors, touch } from '@/theme';
 
 describe('theme', () => {
-  it('все цвета — #RRGGBB', () => {
+  it('все цвета — #RRGGBB или #RRGGBBAA', () => {
     for (const value of Object.values(colors)) {
-      expect(value).toMatch(/^#[0-9A-F]{6}$/);
+      expect(value).toMatch(/^#[0-9A-F]{6}([0-9A-F]{2})?$/);
     }
   });
 

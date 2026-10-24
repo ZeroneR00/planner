@@ -4,7 +4,7 @@ import {
   addTask,
   firstOrder,
   markDoneFromPocket,
-  moveToToday,
+  moveToDay,
   nextOrder,
   postpone,
   removeTask,
@@ -88,7 +88,7 @@ describe('postpone', () => {
 
 describe('из Кармана в день', () => {
   const p = task({ id: 'p', date: null, order: 0, returned: true, ruleId: 'r1' });
-  const tasks = [p, task({ id: 'a', order: 4 })];
+  const tasks = [p, task({ id: 'a', order: 4 }), task({ id: 'b', date: '2026-10-21', order: 1 })];
   const moved = {
     id: 'p',
     title: 'p',
@@ -99,9 +99,16 @@ describe('из Кармана в день', () => {
     updatedAt: NOW,
   };
 
-  it('moveToToday: дата — сегодня, в конец дня, без returned и ruleId', () => {
-    const result = only(moveToToday(data(tasks), p, NOW));
+  it('moveToDay на сегодня: в конец дня, без returned и ruleId', () => {
+    const result = only(moveToDay(data(tasks), p, TODAY, NOW));
     expect(result).toEqual(moved);
+    expect(result).not.toHaveProperty('returned');
+    expect(result).not.toHaveProperty('ruleId');
+  });
+
+  it('moveToDay на будущую дату: в конец той даты', () => {
+    const result = only(moveToDay(data(tasks), p, '2026-10-21', NOW));
+    expect(result).toEqual({ ...moved, date: '2026-10-21', order: 2 });
     expect(result).not.toHaveProperty('returned');
     expect(result).not.toHaveProperty('ruleId');
   });

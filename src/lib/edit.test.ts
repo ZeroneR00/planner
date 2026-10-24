@@ -9,7 +9,7 @@ import {
   type When,
 } from '@/lib/composer';
 import { formatDayLong } from '@/lib/dates';
-import { editHint, savedHint, saveEdit, startEdit, type EditState } from '@/lib/edit';
+import { editHint, editUndoText, savedHint, saveEdit, startEdit, type EditState } from '@/lib/edit';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18'; // воскресенье
@@ -259,11 +259,11 @@ describe('подсказки правки', () => {
     expect(editHint(daily, TODAY, false).parts).toHaveLength(2);
   });
 
-  it('в Карман — серым', () => {
+  it('в стикеры — серым', () => {
     const pocket: When = { title: 'идея', date: null, repeat: null, fromText: false };
     expect(editHint(pocket, TODAY, false)).toEqual({
       accent: false,
-      parts: [{ text: 'в карман', icon: 'arrowRight' }],
+      parts: [{ text: 'в стикеры', icon: 'arrowRight' }],
     });
   });
 
@@ -281,5 +281,26 @@ describe('подсказки правки', () => {
     expect(savedHint(taskEdit, moved, TODAY)).toEqual(addedHint(moved, TODAY));
     expect(text(savedHint(ruleEdit, daily, TODAY))).toBe('Изменено для всех повторов');
     expect(text(savedHint(ruleEdit, origin, TODAY))).toBe('Больше не повторяется');
+  });
+});
+
+describe('editUndoText', () => {
+  const sticker: When = { title: 'идея', date: null, repeat: null, fromText: false };
+  const stickerEdit: EditState = { target: { kind: 'task', taskId: 'a' }, origin: sticker };
+  const todayEdit: EditState = { target: { kind: 'task', taskId: 'a' }, origin: { ...sticker, date: TODAY } };
+
+  it('стикер на другой день — плашка с днём', () => {
+    expect(editUndoText(stickerEdit, { ...sticker, date: TOMORROW }, TODAY)).toBe('На завтра: идея');
+    expect(editUndoText(stickerEdit, { ...sticker, date: TODAY }, TODAY)).toBe('На сегодня: идея');
+  });
+
+  it('в стикеры, правка текста и правка повтора — без плашки', () => {
+    expect(editUndoText(todayEdit, sticker, TODAY)).toBeNull();
+    expect(editUndoText(todayEdit, { ...sticker, date: TODAY, title: 'мысль' }, TODAY)).toBeNull();
+    const ruleEdit: EditState = {
+      target: { kind: 'rule', ruleId: 'r', taskId: 'i' },
+      origin: { ...sticker, date: TODAY, repeat: { kind: 'daily' } },
+    };
+    expect(editUndoText(ruleEdit, { ...sticker, date: TOMORROW }, TODAY)).toBeNull();
   });
 });

@@ -33,7 +33,7 @@ describe('разбор поля', () => {
     expect(when).toEqual({ title: 'идея для статьи', date: null, repeat: null, fromText: false });
     expect(whenHint(when, TODAY)).toEqual({
       accent: false,
-      parts: [{ text: 'Упадёт в карман, разберёшь потом' }],
+      parts: [{ text: 'Упадёт в стикеры, разберёшь потом' }],
     });
   });
 
@@ -139,7 +139,7 @@ describe('addedHint', () => {
   }
 
   it('Карман, сегодня, другой день', () => {
-    expect(line({})).toBe('Лежит в кармане. Разберёшь, когда будет минута');
+    expect(line({})).toBe('Добавлено в стикеры. Разберёшь, когда будет минута');
     expect(line({ date: TODAY })).toBe('Добавлено на сегодня');
     expect(line({ date: '2026-10-20' })).toBe('Запланировано: вт, 20 октября');
   });
@@ -154,7 +154,7 @@ describe('addedHint', () => {
 describe('бегунок', () => {
   it('whenChips', () => {
     expect(whenChips(TODAY).map((c) => c.label)).toEqual([
-      'В карман',
+      'В стикеры',
       'Сегодня',
       'Завтра',
       'Пн 19',
@@ -163,7 +163,7 @@ describe('бегунок', () => {
       'Чт 22',
       'Пт 23',
     ]);
-    expect(whenChips(TODAY)[0]).toEqual({ key: 'pocket', label: 'В карман', date: null });
+    expect(whenChips(TODAY)[0]).toEqual({ key: 'pocket', label: 'В стикеры', date: null });
     expect(whenChips(TODAY)[2]).toEqual({ key: '2026-10-18', label: 'Завтра', date: '2026-10-18' });
   });
 

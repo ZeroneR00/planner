@@ -1,6 +1,7 @@
 import type { Changes } from '@/lib/changes';
 import { addedHint, whenHint, type Draft, type Hint, type When } from '@/lib/composer';
 import { copy } from '@/lib/copy';
+import { formatDayBrief } from '@/lib/dates';
 import { ruleOccursOn } from '@/lib/rules';
 import { addTask, firstOrder, nextOrder, ruleInstance } from '@/lib/task-actions';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
@@ -158,4 +159,11 @@ export function savedHint(edit: EditState, when: When, today: string): Hint {
     return { accent: false, parts: [{ text: copy.composer.saved }] };
   }
   return addedHint(w, today);
+}
+
+/** Текст плашки «Вернуть» после правки: только если задачу перенесли на другой день. */
+export function editUndoText(edit: EditState, when: When, today: string): string | null {
+  const w = keepPattern(when, edit.origin);
+  if (edit.target.kind !== 'task' || w.date === edit.origin.date || w.date === null) return null;
+  return copy.undo.moved(formatDayBrief(w.date, today), w.title);
 }

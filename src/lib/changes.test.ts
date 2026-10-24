@@ -1,4 +1,4 @@
-import { applyChanges } from '@/lib/changes';
+import { applyChanges, invertChanges, type Changes } from '@/lib/changes';
 import type { PlannerData, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18';
@@ -92,5 +92,46 @@ describe('applyChanges', () => {
 
   it('пустые изменения — данные те же', () => {
     expect(applyChanges(data(), {})).toEqual(data());
+  });
+});
+
+describe('invertChanges', () => {
+  const byId = <T extends { id: string }>(list: readonly T[]) =>
+    [...list].sort((a, b) => a.id.localeCompare(b.id));
+
+  // Применить действие, потом обратное — должно вернуться то же, что было
+  function expectRoundTrip(changes: Changes) {
+    const before = data();
+    const after = applyChanges(applyChanges(before, changes), invertChanges(before, changes));
+    expect(byId(after.tasks)).toEqual(byId(before.tasks));
+    expect(byId(after.rules)).toEqual(byId(before.rules));
+  }
+
+  it('новая задача — удаляется', () => {
+    const changes = { putTasks: [task({ id: 'd' })] };
+    expect(invertChanges(data(), changes).removeTasks).toEqual(['d']);
+    expectRoundTrip(changes);
+  });
+
+  it('изменённая задача — возвращается старая версия', () => {
+    const changes = { putTasks: [task({ id: 'b', title: 'новое', date: null })] };
+    expect(invertChanges(data(), changes).putTasks).toEqual([task({ id: 'b' })]);
+    expectRoundTrip(changes);
+  });
+
+  it('удалённая задача — возвращается', () => {
+    expectRoundTrip({ removeTasks: ['c'] });
+  });
+
+  it('новое и изменённое правило', () => {
+    expectRoundTrip({ putRules: [rule({ id: 'r3' }), rule({ id: 'r1', title: 'новое' })] });
+  });
+
+  it('смешанное: задача стала повтором', () => {
+    expectRoundTrip({
+      removeTasks: ['a'],
+      putRules: [rule({ id: 'r3', title: 'a' })],
+      putTasks: [task({ id: 'e', title: 'a', ruleId: 'r3' })],
+    });
   });
 });

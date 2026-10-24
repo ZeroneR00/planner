@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { BackHandler } from 'react-native';
 
 import { usePlanner } from '@/hooks/use-planner';
+import { useUndo } from '@/hooks/use-undo';
 import {
   addedHint,
   calendarChipLabel,
@@ -20,7 +21,15 @@ import {
   type Hint,
 } from '@/lib/composer';
 import { nowIso } from '@/lib/dates';
-import { editHint, keepPattern, savedHint, saveEdit, startEdit, type EditState } from '@/lib/edit';
+import {
+  editHint,
+  editUndoText,
+  keepPattern,
+  savedHint,
+  saveEdit,
+  startEdit,
+  type EditState,
+} from '@/lib/edit';
 import { makeId } from '@/lib/id';
 import { addTask } from '@/lib/task-actions';
 import type { RepeatKind, Task } from '@/lib/types';
@@ -33,6 +42,7 @@ type Editing = EditState & { stash: Draft | null };
 /** Поле записи: текст, выбор «когда», панели, строка-подсказка и правка задачи по тапу. */
 export function useComposer() {
   const planner = usePlanner();
+  const undo = useUndo();
   const today = planner.today;
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -121,8 +131,15 @@ export function useComposer() {
       if (when.title === '') return;
       if (edit !== null) {
         const changes = saveEdit(planner, edit, when, nowIso(), makeId);
-        if (changes !== null) planner.commit(changes);
-        setNotice(changes === null ? null : savedHint(edit, when, today));
+        // Задача уехала на другой день — пропадает с глаз, поэтому плашка «Вернуть» вместо подсказки
+        const undoText = editUndoText(edit, when, today);
+        if (changes !== null && undoText !== null) {
+          undo.commit(changes, undoText);
+          setNotice(null);
+        } else {
+          if (changes !== null) planner.commit(changes);
+          setNotice(changes === null ? null : savedHint(edit, when, today));
+        }
         finishEdit(edit);
         return;
       }

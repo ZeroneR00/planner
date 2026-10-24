@@ -1,9 +1,8 @@
 // Все тексты интерфейса — здесь. Переименование раздела или кнопки = правка одной строки.
 
-// Формы названия раздела: что / куда / где. Переименование — правка этих трёх строк
-const POCKET = 'Карман';
-const POCKET_ACC = 'карман';
-const POCKET_LOC = 'кармане';
+// Формы названия раздела: что / куда. Переименование — правка этих двух строк
+const POCKET = 'Стикеры';
+const POCKET_ACC = 'стикеры';
 
 export const copy = {
   today: {
@@ -21,9 +20,9 @@ export const copy = {
   },
   pocket: {
     title: (n: number) => `${POCKET} · ${n}`,
-    empty: `${POCKET} пуст — всё разобрано`,
+    empty: 'Здесь пусто — всё разобрано',
     returned: 'вчера не отмечено', // иконка ↩ рисуется отдельно
-    toToday: 'Сегодня',
+    when: 'Когда?',
     editHint: 'тапни текст, чтобы изменить',
   },
   composer: {
@@ -36,7 +35,7 @@ export const copy = {
     calendar: 'Дата',
     toPocket: `Упадёт в ${POCKET_ACC}, разберёшь потом`,
     fromText: 'понял из текста',
-    addedToPocket: `Лежит в ${POCKET_LOC}. Разберёшь, когда будет минута`,
+    addedToPocket: `Добавлено в ${POCKET_ACC}. Разберёшь, когда будет минута`,
     addedToday: 'Добавлено на сегодня',
     scheduled: (day: string) => `Запланировано: ${day}`,
     addedRepeat: (rule: string, from: string) => `${rule}, начиная с ${from}`,
@@ -87,12 +86,25 @@ export const copy = {
     monthly: (day: number) => `каждый месяц, ${day}-го`,
     doneToday: 'на сегодня готово',
   },
+  undo: {
+    removed: (title: string) => `Убрано: ${title}`,
+    done: (title: string) => `Сделано: ${title}`,
+    moved: (day: string, title: string) => `На ${day}: ${title}`,
+    back: 'Вернуть',
+    a11y: (text: string) => `${text}. Вернуть`,
+  },
+  daySheet: {
+    title: 'Когда?',
+    today: 'Сегодня',
+    tomorrow: 'Завтра',
+    pickDate: 'Выбрать дату…',
+  },
   a11y: {
     ahead: (n: number) => `Впереди: ${n}`,
     check: (title: string) => `Готово: ${title}`,
     uncheck: (title: string) => `Вернуть: ${title}`,
     markDone: (title: string) => `Уже сделал: ${title}`,
-    toToday: (title: string) => `На сегодня: ${title}`,
+    when: (title: string) => `Когда: ${title}`,
     remove: (title: string) => `Убрать: ${title}`,
     edit: (title: string) => `Изменить: ${title}`,
   },
