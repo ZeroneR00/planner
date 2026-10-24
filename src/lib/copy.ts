@@ -1,10 +1,26 @@
 // Все тексты интерфейса — здесь. Переименование раздела или кнопки = правка одной строки.
 
+const POCKET = 'Карман';
+
 export const copy = {
   today: {
     title: 'Сегодня',
     empty: 'На сегодня всё. Можно выдохнуть.',
     doneCount: (n: number) => `сделано ${n}`,
+    now: 'Сейчас',
+    done: 'Сделано',
+    later: 'Позже',
+    rest: 'Дальше сегодня',
+  },
+  ahead: {
+    title: 'Впереди',
+    back: 'Назад к «Сегодня»',
+  },
+  pocket: {
+    title: (n: number) => `${POCKET} · ${n}`,
+    empty: `${POCKET} пуст — всё разобрано`,
+    returned: 'вчера не отмечено', // иконка ↩ рисуется отдельно
+    toToday: 'Сегодня',
   },
   // Индекс дня недели: 0 = вс, как Date.getDay()
   dates: {
@@ -31,5 +47,14 @@ export const copy = {
       'по четвергам', 'по пятницам', 'по субботам',
     ],
     monthly: (day: number) => `каждый месяц, ${day}-го`,
+    doneToday: 'на сегодня готово',
+  },
+  a11y: {
+    ahead: (n: number) => `Впереди: ${n}`,
+    check: (title: string) => `Готово: ${title}`,
+    uncheck: (title: string) => `Вернуть: ${title}`,
+    markDone: (title: string) => `Уже сделал: ${title}`,
+    toToday: (title: string) => `На сегодня: ${title}`,
+    remove: (title: string) => `Убрать: ${title}`,
   },
 } as const;

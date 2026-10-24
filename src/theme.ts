@@ -48,6 +48,7 @@ export const space = {
   12: 12,
   14: 14,
   16: 16,
+  18: 18,
   20: 20,
   24: 24,
 } as const;
@@ -66,6 +67,16 @@ export const radius = {
 // Минимальная зона нажатия. Если элемент визуально меньше — добирать hitSlop.
 export const touch = 44;
 
+// Прозрачность нажатой кнопки (Pressable, pressed)
+export const pressedOpacity = 0.6;
+
+// Размеры элементов списков и кнопок
+export const size = {
+  button: 48, // «Сделано» / «Позже»
+  row: 52, // минимальная высота строки списка
+  checkbox: 22, // кружок-галочка
+} as const;
+
 // Готовые стили текста. letterSpacing и lineHeight в RN — в dp, а не в em и не множителем,
 // поэтому значения из прототипа пересчитаны (0.08em × 13 = 1.04, 1.35 × 16 ≈ 22).
 // Цвет текста в RN не наследуется от родителя, а по умолчанию чёрный, — поэтому он задан в каждом стиле.
@@ -83,6 +94,13 @@ export const text = {
   body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.text },
   row: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, color: colors.text },
   label: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
+  headerDate: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
+  hint: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
+  button: { fontFamily: fonts.semibold, fontSize: 16, color: colors.onAccent },
+  buttonSecondary: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
+  action: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
+  note: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  meta: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },
   section: {
     fontFamily: fonts.semibold,
     fontSize: 13,
@@ -99,4 +117,5 @@ export const text = {
   },
   caption: { fontFamily: fonts.regular, fontSize: 12, color: colors.textHint },
   mono: { fontFamily: fonts.mono, fontSize: 12, color: colors.textSecondary },
+  monoCount: { fontFamily: fonts.mono, fontSize: 13, color: colors.accent },
 } as const satisfies Record<string, TextStyle>;
