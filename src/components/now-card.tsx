@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { copy } from '@/lib/copy';
 import type { DayItem } from '@/lib/today-view';
@@ -9,11 +10,13 @@ import { colors, pressedOpacity, radius, size, space, text } from '@/theme';
 type Props = {
   item: DayItem | null;
   doneCount: number;
+  editingId: string | null;
   onDone: (task: Task) => void;
   onLater: (task: Task) => void;
+  onEdit: (task: Task) => void;
 };
 
-export function NowCard({ item, doneCount, onDone, onLater }: Props) {
+export function NowCard({ item, doneCount, editingId, onDone, onLater, onEdit }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
@@ -25,7 +28,16 @@ export function NowCard({ item, doneCount, onDone, onLater }: Props) {
       ) : (
         <View style={styles.body}>
           <View style={styles.titleBlock}>
-            <Text style={text.nowTitle}>{item.task.title}</Text>
+            <Pressable
+              onPress={() => onEdit(item.task)}
+              hitSlop={space[8]}
+              accessibilityRole="button"
+              accessibilityLabel={copy.a11y.edit(item.task.title)}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Text style={text.nowTitle}>{item.task.title}</Text>
+              {item.task.id === editingId && <FocusRing offset={space[6]} radius={radius.focus} />}
+            </Pressable>
             {item.repeat !== null && (
               <View style={styles.repeat}>
                 <Icon name="repeat" size={13} color={colors.textSecondary} />

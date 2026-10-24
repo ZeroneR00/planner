@@ -108,6 +108,7 @@ export const text = {
   buttonSecondary: { fontFamily: fonts.medium, fontSize: 16, color: colors.text },
   action: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accent },
   note: { fontFamily: fonts.regular, fontSize: 13, color: colors.textSecondary },
+  editTitle: { fontFamily: fonts.semibold, fontSize: 13, color: colors.accent },
   status: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.textSecondary },
   calendarTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.text },
   meta: { fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary },

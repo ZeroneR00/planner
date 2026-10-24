@@ -80,6 +80,15 @@ describe('разбор поля', () => {
     expect(resolve(editText(erased, 'идея', TODAY)).date).toBeNull();
   });
 
+  it('стёр текст в правке — выбор дня и повтора остаётся', () => {
+    const manual = pickRepeat(pickDate(typed('мусор'), TODAY), 'daily');
+    const erased = editText(manual, '', TODAY, true);
+    expect(erased).toEqual({ ...manual, text: '' });
+    const when = resolve(editText(erased, 'вынести мусор', TODAY, true));
+    expect(when.date).toBe(TODAY);
+    expect(when.repeat).toEqual({ kind: 'daily' });
+  });
+
   it('пробелы — не текст', () => {
     expect(hasText(typed('   '))).toBe(false);
     expect(hasText(typed(' а '))).toBe(true);

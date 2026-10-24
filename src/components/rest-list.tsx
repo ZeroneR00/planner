@@ -1,20 +1,26 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { copy } from '@/lib/copy';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
 import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
 
-type Props = { items: readonly DayItem[]; onToggle: (task: Task) => void };
+type Props = {
+  items: readonly DayItem[];
+  editingId: string | null;
+  onToggle: (task: Task) => void;
+  onEdit: (task: Task) => void;
+};
 
-export function RestList({ items, onToggle }: Props) {
+export function RestList({ items, editingId, onToggle, onEdit }: Props) {
   if (items.length === 0) return null;
   return (
     <View style={styles.section}>
       <Text style={[text.section, styles.heading]}>{copy.today.rest}</Text>
       {items.map(({ task, repeat }) => (
-        <View key={task.id} style={styles.row}>
+        <View key={task.id} style={[styles.row, task.id === editingId && styles.rowEditing]}>
           <Pressable
             onPress={() => onToggle(task)}
             accessibilityRole="checkbox"
@@ -26,7 +32,12 @@ export function RestList({ items, onToggle }: Props) {
               {task.done && <Icon name="check" size={13} color={colors.onAccent} strokeWidth={3} />}
             </View>
           </Pressable>
-          <View style={styles.main}>
+          <Pressable
+            onPress={() => onEdit(task)}
+            accessibilityRole="button"
+            accessibilityLabel={copy.a11y.edit(task.title)}
+            style={({ pressed }) => [styles.main, pressed && styles.pressed]}
+          >
             <Text style={[text.body, task.done && styles.titleDone]}>{task.title}</Text>
             {repeat !== null && (
               <View style={styles.meta}>
@@ -36,7 +47,8 @@ export function RestList({ items, onToggle }: Props) {
                 </Text>
               </View>
             )}
-          </View>
+          </Pressable>
+          {task.id === editingId && <FocusRing offset={0} radius={radius.row} />}
         </View>
       ))}
     </View>
@@ -57,6 +69,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space[4],
     borderRadius: radius.row,
+  },
+  rowEditing: {
+    backgroundColor: colors.surface,
   },
   check: {
     width: touch,

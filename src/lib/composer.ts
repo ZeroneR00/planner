@@ -37,9 +37,10 @@ export function hasText(draft: Draft): boolean {
   return draft.text.trim() !== '';
 }
 
-export function editText(draft: Draft, text: string, today: string): Draft {
-  // Стёр всё — следующая мысль начинается с чистого листа, а не молча уходит на прошлый чип
-  if (text.trim() === '') return { ...emptyDraft, text };
+export function editText(draft: Draft, text: string, today: string, editing = false): Draft {
+  // Стёр всё — следующая мысль начинается с чистого листа, а не молча уходит на прошлый чип.
+  // В правке выбор остаётся: стёр, чтобы написать название заново, а день и повтор — те же
+  if (text.trim() === '') return editing ? { ...draft, text } : { ...emptyDraft, text };
   const prev = parseWhen(draft.text, today);
   const next = parseWhen(text, today);
   if (next.hit && (next.date !== prev.date || next.repeat?.kind !== prev.repeat?.kind)) {

@@ -40,14 +40,21 @@ export function addTask(data: PlannerData, when: When, now: string, makeId: () =
   const rule: Rule = { ...repeat, id: makeId(), title: when.title, startDate: date, active: true };
   // Смена дня пока только при запуске — экземпляр на сегодня создаём сразу, будущие создаст она
   if (!ruleOccursOn(rule, data.today)) return { putRules: [rule] };
-  const instance: Task = {
+  return { putRules: [rule], putTasks: [ruleInstance(data, rule, now, makeId)] };
+}
+
+/** Экземпляр правила на сегодня — в конец дня. */
+export function ruleInstance(data: PlannerData, rule: Rule, now: string, makeId: () => string): Task {
+  return {
     id: makeId(),
-    ...base,
+    title: rule.title,
     date: data.today,
+    done: false,
     order: nextOrder(data.tasks, data.today),
     ruleId: rule.id,
+    createdAt: now,
+    updatedAt: now,
   };
-  return { putRules: [rule], putTasks: [instance] };
 }
 
 export function toggleDone(task: Task, now: string): Changes {

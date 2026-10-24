@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { copy } from '@/lib/copy';
 import type { Task } from '@/lib/types';
@@ -7,15 +8,20 @@ import { colors, pressedOpacity, radius, size, space, text, touch } from '@/them
 
 type Props = {
   tasks: readonly Task[];
+  editingId: string | null;
   onMarkDone: (task: Task) => void;
   onToToday: (task: Task) => void;
   onRemove: (task: Task) => void;
+  onEdit: (task: Task) => void;
 };
 
-export function PocketList({ tasks, onMarkDone, onToToday, onRemove }: Props) {
+export function PocketList({ tasks, editingId, onMarkDone, onToToday, onRemove, onEdit }: Props) {
   return (
     <View style={styles.section}>
-      <Text style={[text.section, styles.heading]}>{copy.pocket.title(tasks.length)}</Text>
+      <View style={styles.heading}>
+        <Text style={text.section}>{copy.pocket.title(tasks.length)}</Text>
+        {tasks.length > 0 && <Text style={[text.caption, styles.editHint]}>{copy.pocket.editHint}</Text>}
+      </View>
       {tasks.length === 0 ? (
         <View style={styles.empty}>
           <Text style={text.hint}>{copy.pocket.empty}</Text>
@@ -23,7 +29,12 @@ export function PocketList({ tasks, onMarkDone, onToToday, onRemove }: Props) {
       ) : (
         tasks.map((task) => (
           <View key={task.id} style={styles.row}>
-            <View style={styles.main}>
+            <Pressable
+              onPress={() => onEdit(task)}
+              accessibilityRole="button"
+              accessibilityLabel={copy.a11y.edit(task.title)}
+              style={({ pressed }) => [styles.main, pressed && styles.pressed]}
+            >
               <Text style={[text.row, styles.title]}>{task.title}</Text>
               {task.returned === true && (
                 <View style={styles.meta}>
@@ -31,7 +42,7 @@ export function PocketList({ tasks, onMarkDone, onToToday, onRemove }: Props) {
                   <Text style={[text.meta, styles.warning]}>{copy.pocket.returned}</Text>
                 </View>
               )}
-            </View>
+            </Pressable>
             {task.returned === true && (
               <Pressable
                 onPress={() => onMarkDone(task)}
@@ -58,6 +69,7 @@ export function PocketList({ tasks, onMarkDone, onToToday, onRemove }: Props) {
             >
               <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2} />
             </Pressable>
+            {task.id === editingId && <FocusRing offset={0} radius={radius.row} />}
           </View>
         ))
       )}
@@ -72,6 +84,14 @@ const styles = StyleSheet.create({
   heading: {
     paddingHorizontal: space[4],
     paddingBottom: space[6],
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: space[8],
+  },
+  editHint: {
+    flexShrink: 1,
+    textAlign: 'right',
   },
   row: {
     minHeight: size.row,

@@ -1,7 +1,9 @@
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Keyboard, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
+import { EditBar } from '@/components/edit-bar';
 import { HintLine } from '@/components/hint-line';
 import { Icon } from '@/components/icon';
 import { RepeatSheet } from '@/components/repeat-sheet';
@@ -14,11 +16,20 @@ import { colors, pressedOpacity, radius, size, space, text, touch } from '@/them
 
 type Props = { composer: ComposerModel };
 
-/** Поле записи внизу экрана: подсказка, панель, бегунок «когда», поле и «Добавить». */
+/** Поле записи внизу экрана: правка, подсказка, панель, бегунок «когда», поле и «Добавить». */
 export function Composer({ composer: c }: Props) {
   const insets = useSafeAreaInsets();
   const keyboardShown = useKeyboardShown();
-  const { when } = c;
+  const inputRef = useRef<TextInputInstance>(null);
+  const { when, editOrigin } = c;
+
+  // Начали правку — клавиатура и курсор в конец текста задачи
+  useEffect(() => {
+    if (editOrigin === null) return;
+    const end = editOrigin.title.length;
+    inputRef.current?.focus();
+    inputRef.current?.setSelection(end, end);
+  }, [editOrigin]);
   const noDay = when.date === null;
   const repeatOn = when.repeat !== null;
 
@@ -31,6 +42,7 @@ export function Composer({ composer: c }: Props) {
   return (
     // Над системной панелью — только когда клавиатура спрятана: открытая и так выше неё
     <View style={[styles.footer, { paddingBottom: space[10] + (keyboardShown ? 0 : insets.bottom) }]}>
+      {c.editing && <EditBar rule={c.editingRule} onCancel={c.cancelEdit} />}
       {c.hint !== null && <HintLine hint={c.hint} />}
       {c.sheet === 'repeat' && (
         <RepeatSheet
@@ -42,7 +54,7 @@ export function Composer({ composer: c }: Props) {
       {c.sheet === 'calendar' && (
         <CalendarSheet today={c.today} selected={when.date} onPick={c.pickDate} />
       )}
-      {c.typing && (
+      {c.showWhen && (
         <View style={styles.whenRow}>
           <WhenChips
             chips={c.chips}
@@ -75,6 +87,7 @@ export function Composer({ composer: c }: Props) {
       )}
       <View style={styles.inputRow}>
         <TextInput
+          ref={inputRef}
           value={c.text}
           onChangeText={c.setText}
           onFocus={c.closeSheet}
@@ -84,22 +97,22 @@ export function Composer({ composer: c }: Props) {
           cursorColor={colors.accent}
           returnKeyType="send"
           submitBehavior="submit"
-          accessibilityLabel={copy.composer.inputLabel}
-          style={[text.input, styles.input]}
+          accessibilityLabel={c.editing ? copy.composer.editInputLabel : copy.composer.inputLabel}
+          style={[text.input, styles.input, c.editing && styles.inputEditing]}
         />
         <Pressable
           onPress={c.submit}
           disabled={!c.canSubmit}
           accessibilityRole="button"
-          accessibilityLabel={copy.composer.send}
+          accessibilityLabel={c.editing ? copy.composer.save : copy.composer.send}
           accessibilityState={{ disabled: !c.canSubmit }}
           style={({ pressed }) => [styles.send, c.canSubmit && styles.sendOn, pressed && styles.pressed]}
         >
           <Icon
-            name="arrowUp"
+            name={c.editing ? 'check' : 'arrowUp'}
             size={22}
             color={c.canSubmit ? colors.onAccent : colors.control}
-            strokeWidth={2.4}
+            strokeWidth={c.editing ? 2.6 : 2.4}
           />
         </Pressable>
       </View>
@@ -153,6 +166,9 @@ const styles = StyleSheet.create({
     borderColor: colors.lineStrong,
     borderRadius: radius.field,
     backgroundColor: colors.surface,
+  },
+  inputEditing: {
+    borderColor: colors.accent,
   },
   send: {
     width: size.field,

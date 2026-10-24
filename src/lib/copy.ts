@@ -24,6 +24,7 @@ export const copy = {
     empty: `${POCKET} пуст — всё разобрано`,
     returned: 'вчера не отмечено', // иконка ↩ рисуется отдельно
     toToday: 'Сегодня',
+    editHint: 'тапни текст, чтобы изменить',
   },
   composer: {
     placeholder: 'Запиши мысль — разберёшь потом',
@@ -48,6 +49,16 @@ export const copy = {
     repeatMonthly: (day: number) => `Каждый месяц · ${day}-го`,
     prevMonth: 'Предыдущий месяц',
     nextMonth: 'Следующий месяц',
+    editTitle: 'Правка',
+    editRuleTitle: 'Правка повтора',
+    cancel: 'Отмена',
+    save: 'Сохранить изменения',
+    editInputLabel: 'Текст задачи',
+    editToPocket: `в ${POCKET_ACC}`,
+    forAllRepeats: 'для всех повторов',
+    saved: 'Изменено',
+    savedRule: 'Изменено для всех повторов',
+    repeatStopped: 'Больше не повторяется',
   },
   // Индекс дня недели: 0 = вс, как Date.getDay()
   dates: {
@@ -83,5 +94,6 @@ export const copy = {
     markDone: (title: string) => `Уже сделал: ${title}`,
     toToday: (title: string) => `На сегодня: ${title}`,
     remove: (title: string) => `Убрать: ${title}`,
+    edit: (title: string) => `Изменить: ${title}`,
   },
 } as const;

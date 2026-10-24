@@ -33,14 +33,28 @@ export default function TodayScreen() {
           keyboardDismissMode="on-drag"
           contentContainerStyle={styles.content}
         >
-          <NowCard item={day.now} doneCount={day.doneCount} onDone={day.toggle} onLater={day.postpone} />
+          <NowCard
+            item={day.now}
+            doneCount={day.doneCount}
+            editingId={composer.editingId}
+            onDone={day.toggle}
+            onLater={day.postpone}
+            onEdit={composer.startEdit}
+          />
           <PocketList
             tasks={day.pocket}
+            editingId={composer.editingId}
             onMarkDone={day.markDone}
             onToToday={day.moveToToday}
             onRemove={day.remove}
+            onEdit={composer.startEdit}
           />
-          <RestList items={day.rest} onToggle={day.toggle} />
+          <RestList
+            items={day.rest}
+            editingId={composer.editingId}
+            onToggle={day.toggle}
+            onEdit={composer.startEdit}
+          />
         </ScrollView>
         <Composer composer={composer} />
       </KeyboardAvoidingView>
