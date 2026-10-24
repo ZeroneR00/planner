@@ -86,3 +86,14 @@ export function markDoneFromPocket(data: PlannerData, task: Task, now: string): 
 export function removeTask(task: Task): Changes {
   return { removeTasks: [task.id] };
 }
+
+/**
+ * «Остановить» повтор: правило выключаем, а не удаляем — на него ссылается история.
+ * Экземпляр на сегодня остаётся обычной задачей.
+ */
+export function stopRule(data: PlannerData, rule: Rule, now: string): Changes {
+  const instances = data.tasks
+    .filter((t) => t.ruleId === rule.id && t.date === data.today)
+    .map(({ ruleId, ...rest }) => ({ ...rest, updatedAt: now }));
+  return { putRules: [{ ...rule, active: false }], putTasks: instances };
+}

@@ -2,7 +2,7 @@ import type { Changes } from '@/lib/changes';
 import { addedHint, whenHint, type Draft, type Hint, type When } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { formatDayBrief } from '@/lib/dates';
-import { ruleOccursOn } from '@/lib/rules';
+import { nextRuleDate, ruleOccursOn } from '@/lib/rules';
 import { addTask, firstOrder, nextOrder, ruleInstance } from '@/lib/task-actions';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
@@ -12,7 +12,8 @@ import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 // Что правим. Тап по экземпляру повтора правит правило — для всех будущих дней
 export type EditTarget =
   | { kind: 'task'; taskId: string }
-  | { kind: 'rule'; ruleId: string; taskId: string }; // taskId — экземпляр, по которому тапнули
+  // taskId — экземпляр на сегодня; null — правку начали из «Повторяется», а экземпляра нет
+  | { kind: 'rule'; ruleId: string; taskId: string | null };
 export type EditState = { target: EditTarget; origin: When }; // origin — как было до правки
 
 function patternOf(rule: Rule): RepeatPattern {
@@ -37,13 +38,30 @@ export function startEdit(data: PlannerData, task: Task): { edit: EditState; dra
     rule !== undefined
       ? { kind: 'rule', ruleId: rule.id, taskId: task.id }
       : { kind: 'task', taskId: task.id };
-  const title = rule !== undefined ? rule.title : task.title;
-  const repeat = rule !== undefined ? patternOf(rule) : null;
+  return rule !== undefined
+    ? editFor(target, rule.title, task.date, patternOf(rule))
+    : editFor(target, task.title, task.date, null);
+}
+
+/** Правка из «Повторяется»: день — сегодня, если есть экземпляр, иначе ближайший день правила. */
+export function startRuleEdit(data: PlannerData, rule: Rule): { edit: EditState; draft: Draft } {
+  const instance = data.tasks.find((t) => t.ruleId === rule.id && t.date === data.today);
+  const date = instance?.date ?? nextRuleDate(rule, data.today);
+  const target: EditTarget = { kind: 'rule', ruleId: rule.id, taskId: instance?.id ?? null };
+  return editFor(target, rule.title, date, patternOf(rule));
+}
+
+function editFor(
+  target: EditTarget,
+  title: string,
+  date: string | null,
+  repeat: RepeatPattern | null,
+): { edit: EditState; draft: Draft } {
   return {
-    edit: { target, origin: { title, date: task.date, repeat, fromText: false } },
+    edit: { target, origin: { title, date, repeat, fromText: false } },
     draft: {
       text: title,
-      date: { manual: true, value: task.date },
+      date: { manual: true, value: date },
       repeat: { manual: true, value: repeat?.kind ?? null },
     },
   };
@@ -132,7 +150,7 @@ export function saveEdit(
 ): Changes | null {
   const { target, origin } = edit;
   const w = keepPattern(when, origin);
-  const task = data.tasks.find((t) => t.id === target.taskId);
+  const task = target.taskId === null ? undefined : data.tasks.find((t) => t.id === target.taskId);
   if (target.kind === 'task') return task === undefined ? null : saveTask(data, task, w, origin, now, makeId);
   const rule = data.rules.find((r) => r.id === target.ruleId);
   return rule === undefined ? null : saveRule(data, rule, task, w, origin, now, makeId);

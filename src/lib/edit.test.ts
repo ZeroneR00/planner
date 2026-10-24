@@ -9,7 +9,15 @@ import {
   type When,
 } from '@/lib/composer';
 import { formatDayLong } from '@/lib/dates';
-import { editHint, editUndoText, savedHint, saveEdit, startEdit, type EditState } from '@/lib/edit';
+import {
+  editHint,
+  editUndoText,
+  savedHint,
+  saveEdit,
+  startEdit,
+  startRuleEdit,
+  type EditState,
+} from '@/lib/edit';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18'; // воскресенье
@@ -241,6 +249,49 @@ describe('saveEdit: повтор', () => {
       putRules: [{ kind: 'daily', id: 'r', title: 'зарядка', startDate: TOMORROW, active: true }],
       removeTasks: ['i'],
     });
+  });
+});
+
+describe('правка из «Повторяется»', () => {
+  const tuesday = '2026-10-20';
+  const r = rule({ kind: 'weekly', weekday: 2 }, { title: 'вынести мусор' });
+
+  it('есть экземпляр на сегодня — правим с сегодня', () => {
+    const daily = rule({ kind: 'daily' });
+    const inst = task({ id: 'i', ruleId: 'r' });
+    const { edit, draft } = startRuleEdit(data([inst], [daily]), daily);
+    expect(edit.target).toEqual({ kind: 'rule', ruleId: 'r', taskId: 'i' });
+    expect(draft.date).toEqual({ manual: true, value: TODAY });
+  });
+
+  it('экземпляра нет — ближайший день правила', () => {
+    const { edit, draft } = startRuleEdit(data([], [r]), r);
+    expect(edit.target).toEqual({ kind: 'rule', ruleId: 'r', taskId: null });
+    expect(edit.origin).toEqual({
+      title: 'вынести мусор',
+      date: tuesday,
+      repeat: { kind: 'weekly', weekday: 2 },
+      fromText: false,
+    });
+    expect(draft.repeat).toEqual({ manual: true, value: 'weekly' });
+  });
+
+  function saveRule(change: (draft: Draft) => Draft): Changes | null {
+    const d = data([], [r]);
+    const { edit, draft } = startRuleEdit(d, r);
+    return saveEdit(d, edit, resolveWhen(change(draft), d.today), NOW, makeId);
+  }
+
+  it('новый текст — правило переименовано, начало прежнее, задач не добавилось', () => {
+    expect(saveRule(retitle('мусор и бумага'))).toEqual({ putRules: [{ ...r, title: 'мусор и бумага' }] });
+  });
+
+  it('«Один раз» — правило выключено, обычная задача на ближайший день', () => {
+    const changes = saveRule((d) => pickRepeat(d, null));
+    expect(changes?.putRules).toEqual([{ ...r, active: false }]);
+    expect(changes?.putTasks).toEqual([
+      { id: 'id0', title: 'вынести мусор', date: tuesday, done: false, order: 0, createdAt: NOW, updatedAt: NOW },
+    ]);
   });
 });
 

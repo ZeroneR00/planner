@@ -1,4 +1,4 @@
-import type { Changes } from '@/lib/changes';
+import { applyChanges, invertChanges, type Changes } from '@/lib/changes';
 import type { When } from '@/lib/composer';
 import {
   addTask,
@@ -8,6 +8,7 @@ import {
   nextOrder,
   postpone,
   removeTask,
+  stopRule,
   toggleDone,
 } from '@/lib/task-actions';
 import type { PlannerData, Rule, Task } from '@/lib/types';
@@ -124,6 +125,41 @@ describe('из Кармана в день', () => {
 describe('removeTask', () => {
   it('удаляет по id', () => {
     expect(removeTask(task({ id: 'p' }))).toEqual({ removeTasks: ['p'] });
+  });
+});
+
+describe('stopRule', () => {
+  const r: Rule = { id: 'r', title: 'прогулка', kind: 'daily', startDate: '2026-10-01', active: true };
+  const stopped = { ...r, active: false };
+
+  it('несделанный экземпляр на сегодня — обычная задача', () => {
+    const inst = task({ id: 'i', ruleId: 'r', order: 3 });
+    expect(stopRule({ ...data([inst]), rules: [r] }, r, NOW)).toEqual({
+      putRules: [stopped],
+      putTasks: [{ ...task({ id: 'i', order: 3 }), updatedAt: NOW }],
+    });
+  });
+
+  it('сделанный экземпляр — тоже без повтора, отметка остаётся', () => {
+    const inst = task({ id: 'i', ruleId: 'r', done: true, doneAt: NOW });
+    expect(stopRule({ ...data([inst]), rules: [r] }, r, NOW).putTasks).toEqual([
+      { ...task({ id: 'i', done: true, doneAt: NOW }), updatedAt: NOW },
+    ]);
+  });
+
+  it('без экземпляра — только правило; прошлые и стикеры не трогаем', () => {
+    const tasks = [
+      task({ id: 'past', date: '2026-10-17', ruleId: 'r' }),
+      task({ id: 'sticker', date: null, ruleId: 'r', returned: true }),
+      task({ id: 'other', ruleId: 'r2' }),
+    ];
+    expect(stopRule({ ...data(tasks), rules: [r] }, r, NOW)).toEqual({ putRules: [stopped], putTasks: [] });
+  });
+
+  it('отмена возвращает как было', () => {
+    const before: PlannerData = { ...data([task({ id: 'i', ruleId: 'r' })]), rules: [r] };
+    const changes = stopRule(before, r, NOW);
+    expect(applyChanges(applyChanges(before, changes), invertChanges(before, changes))).toEqual(before);
   });
 });
 

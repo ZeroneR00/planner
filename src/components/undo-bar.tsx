@@ -25,6 +25,11 @@ const LENGTH = 2 * Math.PI * RADIUS;
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// Цифра в круге: целые секунды до конца, последняя — 1, а не 0
+function secondsUntil(end: number): number {
+  return Math.max(Math.ceil((end - Date.now()) / 1000), 1);
+}
+
 type Props = {
   notice: UndoNotice | null;
   onUndo: () => void;
@@ -41,19 +46,25 @@ export function UndoBar({ notice, ...rest }: Props) {
 function Toast({ notice, onUndo, onExpire, style }: Props & { notice: UndoNotice }) {
   const progress = useSharedValue(1); // 1 → 0 за DURATION
   const opacity = useSharedValue(1);
-  const [secondsLeft, setSecondsLeft] = useState(DURATION / 1000);
+  const [secondsLeft, setSecondsLeft] = useState(() => secondsUntil(notice.at + DURATION));
   const expire = useEffectEvent(() => onExpire(notice.key));
 
+  // Отсчёт от времени появления, а не от монтирования: «Сегодня» под «Впереди» не размонтирован,
+  // и его плашка уже отсчитывает — на втором экране та же плашка не должна начинать с 5
   useEffect(() => {
-    progress.set(withTiming(0, { duration: DURATION, easing: Easing.linear }));
-    opacity.set(withDelay(DURATION - FADE, withTiming(0, { duration: FADE })));
-    const tick = setInterval(() => setSecondsLeft((n) => Math.max(n - 1, 1)), 1000);
-    const done = setTimeout(expire, DURATION);
+    const left = Math.max(DURATION - (Date.now() - notice.at), 0);
+    const end = Date.now() + left;
+    progress.set(left / DURATION);
+    progress.set(withTiming(0, { duration: left, easing: Easing.linear }));
+    opacity.set(Math.min(left / FADE, 1));
+    opacity.set(withDelay(Math.max(left - FADE, 0), withTiming(0, { duration: Math.min(left, FADE) })));
+    const tick = setInterval(() => setSecondsLeft(secondsUntil(end)), 200);
+    const done = setTimeout(expire, left);
     return () => {
       clearInterval(tick);
       clearTimeout(done);
     };
-  }, [progress, opacity]);
+  }, [progress, opacity, notice.at]);
 
   const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get() }));
   const barStyle = useAnimatedStyle(() => ({ width: `${progress.get() * 100}%` }));

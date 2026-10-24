@@ -17,6 +17,10 @@ export const copy = {
   ahead: {
     title: 'Впереди',
     back: 'Назад к «Сегодня»',
+    empty: 'Пока ничего не запланировано',
+    repeating: 'Повторяется',
+    stop: 'Остановить',
+    next: (rule: string, day: string) => `${rule} · следующий — ${day}`,
   },
   pocket: {
     title: (n: number) => `${POCKET} · ${n}`,
@@ -90,6 +94,7 @@ export const copy = {
     removed: (title: string) => `Убрано: ${title}`,
     done: (title: string) => `Сделано: ${title}`,
     moved: (day: string, title: string) => `На ${day}: ${title}`,
+    stopped: (title: string) => `Повтор остановлен: ${title}`,
     back: 'Вернуть',
     a11y: (text: string) => `${text}. Вернуть`,
   },
@@ -107,5 +112,6 @@ export const copy = {
     when: (title: string) => `Когда: ${title}`,
     remove: (title: string) => `Убрать: ${title}`,
     edit: (title: string) => `Изменить: ${title}`,
+    stop: (title: string) => `Остановить повтор: ${title}`,
   },
 } as const;

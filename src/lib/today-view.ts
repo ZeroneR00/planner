@@ -17,8 +17,13 @@ function compareStrings(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function byOrder(a: Task, b: Task): number {
+export function byOrder(a: Task, b: Task): number {
   return a.order - b.order || compareStrings(a.createdAt, b.createdAt) || compareStrings(a.id, b.id);
+}
+
+/** Задача из «Впереди»: несделанная, с датой после сегодня. */
+export function isAhead(task: Task, today: string): task is Task & { date: string } {
+  return !task.done && task.date !== null && task.date > today;
 }
 
 /** Что показать на экране «Сегодня». */
@@ -41,6 +46,6 @@ export function todayView(data: PlannerData): TodayView {
       .filter((t) => t.date === null && !t.done)
       .sort((a, b) => Number(b.returned === true) - Number(a.returned === true) || byOrder(a, b)),
     doneCount: done.length,
-    aheadCount: data.tasks.filter((t) => !t.done && t.date !== null && t.date > data.today).length,
+    aheadCount: data.tasks.filter((t) => isAhead(t, data.today)).length,
   };
 }

@@ -1,4 +1,4 @@
-import { nextOccurrence, occursOn, patternFor, repeatLabel, ruleOccursOn } from '@/lib/rules';
+import { nextOccurrence, nextRuleDate, occursOn, patternFor, repeatLabel, ruleOccursOn } from '@/lib/rules';
 import type { Rule } from '@/lib/types';
 
 describe('occursOn', () => {
@@ -56,6 +56,19 @@ describe('nextOccurrence', () => {
   it('monthly', () => {
     expect(nextOccurrence({ kind: 'monthly', monthDay: 31 }, '2026-11-05')).toBe('2026-11-30');
     expect(nextOccurrence({ kind: 'monthly', monthDay: 15 }, '2026-10-17')).toBe('2026-11-15');
+  });
+});
+
+describe('nextRuleDate', () => {
+  const tuesday: Rule = { id: 'r', title: 'мусор', kind: 'weekly', weekday: 2, startDate: '2026-10-01', active: true };
+
+  it('начало в прошлом — ближайший день с from', () => {
+    expect(nextRuleDate(tuesday, '2026-10-25')).toBe('2026-10-27');
+  });
+
+  it('начало в будущем — не раньше начала', () => {
+    expect(nextRuleDate({ ...tuesday, startDate: '2026-11-03' }, '2026-10-25')).toBe('2026-11-03');
+    expect(nextRuleDate({ ...tuesday, startDate: '2026-11-01' }, '2026-10-25')).toBe('2026-11-03');
   });
 });
 

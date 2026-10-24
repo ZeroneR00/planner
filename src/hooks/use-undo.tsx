@@ -3,8 +3,9 @@ import { createContext, use, useRef, useState, type ReactNode } from 'react';
 import { usePlanner } from '@/hooks/use-planner';
 import { invertChanges, type Changes } from '@/lib/changes';
 
-// key — номер действия: новая плашка заново запускает таймер, а старый таймер не закроет новую
-export type UndoNotice = { key: number; text: string; inverse: Changes };
+// key — номер действия: новая плашка заново запускает таймер, а старый таймер не закроет новую.
+// at — когда появилась (Date.now()): по нему отсчёт на любом экране, где плашку показали позже
+export type UndoNotice = { key: number; text: string; inverse: Changes; at: number };
 
 type Undo = {
   notice: UndoNotice | null;
@@ -27,7 +28,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       const inverse = invertChanges(planner, changes);
       planner.commit(changes);
       lastKey.current += 1;
-      setNotice({ key: lastKey.current, text, inverse });
+      setNotice({ key: lastKey.current, text, inverse, at: Date.now() });
     },
     revert: () => {
       if (notice === null) return;

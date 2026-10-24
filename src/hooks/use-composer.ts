@@ -28,11 +28,12 @@ import {
   savedHint,
   saveEdit,
   startEdit,
+  startRuleEdit,
   type EditState,
 } from '@/lib/edit';
 import { makeId } from '@/lib/id';
 import { addTask } from '@/lib/task-actions';
-import type { RepeatKind, Task } from '@/lib/types';
+import type { RepeatKind, Rule, Task } from '@/lib/types';
 
 export type Sheet = 'repeat' | 'calendar';
 
@@ -73,6 +74,20 @@ export function useComposer() {
     }, [edit, finishEdit]),
   );
 
+  // Повторный тап по тому же отменяет правку, по другому — переключает на него
+  const begin = (same: boolean, start: () => { edit: EditState; draft: Draft }) => {
+    if (edit !== null && same) {
+      finishEdit(edit);
+      return;
+    }
+    const next = start();
+    const stash = edit !== null ? edit.stash : hasText(draft) ? draft : null;
+    setEdit({ ...next.edit, stash });
+    setDraft(next.draft);
+    setSheet(null);
+    setNotice(null);
+  };
+
   return {
     text: draft.text,
     when,
@@ -80,6 +95,7 @@ export function useComposer() {
     editing: edit !== null,
     editingRule: edit?.target.kind === 'rule',
     editingId: edit?.target.taskId ?? null,
+    editingRuleId: edit?.target.kind === 'rule' ? edit.target.ruleId : null,
     // Новый объект на каждую начатую правку — по нему поле берёт фокус и ставит курсор в конец
     editOrigin: edit?.origin ?? null,
     showWhen,
@@ -111,19 +127,13 @@ export function useComposer() {
     },
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
     closeSheet: () => setSheet(null),
-    // Повторный тап по той же задаче отменяет правку, по другой — переключает на неё
-    startEdit: (task: Task) => {
-      if (edit !== null && edit.target.taskId === task.id) {
-        finishEdit(edit);
-        return;
-      }
-      const next = startEdit(planner, task);
-      const stash = edit !== null ? edit.stash : hasText(draft) ? draft : null;
-      setEdit({ ...next.edit, stash });
-      setDraft(next.draft);
-      setSheet(null);
-      setNotice(null);
-    },
+    startEdit: (task: Task) =>
+      begin(edit?.target.taskId === task.id, () => startEdit(planner, task)),
+    // Из «Повторяется»: «та же» — по правилу, экземпляра на сегодня может не быть
+    startRuleEdit: (rule: Rule) =>
+      begin(edit?.target.kind === 'rule' && edit.target.ruleId === rule.id, () =>
+        startRuleEdit(planner, rule),
+      ),
     cancelEdit: () => {
       if (edit !== null) finishEdit(edit);
     },

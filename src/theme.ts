@@ -105,6 +105,7 @@ export const text = {
   input: { fontFamily: fonts.regular, fontSize: 16, color: colors.text },
   row: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20, color: colors.text },
   label: { fontFamily: fonts.medium, fontSize: 14, color: colors.text },
+  dayTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.textSecondary }, // день во «Впереди»
   chipOn: { fontFamily: fonts.semibold, fontSize: 14, color: colors.onAccent },
   headerDate: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },
   hint: { fontFamily: fonts.regular, fontSize: 14, color: colors.textSecondary },

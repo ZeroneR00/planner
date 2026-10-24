@@ -35,6 +35,11 @@ export function nextOccurrence(p: RepeatPattern, from: string, inclusive = true)
   throw new Error(`Повтор ${JSON.stringify(p)} не срабатывает в ближайшие ${MAX_LOOKAHEAD_DAYS} дней`);
 }
 
+/** Ближайший день повтора начиная с from (включительно), но не раньше начала правила. */
+export function nextRuleDate(rule: Rule, from: string): string {
+  return nextOccurrence(rule, rule.startDate > from ? rule.startDate : from);
+}
+
 /** Шаблон для пункта меню ↻ при выбранном дне: weekly берёт день недели, monthly — число. */
 export function patternFor(kind: RepeatKind, date: string): RepeatPattern {
   switch (kind) {
