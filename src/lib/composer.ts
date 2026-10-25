@@ -3,22 +3,21 @@ import {
   addDays,
   at,
   capitalize,
-  dateParts,
   diffDays,
   formatDayChip,
   formatDayLong,
+  formatDayMonth,
   formatDayShort,
-  weekdayOf,
 } from '@/lib/dates';
 import { parseWhen } from '@/lib/parse-when';
-import { patternFor, repeatLabel } from '@/lib/rules';
+import { nextOccurrence, occursOn, patternFor, repeatLabel, samePattern } from '@/lib/rules';
 import type { RepeatKind, RepeatPattern } from '@/lib/types';
 
 // Поле записи: что написано, что выбрано вручную и как приложение это поняло.
 // Побеждает последнее действие: чип или пункт ↻ главнее текста, пока текст не дал новую дату или новый повтор.
 
 export type Choice<T> = { manual: false } | { manual: true; value: T }; // manual: false — решает текст
-export type Draft = { text: string; date: Choice<string | null>; repeat: Choice<RepeatKind | null> };
+export type Draft = { text: string; date: Choice<string | null>; repeat: Choice<RepeatPattern | null> };
 
 export const emptyDraft: Draft = { text: '', date: { manual: false }, repeat: { manual: false } };
 
@@ -28,7 +27,7 @@ export type HintPart = { text: string; icon?: 'arrowRight' | 'repeat' }; // им
 export type Hint = { accent: boolean; parts: HintPart[] }; // части выводятся через « · »
 
 export type WhenChip = { key: string; label: string; date: string | null };
-export type RepeatOption = { kind: RepeatKind | null; label: string };
+export type RepeatOption = { key: string; pattern: RepeatPattern | null; label: string };
 
 /** Сколько дней после сегодня показывает бегунок; дальше — через календарь. */
 export const NEAR_DAYS = 6;
@@ -43,34 +42,60 @@ export function editText(draft: Draft, text: string, today: string, editing = fa
   if (text.trim() === '') return editing ? { ...draft, text } : { ...emptyDraft, text };
   const prev = parseWhen(draft.text, today);
   const next = parseWhen(text, today);
-  if (next.hit && (next.date !== prev.date || next.repeat?.kind !== prev.repeat?.kind)) {
+  if (next.hit && (next.date !== prev.date || !samePattern(next.repeat, prev.repeat))) {
     return { ...emptyDraft, text };
   }
   return { ...draft, text };
 }
 
 export function pickDate(draft: Draft, date: string | null): Draft {
+  const repeat = draft.repeat;
+  // Ручной повтор, который в этот день не срабатывает, берёт день от чипа: «по ср и чт» + «Пт» — «каждую пт»
+  if (repeat.manual && repeat.value !== null && date !== null && !occursOn(repeat.value, date)) {
+    return {
+      ...draft,
+      date: { manual: true, value: date },
+      repeat: { manual: true, value: patternFor(repeat.value.kind, date) },
+    };
+  }
   return { ...draft, date: { manual: true, value: date } };
 }
 
-export function pickRepeat(draft: Draft, kind: RepeatKind | null): Draft {
-  return { ...draft, repeat: { manual: true, value: kind } };
+export function pickRepeat(draft: Draft, repeat: RepeatPattern | null): Draft {
+  return { ...draft, repeat: { manual: true, value: repeat } };
+}
+
+/** Тап по дню в ряду ↻: день включается или выключается; выключили последний — «Один раз». */
+export function toggleWeekday(draft: Draft, today: string, weekday: number): Draft {
+  const current = resolveWhen(draft, today).repeat;
+  const days = current?.kind === 'weekly' ? current.weekdays : [];
+  const next = days.includes(weekday)
+    ? days.filter((d) => d !== weekday)
+    : [...days, weekday].sort((a, b) => a - b);
+  return pickRepeat(draft, next.length === 0 ? null : { kind: 'weekly', weekdays: next });
 }
 
 export function resolveWhen(draft: Draft, today: string): When {
   const parsed = parseWhen(draft.text, today);
   const title = parsed.title.replace(/\s+/g, ' ').trim();
-  const date = draft.date.manual ? draft.date.value : parsed.date;
-  if (date === null) return { title, date: null, repeat: null, fromText: false };
-  const kind = draft.repeat.manual ? draft.repeat.value : (parsed.repeat?.kind ?? null);
-  // Повтор из текста берём как есть: «каждое 31-е» с ближайшей датой 30 ноября остаётся 31-м
+  const picked = draft.date.manual ? draft.date.value : parsed.date;
+  if (picked === null) return { title, date: null, repeat: null, fromText: false };
+  const fromText = parsed.hit && !draft.date.manual;
+  if (draft.repeat.manual) {
+    const repeat = draft.repeat.value;
+    // Дни отметили в ряду ↻, а выбранный день не из них — повтор начинается с ближайшего отмеченного.
+    // Считаем от выбранного дня, а не от прошлого сдвига, поэтому начало не «уползает»
+    const date = repeat === null || occursOn(repeat, picked) ? picked : nextOccurrence(repeat, picked);
+    return { title, date, repeat, fromText };
+  }
+  // Повтор из текста берём как есть, если он срабатывает в этот день: «каждое 31-е» 30 ноября остаётся 31-м
   const repeat =
-    kind === null
+    parsed.repeat === null
       ? null
-      : parsed.repeat !== null && parsed.repeat.kind === kind && parsed.date === date
+      : occursOn(parsed.repeat, picked)
         ? parsed.repeat
-        : patternFor(kind, date);
-  return { title, date, repeat, fromText: parsed.hit && !draft.date.manual };
+        : patternFor(parsed.repeat.kind, picked);
+  return { title, date: picked, repeat, fromText };
 }
 
 /** Строка над полем, пока печатаешь. */
@@ -123,13 +148,37 @@ export function calendarChipLabel(date: string | null, today: string): string {
   return date !== null && isFar(date, today) ? formatDayShort(date) : copy.composer.calendar;
 }
 
-/** Пункты меню ↻; день недели и число берутся от выбранного дня. */
-export function repeatOptions(date: string): RepeatOption[] {
-  return [
-    { kind: null, label: copy.composer.repeatOnce },
-    { kind: 'daily', label: copy.composer.repeatDaily },
-    { kind: 'weekdays', label: copy.composer.repeatWeekdays },
-    { kind: 'weekly', label: copy.composer.repeatWeekly(at(copy.repeat.weeklyPlural, weekdayOf(date))) },
-    { kind: 'monthly', label: copy.composer.repeatMonthly(dateParts(date).day) },
-  ];
+const OPTION_KINDS: readonly RepeatKind[] = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly'];
+
+function optionLabel(p: RepeatPattern | null): string {
+  if (p === null) return copy.composer.repeatOnce;
+  switch (p.kind) {
+    case 'daily':
+      return copy.composer.repeatDaily;
+    case 'weekdays':
+      return copy.composer.repeatWeekdays;
+    case 'weekly':
+      return copy.composer.repeatWeekly(
+        p.weekdays.length === 1 ? at(copy.repeat.weeklyPlural, at(p.weekdays, 0)) : repeatLabel(p),
+      );
+    case 'monthly':
+      return copy.composer.repeatMonthly(p.monthDay);
+    case 'yearly':
+      return copy.composer.repeatYearly(formatDayMonth(p.month, p.monthDay));
+  }
+}
+
+/**
+ * Пункты меню ↻. Повтор того же вида, что выбран сейчас, остаётся как есть («по ср и чт»),
+ * остальные берут день недели, число и месяц от выбранного дня.
+ */
+export function repeatOptions(date: string, current: RepeatPattern | null): RepeatOption[] {
+  const patterns = OPTION_KINDS.map((kind) =>
+    current !== null && current.kind === kind ? current : patternFor(kind, date),
+  );
+  return [null, ...patterns].map((pattern) => ({
+    key: pattern?.kind ?? 'once',
+    pattern,
+    label: optionLabel(pattern),
+  }));
 }

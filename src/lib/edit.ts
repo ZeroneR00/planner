@@ -23,9 +23,11 @@ function patternOf(rule: Rule): RepeatPattern {
     case 'weekdays':
       return { kind: rule.kind };
     case 'weekly':
-      return { kind: rule.kind, weekday: rule.weekday };
+      return { kind: rule.kind, weekdays: rule.weekdays };
     case 'monthly':
       return { kind: rule.kind, monthDay: rule.monthDay };
+    case 'yearly':
+      return { kind: rule.kind, month: rule.month, monthDay: rule.monthDay };
   }
 }
 
@@ -62,17 +64,10 @@ function editFor(
     draft: {
       text: title,
       date: { manual: true, value: date },
-      repeat: { manual: true, value: repeat?.kind ?? null },
+      // Весь шаблон, а не вид: «каждое 31-е», открытое 30 ноября, не станет 30-м, а дни недели — те же
+      repeat: { manual: true, value: repeat },
     },
   };
-}
-
-/** День и вид повтора не меняли — повтор прежний: «каждое 31-е», открытое 30 ноября, не станет 30-м. */
-export function keepPattern(when: When, origin: When): When {
-  if (when.date !== origin.date || when.repeat === null || when.repeat.kind !== origin.repeat?.kind) {
-    return when;
-  }
-  return { ...when, repeat: origin.repeat };
 }
 
 function editedTask(data: PlannerData, task: Task, when: When, origin: When, now: string): Task {
@@ -120,7 +115,7 @@ function saveRule(
     return { putRules: [stopped], putTasks: [editedTask(data, plain, when, origin, now)] };
   }
   const same = when.date === origin.date && when.repeat.kind === origin.repeat?.kind;
-  // Собираем заново, а не спредом rule: при смене вида остался бы старый weekday
+  // Собираем заново, а не спредом rule: при смене вида остались бы поля старого вида
   const next: Rule = {
     ...when.repeat,
     id: rule.id,
@@ -149,11 +144,10 @@ export function saveEdit(
   makeId: () => string,
 ): Changes | null {
   const { target, origin } = edit;
-  const w = keepPattern(when, origin);
   const task = target.taskId === null ? undefined : data.tasks.find((t) => t.id === target.taskId);
-  if (target.kind === 'task') return task === undefined ? null : saveTask(data, task, w, origin, now, makeId);
+  if (target.kind === 'task') return task === undefined ? null : saveTask(data, task, when, origin, now, makeId);
   const rule = data.rules.find((r) => r.id === target.ruleId);
-  return rule === undefined ? null : saveRule(data, rule, task, w, origin, now, makeId);
+  return rule === undefined ? null : saveRule(data, rule, task, when, origin, now, makeId);
 }
 
 /** Строка над полем в правке — без «понял из текста». */
@@ -168,20 +162,18 @@ export function editHint(when: When, today: string, forRule: boolean): Hint {
 
 /** Строка над полем после правки — до следующей буквы. */
 export function savedHint(edit: EditState, when: When, today: string): Hint {
-  const w = keepPattern(when, edit.origin);
   if (edit.target.kind === 'rule') {
-    const text = w.date !== null && w.repeat !== null ? copy.composer.savedRule : copy.composer.repeatStopped;
+    const text = when.date !== null && when.repeat !== null ? copy.composer.savedRule : copy.composer.repeatStopped;
     return { accent: false, parts: [{ text }] };
   }
-  if (w.repeat === null && w.date === edit.origin.date) {
+  if (when.repeat === null && when.date === edit.origin.date) {
     return { accent: false, parts: [{ text: copy.composer.saved }] };
   }
-  return addedHint(w, today);
+  return addedHint(when, today);
 }
 
 /** Текст плашки «Вернуть» после правки: только если задачу перенесли на другой день. */
 export function editUndoText(edit: EditState, when: When, today: string): string | null {
-  const w = keepPattern(when, edit.origin);
-  if (edit.target.kind !== 'task' || w.date === edit.origin.date || w.date === null) return null;
-  return copy.undo.moved(formatDayBrief(w.date, today), w.title);
+  if (edit.target.kind !== 'task' || when.date === edit.origin.date || when.date === null) return null;
+  return copy.undo.moved(formatDayBrief(when.date, today), when.title);
 }

@@ -21,6 +21,8 @@ describe('parseWhen: одноразовые даты', () => {
     ['27.08', '', '2027-08-27'],
     ['17 октября', '', '2026-10-17'],
     ['31 декабря', '', '2026-12-31'],
+    ['в пт', '', '2026-10-23'],
+    ['во вт', '', '2026-10-20'],
   ])('«%s» → «%s», %s', (text, title, date) => {
     expect(parseWhen(text, TODAY)).toEqual({ title, date, repeat: null, hit: true });
   });
@@ -28,10 +30,10 @@ describe('parseWhen: одноразовые даты', () => {
 
 describe('parseWhen: повторы', () => {
   it.each([
-    ['каждый вторник вынести мусор', 'вынести мусор', { kind: 'weekly', weekday: 2 }, '2026-10-20'],
-    ['каждую субботу', '', { kind: 'weekly', weekday: 6 }, '2026-10-17'],
-    ['по средам', '', { kind: 'weekly', weekday: 3 }, '2026-10-21'],
-    ['каждое воскресенье', '', { kind: 'weekly', weekday: 0 }, '2026-10-18'],
+    ['каждый вторник вынести мусор', 'вынести мусор', { kind: 'weekly', weekdays: [2] }, '2026-10-20'],
+    ['каждую субботу', '', { kind: 'weekly', weekdays: [6] }, '2026-10-17'],
+    ['по средам', '', { kind: 'weekly', weekdays: [3] }, '2026-10-21'],
+    ['каждое воскресенье', '', { kind: 'weekly', weekdays: [0] }, '2026-10-18'],
     ['каждый день зарядка', 'зарядка', { kind: 'daily' }, '2026-10-17'],
     ['ежедневно', '', { kind: 'daily' }, '2026-10-17'],
     ['по будням', '', { kind: 'weekdays' }, '2026-10-19'],
@@ -40,6 +42,19 @@ describe('parseWhen: повторы', () => {
     ['каждое 1 число', '', { kind: 'monthly', monthDay: 1 }, '2026-11-01'],
     ['каждое 15-е', '', { kind: 'monthly', monthDay: 15 }, '2026-11-15'],
     ['каждое 17 число', '', { kind: 'monthly', monthDay: 17 }, '2026-10-17'],
+    ['бег каждую среду и четверг', 'бег', { kind: 'weekly', weekdays: [3, 4] }, '2026-10-21'],
+    ['по средам и четвергам', '', { kind: 'weekly', weekdays: [3, 4] }, '2026-10-21'],
+    ['каждый пн, ср и пт', '', { kind: 'weekly', weekdays: [1, 3, 5] }, '2026-10-19'],
+    ['каждую ср и чт', '', { kind: 'weekly', weekdays: [3, 4] }, '2026-10-21'],
+    ['каждую среду и каждый четверг', '', { kind: 'weekly', weekdays: [3, 4] }, '2026-10-21'],
+    ['по субботам и воскресеньям', '', { kind: 'weekly', weekdays: [0, 6] }, '2026-10-17'],
+    ['каждый вт', '', { kind: 'weekly', weekdays: [2] }, '2026-10-20'],
+    ['каждый вторник и сходить в магазин', 'и сходить в магазин', { kind: 'weekly', weekdays: [2] }, '2026-10-20'],
+    ['день рождения мамы каждое 27 августа', 'день рождения мамы', { kind: 'yearly', month: 8, monthDay: 27 }, '2027-08-27'],
+    ['27 августа каждый год', '', { kind: 'yearly', month: 8, monthDay: 27 }, '2027-08-27'],
+    ['каждый год 27 августа', '', { kind: 'yearly', month: 8, monthDay: 27 }, '2027-08-27'],
+    ['ежегодно', '', { kind: 'yearly', month: 10, monthDay: 17 }, '2026-10-17'],
+    ['каждое 29 февраля', '', { kind: 'yearly', month: 2, monthDay: 29 }, '2027-02-28'],
   ])('«%s» → «%s», %j, %s', (text, title, repeat, date) => {
     expect(parseWhen(text, TODAY)).toEqual({ title, date, repeat, hit: true });
   });
@@ -62,6 +77,7 @@ describe('parseWhen: ничего не распознано', () => {
     ['29 февраля', '2028-03-01'],
     ['сегодняшний отчёт', TODAY],
     ['созвон в 15:00', TODAY],
+    ['по всем вопросам', TODAY],
     ['', TODAY],
   ])('«%s» при today %s', (text, today) => {
     expect(parseWhen(text, today)).toEqual({ title: text, date: null, repeat: null, hit: false });

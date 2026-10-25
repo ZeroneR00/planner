@@ -42,6 +42,13 @@ export const MIGRATIONS: readonly string[] = [
     active INTEGER NOT NULL DEFAULT 1
   );
   `,
+  // month_day с этой версии — число и для monthly, и для yearly
+  `
+  ALTER TABLE rules ADD COLUMN weekdays TEXT;   -- только weekly: дни через запятую, '3,4'
+  ALTER TABLE rules ADD COLUMN month INTEGER;   -- только yearly: 1–12
+  UPDATE rules SET weekdays = CAST(weekday AS TEXT) WHERE kind = 'weekly';
+  ALTER TABLE rules DROP COLUMN weekday;
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -76,14 +83,15 @@ type RuleRow = {
   id: string;
   title: string;
   kind: string;
-  weekday: number | null;
+  weekdays: string | null;
+  month: number | null;
   month_day: number | null;
   start_date: string;
   active: number;
 };
 
 const TASK_COLUMNS = 'id, title, date, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
-const RULE_COLUMNS = 'id, title, kind, weekday, month_day, start_date, active';
+const RULE_COLUMNS = 'id, title, kind, weekdays, month, month_day, start_date, active';
 
 function placeholders(columns: string): string {
   return columns
@@ -136,6 +144,14 @@ function required(value: number | null, field: string, row: RuleRow): number {
   return value;
 }
 
+function weekdaysFrom(row: RuleRow): number[] {
+  const value = row.weekdays;
+  if (value === null || !/^[0-6](,[0-6])*$/.test(value)) {
+    throw new Error(`У правила ${row.id} (${row.kind}) битое поле weekdays: «${value}»`);
+  }
+  return value.split(',').map(Number);
+}
+
 function ruleFromRow(row: RuleRow): Rule {
   const base = { id: row.id, title: row.title, startDate: row.start_date, active: row.active === 1 };
   switch (row.kind) {
@@ -144,9 +160,16 @@ function ruleFromRow(row: RuleRow): Rule {
     case 'weekdays':
       return { ...base, kind: 'weekdays' };
     case 'weekly':
-      return { ...base, kind: 'weekly', weekday: required(row.weekday, 'weekday', row) };
+      return { ...base, kind: 'weekly', weekdays: weekdaysFrom(row) };
     case 'monthly':
       return { ...base, kind: 'monthly', monthDay: required(row.month_day, 'month_day', row) };
+    case 'yearly':
+      return {
+        ...base,
+        kind: 'yearly',
+        month: required(row.month, 'month', row),
+        monthDay: required(row.month_day, 'month_day', row),
+      };
     default:
       throw new Error(`Неизвестный вид повтора «${row.kind}» у правила ${row.id}`);
   }
@@ -158,8 +181,9 @@ function ruleToParams(rule: Rule): BindValue[] {
     rule.id,
     rule.title,
     rule.kind,
-    rule.kind === 'weekly' ? rule.weekday : null,
-    rule.kind === 'monthly' ? rule.monthDay : null,
+    rule.kind === 'weekly' ? rule.weekdays.join(',') : null,
+    rule.kind === 'yearly' ? rule.month : null,
+    rule.kind === 'monthly' || rule.kind === 'yearly' ? rule.monthDay : null,
     rule.startDate,
     rule.active ? 1 : 0,
   ];

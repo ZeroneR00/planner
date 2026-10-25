@@ -1,10 +1,11 @@
-// Дискриминированное объединение: TS сам следит, что у weekly есть weekday, а у monthly — monthDay.
-// В SQLite колонки плоские, weekday и monthDay — nullable.
+// Дискриминированное объединение: TS сам следит, что у weekly есть дни недели, у monthly — число,
+// у yearly — месяц и число. В SQLite колонки плоские и nullable.
 export type RepeatPattern =
   | { kind: 'daily' }
   | { kind: 'weekdays' }
-  | { kind: 'weekly'; weekday: number } // 0–6, 0 = вс
-  | { kind: 'monthly'; monthDay: number }; // 1–31
+  | { kind: 'weekly'; weekdays: readonly number[] } // 0–6, 0 = вс; по возрастанию, без повторов, хотя бы один
+  | { kind: 'monthly'; monthDay: number } // 1–31
+  | { kind: 'yearly'; month: number; monthDay: number }; // 1–12; 29 февраля в невисокосный год — 28-го
 
 export type RepeatKind = RepeatPattern['kind'];
 

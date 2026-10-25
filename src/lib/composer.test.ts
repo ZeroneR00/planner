@@ -9,11 +9,13 @@ import {
   pickRepeat,
   repeatOptions,
   resolveWhen,
+  toggleWeekday,
   whenChips,
   whenHint,
   type Draft,
   type When,
 } from '@/lib/composer';
+import { patternFor } from '@/lib/rules';
 
 // Суббота — как на скриншотах прототипа
 const TODAY = '2026-10-17';
@@ -49,7 +51,7 @@ describe('разбор поля', () => {
   it('повтор из текста и подсказка', () => {
     const when = resolve(typed('каждый вторник вынести мусор'));
     expect(when.date).toBe('2026-10-20');
-    expect(when.repeat).toEqual({ kind: 'weekly', weekday: 2 });
+    expect(when.repeat).toEqual({ kind: 'weekly', weekdays: [2] });
     expect(whenHint(when, TODAY)).toEqual({
       accent: true,
       parts: [
@@ -81,7 +83,7 @@ describe('разбор поля', () => {
   });
 
   it('стёр текст в правке — выбор дня и повтора остаётся', () => {
-    const manual = pickRepeat(pickDate(typed('мусор'), TODAY), 'daily');
+    const manual = pickRepeat(pickDate(typed('мусор'), TODAY), { kind: 'daily' });
     const erased = editText(manual, '', TODAY, true);
     expect(erased).toEqual({ ...manual, text: '' });
     const when = resolve(editText(erased, 'вынести мусор', TODAY, true));
@@ -95,7 +97,7 @@ describe('разбор поля', () => {
   });
 
   it('«В карман» обнуляет повтор, даже выбранный вручную', () => {
-    const when = resolve(pickDate(pickRepeat(typed('каждый вторник мусор'), 'daily'), null));
+    const when = resolve(pickDate(pickRepeat(typed('каждый вторник мусор'), { kind: 'daily' }), null));
     expect(when.date).toBeNull();
     expect(when.repeat).toBeNull();
   });
@@ -108,8 +110,16 @@ describe('разбор поля', () => {
 
   it('повтор следует за выбранным днём', () => {
     const tuesday = typed('каждый вторник мусор');
-    expect(resolve(pickDate(tuesday, '2026-10-21')).repeat).toEqual({ kind: 'weekly', weekday: 3 });
-    expect(resolve(pickRepeat(tuesday, 'monthly')).repeat).toEqual({ kind: 'monthly', monthDay: 20 });
+    expect(resolve(pickDate(tuesday, '2026-10-21')).repeat).toEqual({ kind: 'weekly', weekdays: [3] });
+    const monthly = pickRepeat(tuesday, patternFor('monthly', '2026-10-20'));
+    expect(resolve(monthly).repeat).toEqual({ kind: 'monthly', monthDay: 20 });
+  });
+
+  it('несколько дней из текста и чип дня', () => {
+    const wedThu = typed('бег каждую ср и чт');
+    expect(resolve(wedThu).repeat).toEqual({ kind: 'weekly', weekdays: [3, 4] });
+    expect(resolve(pickDate(wedThu, '2026-10-22')).repeat).toEqual({ kind: 'weekly', weekdays: [3, 4] });
+    expect(resolve(pickDate(wedThu, '2026-10-23')).repeat).toEqual({ kind: 'weekly', weekdays: [5] });
   });
 
   it('«каждое 31-е» в ноябре остаётся 31-м', () => {
@@ -126,6 +136,50 @@ describe('разбор поля', () => {
 
   it('только «завтра» — названия нет', () => {
     expect(resolve(typed('завтра')).title).toBe('');
+  });
+});
+
+describe('ряд дней в ↻', () => {
+  // «бег», «Сегодня» (сб), дальше — тапы по дням
+  const once = pickDate(typed('бег'), TODAY);
+
+  function days(draft: Draft): { date: string | null; repeat: unknown } {
+    const { date, repeat } = resolve(draft);
+    return { date, repeat };
+  }
+
+  it('дни включаются и выключаются, начало — ближайший отмеченный день', () => {
+    const wed = toggleWeekday(once, TODAY, 3);
+    expect(days(wed)).toEqual({ date: '2026-10-21', repeat: { kind: 'weekly', weekdays: [3] } });
+    const wedThu = toggleWeekday(wed, TODAY, 4);
+    expect(days(wedThu)).toEqual({ date: '2026-10-21', repeat: { kind: 'weekly', weekdays: [3, 4] } });
+    const thu = toggleWeekday(wedThu, TODAY, 3);
+    expect(days(thu)).toEqual({ date: '2026-10-22', repeat: { kind: 'weekly', weekdays: [4] } });
+    // Начало считается от выбранного дня, а не от прошлого сдвига
+    expect(days(toggleWeekday(thu, TODAY, 3)).date).toBe('2026-10-21');
+    expect(days(toggleWeekday(thu, TODAY, 4))).toEqual({ date: TODAY, repeat: null });
+  });
+
+  it('из другого повтора — еженедельный только с этим днём', () => {
+    const daily = pickRepeat(once, { kind: 'daily' });
+    expect(resolve(toggleWeekday(daily, TODAY, 1)).repeat).toEqual({ kind: 'weekly', weekdays: [1] });
+  });
+
+  it('чип дня: не из отмеченных — повтор по нему одному, из отмеченных — дни остаются', () => {
+    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, 3), TODAY, 4);
+    expect(resolve(pickDate(wedThu, '2026-10-23')).repeat).toEqual({ kind: 'weekly', weekdays: [5] });
+    expect(days(pickDate(wedThu, '2026-10-22'))).toEqual({
+      date: '2026-10-22',
+      repeat: { kind: 'weekly', weekdays: [3, 4] },
+    });
+  });
+
+  it('подсказка', () => {
+    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, 3), TODAY, 4);
+    expect(whenHint(resolve(wedThu), TODAY).parts.map((p) => p.text)).toEqual([
+      'ср, 21 октября',
+      'по ср и чт',
+    ]);
   });
 });
 
@@ -146,7 +200,7 @@ describe('addedHint', () => {
 
   it('повтор', () => {
     expect(line({ date: TODAY, repeat: { kind: 'daily' } })).toBe('Каждый день, начиная с сегодня');
-    const weekly = addedHint({ ...base, date: '2026-10-20', repeat: { kind: 'weekly', weekday: 2 } }, TODAY);
+    const weekly = addedHint({ ...base, date: '2026-10-20', repeat: { kind: 'weekly', weekdays: [2] } }, TODAY);
     expect(weekly.parts).toEqual([{ text: 'Каждый вт, начиная с 20 окт', icon: 'repeat' }]);
   });
 });
@@ -180,12 +234,31 @@ describe('бегунок', () => {
   });
 
   it('repeatOptions берут день недели и число от выбранного дня', () => {
-    expect(repeatOptions('2026-10-20').map((o) => o.label)).toEqual([
+    expect(repeatOptions('2026-10-20', null).map((o) => o.label)).toEqual([
       'Один раз',
       'Каждый день',
       'По будням',
       'Каждую неделю · по вторникам',
       'Каждый месяц · 20-го',
+      'Каждый год · 20 октября',
     ]);
+    expect(repeatOptions('2026-10-20', null).map((o) => o.key)).toEqual([
+      'once',
+      'daily',
+      'weekdays',
+      'weekly',
+      'monthly',
+      'yearly',
+    ]);
+  });
+
+  it('repeatOptions: повтор того же вида остаётся как есть', () => {
+    const options = repeatOptions('2026-10-21', { kind: 'weekly', weekdays: [3, 4] });
+    expect(options[3]).toEqual({
+      key: 'weekly',
+      pattern: { kind: 'weekly', weekdays: [3, 4] },
+      label: 'Каждую неделю · по ср и чт',
+    });
+    expect(options[5]?.pattern).toEqual({ kind: 'yearly', month: 10, monthDay: 21 });
   });
 });

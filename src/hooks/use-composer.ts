@@ -15,6 +15,7 @@ import {
   pickRepeat,
   repeatOptions,
   resolveWhen,
+  toggleWeekday,
   whenChips,
   whenHint,
   type Draft,
@@ -24,7 +25,6 @@ import { nowIso } from '@/lib/dates';
 import {
   editHint,
   editUndoText,
-  keepPattern,
   savedHint,
   saveEdit,
   startEdit,
@@ -33,7 +33,7 @@ import {
 } from '@/lib/edit';
 import { makeId } from '@/lib/id';
 import { addTask } from '@/lib/task-actions';
-import type { RepeatKind, Rule, Task } from '@/lib/types';
+import type { RepeatPattern, Rule, Task } from '@/lib/types';
 
 export type Sheet = 'repeat' | 'calendar';
 
@@ -51,8 +51,7 @@ export function useComposer() {
   const [notice, setNotice] = useState<Hint | null>(null);
   const [edit, setEdit] = useState<Editing | null>(null);
 
-  const resolved = resolveWhen(draft, today);
-  const when = edit === null ? resolved : keepPattern(resolved, edit.origin);
+  const when = resolveWhen(draft, today);
   const typing = hasText(draft);
   const showWhen = typing || edit !== null;
 
@@ -110,7 +109,8 @@ export function useComposer() {
     chips: whenChips(today),
     selectedChip: chipKey(when.date, today),
     calendarLabel: calendarChipLabel(when.date, today),
-    repeatOptions: repeatOptions(when.date ?? today),
+    repeatOptions: repeatOptions(when.date ?? today, when.repeat),
+    weekdays: when.repeat?.kind === 'weekly' ? when.repeat.weekdays : [],
     today,
     setText: (text: string) => {
       setDraft((d) => editText(d, text, today, edit !== null));
@@ -121,10 +121,12 @@ export function useComposer() {
       setDraft((d) => pickDate(d, date));
       setSheet(null);
     },
-    pickRepeat: (kind: RepeatKind | null) => {
-      setDraft((d) => pickRepeat(d, kind));
+    pickRepeat: (repeat: RepeatPattern | null) => {
+      setDraft((d) => pickRepeat(d, repeat));
       setSheet(null);
     },
+    // Меню не закрывается: дни отмечают по одному
+    toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, weekday)),
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
     closeSheet: () => setSheet(null),
     startEdit: (task: Task) =>

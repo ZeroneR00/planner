@@ -1,4 +1,5 @@
 /** @jest-environment node */
+import { at } from '@/lib/dates';
 import { demoChanges } from '@/lib/demo';
 import {
   loadData,
@@ -109,6 +110,21 @@ describe('migrate', () => {
   it('повторный запуск ничего не делает', () => {
     expect(migrate(db)).toBe(MIGRATIONS.length);
   });
+
+  it('версия 1 → 2: один день недели становится списком дней', () => {
+    const old = openTestDb();
+    old.execSync(at(MIGRATIONS, 0));
+    old.execSync('PRAGMA user_version = 1');
+    old.runSync(
+      'INSERT INTO rules (id, title, kind, weekday, month_day, start_date, active) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      ['w', 'мусор', 'weekly', 2, null, '2026-10-01', 1],
+    );
+    expect(migrate(old)).toBe(1);
+    expect(old.getFirstSync<{ user_version: number }>('PRAGMA user_version', [])?.user_version).toBe(2);
+    expect(loadData(old, TODAY).rules).toStrictEqual([
+      { id: 'w', title: 'мусор', kind: 'weekly', weekdays: [2], startDate: '2026-10-01', active: true },
+    ]);
+  });
 });
 
 describe('writeChanges и loadData', () => {
@@ -128,8 +144,10 @@ describe('writeChanges и loadData', () => {
     const rules = [
       rule({ id: 'd', kind: 'daily' }),
       rule({ id: 'wd', kind: 'weekdays' }),
-      rule({ id: 'w', kind: 'weekly', weekday: 2 }),
+      rule({ id: 'w', kind: 'weekly', weekdays: [2] }),
+      rule({ id: 'w2', kind: 'weekly', weekdays: [3, 4] }),
       rule({ id: 'm', kind: 'monthly', monthDay: 31 }),
+      rule({ id: 'y', kind: 'yearly', month: 8, monthDay: 27 }),
       rule({ id: 'off', active: false }),
     ];
     writeChanges(db, { putRules: rules });

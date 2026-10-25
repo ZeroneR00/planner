@@ -55,6 +55,9 @@ export function diffDays(from: string, to: string): number {
   return Math.round((toUtc(to) - toUtc(from)) / DAY_MS);
 }
 
+/** Неделя с понедельника: номера дней в порядке календаря и ряда дней в меню ↻. */
+export const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+
 /** 0–6, 0 = воскресенье. */
 export function weekdayOf(date: string): number {
   return new Date(toUtc(date)).getUTCDay();
@@ -77,9 +80,14 @@ export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** «27 августа» */
+export function formatDayMonth(month: number, day: number): string {
+  return `${day} ${at(copy.dates.monthGenitive, month - 1)}`;
+}
+
 function dayMonth(date: string): string {
   const { month, day } = dateParts(date);
-  return `${day} ${at(copy.dates.monthGenitive, month - 1)}`;
+  return formatDayMonth(month, day);
 }
 
 /** «Суббота, 17 октября» */
@@ -148,5 +156,5 @@ export function monthGrid(first: string): (string | null)[] {
 
 /** «Пн» … «Вс» — шапка календаря. */
 export function weekdayHeaders(): string[] {
-  return [1, 2, 3, 4, 5, 6, 0].map((i) => capitalize(at(copy.dates.weekdayShort, i)));
+  return WEEK_ORDER.map((i) => capitalize(at(copy.dates.weekdayShort, i)));
 }

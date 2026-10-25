@@ -5,10 +5,12 @@ import {
   pickDate,
   pickRepeat,
   resolveWhen,
+  toggleWeekday,
   type Draft,
   type When,
 } from '@/lib/composer';
 import { formatDayLong } from '@/lib/dates';
+import { patternFor } from '@/lib/rules';
 import {
   editHint,
   editUndoText,
@@ -92,13 +94,13 @@ describe('startEdit', () => {
   });
 
   it('экземпляр повтора правит правило', () => {
-    const r = rule({ kind: 'weekly', weekday: 0 }, { title: 'полить цветы' });
+    const r = rule({ kind: 'weekly', weekdays: [0] }, { title: 'полить цветы' });
     const t = task({ id: 'i', title: 'старое', ruleId: 'r' });
     const { edit, draft } = startEdit(data([t], [r]), t);
     expect(edit.target).toEqual({ kind: 'rule', ruleId: 'r', taskId: 'i' });
-    expect(edit.origin.repeat).toEqual({ kind: 'weekly', weekday: 0 });
+    expect(edit.origin.repeat).toEqual({ kind: 'weekly', weekdays: [0] });
     expect(draft.text).toBe('полить цветы');
-    expect(draft.repeat).toEqual({ manual: true, value: 'weekly' });
+    expect(draft.repeat).toEqual({ manual: true, value: { kind: 'weekly', weekdays: [0] } });
   });
 
   it('вернувшийся экземпляр в Кармане — обычная задача', () => {
@@ -146,10 +148,10 @@ describe('saveEdit: задача', () => {
 
   it('стала повтором — правило и экземпляр на сегодня вместо задачи', () => {
     const t = task({ id: 'a', title: 'полить цветы' });
-    expect(save(data([t]), t, (d) => pickRepeat(d, 'weekly'))).toEqual({
+    expect(save(data([t]), t, (d) => pickRepeat(d, patternFor('weekly', TODAY)))).toEqual({
       removeTasks: ['a'],
       putRules: [
-        { kind: 'weekly', weekday: 0, id: 'id0', title: 'полить цветы', startDate: TODAY, active: true },
+        { kind: 'weekly', weekdays: [0], id: 'id0', title: 'полить цветы', startDate: TODAY, active: true },
       ],
       putTasks: [
         {
@@ -200,19 +202,20 @@ describe('saveEdit: повтор', () => {
 
   it('повтор увели с сегодня — несделанный экземпляр уходит, у правила нет лишних полей', () => {
     const saturday = '2026-10-17';
-    const r = rule({ kind: 'weekly', weekday: 6 });
+    const r = rule({ kind: 'weekly', weekdays: [6] });
     const inst = task({ id: 'i', date: saturday, ruleId: 'r' });
-    expect(save(data([inst], [r], saturday), inst, (d) => pickRepeat(d, 'weekdays'))).toEqual({
-      putRules: [{ kind: 'weekdays', id: 'r', title: 'зарядка', startDate: saturday, active: true }],
+    // «По будням» в субботу начинается с понедельника
+    expect(save(data([inst], [r], saturday), inst, (d) => pickRepeat(d, { kind: 'weekdays' }))).toEqual({
+      putRules: [{ kind: 'weekdays', id: 'r', title: 'зарядка', startDate: '2026-10-19', active: true }],
       removeTasks: ['i'],
     });
   });
 
   it('повтор увели с сегодня — сделанный экземпляр остаётся', () => {
     const saturday = '2026-10-17';
-    const r = rule({ kind: 'weekly', weekday: 6 });
+    const r = rule({ kind: 'weekly', weekdays: [6] });
     const inst = task({ id: 'i', title: 'зарядка', date: saturday, ruleId: 'r', done: true, doneAt: NOW });
-    const changes = save(data([inst], [r], saturday), inst, (d) => pickRepeat(d, 'weekdays'));
+    const changes = save(data([inst], [r], saturday), inst, (d) => pickRepeat(d, { kind: 'weekdays' }));
     expect(changes?.removeTasks).toBeUndefined();
     expect(changes?.putTasks).toEqual([{ ...inst, updatedAt: NOW }]);
   });
@@ -254,7 +257,7 @@ describe('saveEdit: повтор', () => {
 
 describe('правка из «Повторяется»', () => {
   const tuesday = '2026-10-20';
-  const r = rule({ kind: 'weekly', weekday: 2 }, { title: 'вынести мусор' });
+  const r = rule({ kind: 'weekly', weekdays: [2] }, { title: 'вынести мусор' });
 
   it('есть экземпляр на сегодня — правим с сегодня', () => {
     const daily = rule({ kind: 'daily' });
@@ -270,10 +273,10 @@ describe('правка из «Повторяется»', () => {
     expect(edit.origin).toEqual({
       title: 'вынести мусор',
       date: tuesday,
-      repeat: { kind: 'weekly', weekday: 2 },
+      repeat: { kind: 'weekly', weekdays: [2] },
       fromText: false,
     });
-    expect(draft.repeat).toEqual({ manual: true, value: 'weekly' });
+    expect(draft.repeat).toEqual({ manual: true, value: { kind: 'weekly', weekdays: [2] } });
   });
 
   function saveRule(change: (draft: Draft) => Draft): Changes | null {
@@ -284,6 +287,10 @@ describe('правка из «Повторяется»', () => {
 
   it('новый текст — правило переименовано, начало прежнее, задач не добавилось', () => {
     expect(saveRule(retitle('мусор и бумага'))).toEqual({ putRules: [{ ...r, title: 'мусор и бумага' }] });
+  });
+
+  it('добавили день в ряду ↻ — дни сохраняются, начало прежнее', () => {
+    expect(saveRule((d) => toggleWeekday(d, TODAY, 4))).toEqual({ putRules: [{ ...r, weekdays: [2, 4] }] });
   });
 
   it('«Один раз» — правило выключено, обычная задача на ближайший день', () => {

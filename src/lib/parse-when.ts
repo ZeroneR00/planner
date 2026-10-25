@@ -1,5 +1,5 @@
-import { addDays, dateParts, makeDate } from '@/lib/dates';
-import { nextOccurrence } from '@/lib/rules';
+import { addDays, dateParts, daysInMonth, makeDate } from '@/lib/dates';
+import { nextOccurrence, patternFor } from '@/lib/rules';
 import type { RepeatPattern } from '@/lib/types';
 
 export type ParsedWhen = {
@@ -18,10 +18,21 @@ type Matcher = { re: RegExp; resolve: (m: RegExpExecArray, today: string) => Fou
 //
 // Границы слов — \s, а текст обёрнут пробелами: \b в JS опирается на \w,
 // а это только латиница и цифры — кириллицу он не видит.
-const WD = '(понедельник\\S*|вторник\\S*|сред\\S*|четверг\\S*|пятниц\\S*|суббот\\S*|воскресен\\S*)';
+// Короткие «пн»…«вс» — после полных слов, чтобы «вторник» не разобрался как «вт» + «орник»
+const WD =
+  '(понедельник\\S*|вторник\\S*|сред\\S*|четверг\\S*|пятниц\\S*|суббот\\S*|воскресен\\S*|пн|вт|ср|чт|пт|сб|вс)';
+
+// «каждую среду и четверг», «по средам и четвергам», «каждый пн, ср и пт»
+const WD_LIST = `${WD}(?:(?:\\s*,\\s*(?:и\\s+)?|\\s+и\\s+)(?:(?:каждый|каждую|каждое)\\s+)?${WD})*`;
+
+const YEARLY = '(?:каждый\\s+год|ежегодно)';
 
 // Индекс = номер дня недели, 0 = вс
 const WEEKDAY_STEMS = ['воскресен', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот'];
+const WEEKDAY_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+// Високосный: «каждое 29 февраля» — допустимая дата
+const LEAP_YEAR = 2028;
 
 const MONTHS = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -41,8 +52,21 @@ function group(m: RegExpExecArray, i: number): string {
 
 function weekdayNumber(word: string): number {
   const lower = word.toLowerCase();
+  const short = WEEKDAY_SHORT.indexOf(lower);
+  if (short !== -1) return short;
   const i = WEEKDAY_STEMS.findIndex((stem) => lower.startsWith(stem));
   return i === -1 ? 0 : i;
+}
+
+const WD_WORD = re(`^${WD}$`);
+
+/** Дни недели из найденного списка — без повторов, по возрастанию. */
+function weekdayList(phrase: string): number[] {
+  const days = phrase
+    .split(/[\s,]+/)
+    .filter((word) => WD_WORD.test(word))
+    .map(weekdayNumber);
+  return [...new Set(days)].sort((a, b) => a - b);
 }
 
 function repeating(repeat: RepeatPattern, today: string): Found {
@@ -63,8 +87,8 @@ function upcoming(today: string, month: number, day: number): string | null {
 
 const MATCHERS: Matcher[] = [
   {
-    re: re(`\\s(?:каждый|каждую|каждое|по)\\s+${WD}(?=\\s)`),
-    resolve: (m, today) => repeating({ kind: 'weekly', weekday: weekdayNumber(group(m, 1)) }, today),
+    re: re(`\\s(?:каждый|каждую|каждое|по)\\s+${WD_LIST}(?=\\s)`),
+    resolve: (m, today) => repeating({ kind: 'weekly', weekdays: weekdayList(m[0]) }, today),
   },
   {
     re: re('\\s(?:каждый\\s+день|ежедневно)(?=\\s)'),
@@ -73,6 +97,22 @@ const MATCHERS: Matcher[] = [
   {
     re: re('\\s(?:по\\s+будням|каждый\\s+будний\\s+день)(?=\\s)'),
     resolve: (_m, today) => repeating({ kind: 'weekdays' }, today),
+  },
+  {
+    // До «каждое N число», иначе «каждое 27 августа» станет повтором 27-го каждого месяца
+    re: re(`\\s(каждое\\s+|${YEARLY}\\s+)?(\\d{1,2})\\s+(${MONTHS.join('|')})(\\s+${YEARLY})?(?=\\s)`),
+    resolve: (m, today) => {
+      // Без «каждое» и «каждый год» — просто дата, её разберёт матчер ниже
+      if (m[1] === undefined && m[4] === undefined) return null;
+      const month = MONTHS.indexOf(group(m, 3).toLowerCase()) + 1;
+      const monthDay = Number(group(m, 2));
+      if (monthDay < 1 || monthDay > daysInMonth(LEAP_YEAR, month)) return null;
+      return repeating({ kind: 'yearly', month, monthDay }, today);
+    },
+  },
+  {
+    re: re(`\\s${YEARLY}(?=\\s)`),
+    resolve: (_m, today) => repeating(patternFor('yearly', today), today),
   },
   {
     re: re('\\sкаждое\\s+(\\d{1,2})(?:-?(?:е|го))?(?:\\s+число)?(?=\\s)'),
@@ -86,7 +126,7 @@ const MATCHERS: Matcher[] = [
     // «в субботу», написанное в субботу, — следующая суббота: для сегодня есть слово «сегодня»
     re: re(`\\s(?:в|во)\\s+${WD}(?=\\s)`),
     resolve: (m, today) =>
-      once(nextOccurrence({ kind: 'weekly', weekday: weekdayNumber(group(m, 1)) }, today, false)),
+      once(nextOccurrence({ kind: 'weekly', weekdays: [weekdayNumber(group(m, 1))] }, today, false)),
   },
   { re: re('\\sпослезавтра(?=\\s)'), resolve: (_m, today) => once(addDays(today, 2)) },
   { re: re('\\sзавтра(?=\\s)'), resolve: (_m, today) => once(addDays(today, 1)) },

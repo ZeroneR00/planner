@@ -48,7 +48,9 @@ export function Composer({ composer: c }: Props) {
         <RepeatSheet
           options={c.repeatOptions}
           selected={when.repeat?.kind ?? null}
+          weekdays={c.weekdays}
           onPick={c.pickRepeat}
+          onToggleDay={c.toggleWeekday}
         />
       )}
       {c.sheet === 'calendar' && (

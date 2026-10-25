@@ -68,8 +68,8 @@ describe('aheadView: повторы', () => {
     expect(
       labels([
         rule({ id: 'd' }),
-        rule({ id: 'tue', kind: 'weekly', weekday: 2 }),
-        rule({ id: 'sat', kind: 'weekly', weekday: 6 }),
+        rule({ id: 'tue', kind: 'weekly', weekdays: [2] }),
+        rule({ id: 'sat', kind: 'weekly', weekdays: [6] }),
       ]),
     ).toEqual([
       'каждый день · следующий — завтра',
@@ -79,7 +79,7 @@ describe('aheadView: повторы', () => {
   });
 
   it('не раньше начала правила', () => {
-    expect(labels([rule({ id: 'tue', kind: 'weekly', weekday: 2, startDate: '2026-11-03' })])).toEqual([
+    expect(labels([rule({ id: 'tue', kind: 'weekly', weekdays: [2], startDate: '2026-11-03' })])).toEqual([
       'каждый вт · следующий — вт, 3 ноября',
     ]);
   });

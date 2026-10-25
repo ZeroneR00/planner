@@ -98,7 +98,7 @@ describe('rollover', () => {
   it('5: правило не на сегодня, неактивное или ещё не началось', () => {
     const rules = [
       // 18.10 — воскресенье
-      rule({ id: 'mon', kind: 'weekly', weekday: 1 }),
+      rule({ id: 'mon', kind: 'weekly', weekdays: [1] }),
       rule({ id: 'off', active: false }),
       rule({ id: 'later', startDate: '2026-10-19' }),
     ];
@@ -143,7 +143,7 @@ describe('rollover', () => {
       task({ id: 'late', ruleId: 'r', date: '2026-10-17' }),
       task({ id: 'today', order: 2 }),
     ];
-    const rules = [rule({ id: 'r' }), rule({ id: 'w', kind: 'weekly', weekday: 0 })];
+    const rules = [rule({ id: 'r' }), rule({ id: 'w', kind: 'weekly', weekdays: [0] })];
     const first = run(tasks, rules);
     expect(first).not.toEqual(EMPTY);
     expect(run(applyDiff(tasks, first), rules)).toEqual(EMPTY);

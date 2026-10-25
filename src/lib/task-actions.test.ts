@@ -226,7 +226,7 @@ describe('addTask', () => {
   });
 
   it('повтор с будущей даты — только правило', () => {
-    const repeat = { kind: 'weekly', weekday: 3 } as const;
+    const repeat = { kind: 'weekly', weekdays: [3] } as const;
     const changes = addTask(data(tasks), when({ date: '2026-10-21', repeat }), NOW, makeId);
     expect(changes).toEqual({
       putRules: [{ ...repeat, id: 'id1', title: 'купить хлеб', startDate: '2026-10-21', active: true }],

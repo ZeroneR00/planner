@@ -50,6 +50,7 @@ export const copy = {
     repeatWeekdays: 'По будням',
     repeatWeekly: (plural: string) => `Каждую неделю · ${plural}`,
     repeatMonthly: (day: number) => `Каждый месяц · ${day}-го`,
+    repeatYearly: (day: string) => `Каждый год · ${day}`,
     prevMonth: 'Предыдущий месяц',
     nextMonth: 'Следующий месяц',
     editTitle: 'Правка',
@@ -87,7 +88,9 @@ export const copy = {
       'по воскресеньям', 'по понедельникам', 'по вторникам', 'по средам',
       'по четвергам', 'по пятницам', 'по субботам',
     ],
+    weeklyMany: (first: string, last: string) => `по ${first} и ${last}`,
     monthly: (day: number) => `каждый месяц, ${day}-го`,
+    yearly: (day: string) => `каждый год, ${day}`,
     doneToday: 'на сегодня готово',
   },
   undo: {
