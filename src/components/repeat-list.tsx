@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
+import { TaskMeta } from '@/components/task-meta';
 import type { AheadRule } from '@/lib/ahead-view';
 import { copy } from '@/lib/copy';
 import type { Rule } from '@/lib/types';
@@ -30,7 +31,7 @@ export function RepeatList({ rules, editingRuleId, onEdit, onStop }: Props) {
             style={({ pressed }) => [styles.main, pressed && styles.pressed]}
           >
             <Text style={text.row}>{rule.title}</Text>
-            <Text style={text.meta}>{label}</Text>
+            <TaskMeta time={rule.time} label={label} icon={false} />
           </Pressable>
           <Pressable
             onPress={() => onStop(rule)}

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
+import { TaskMeta } from '@/components/task-meta';
 import type { AheadDay } from '@/lib/ahead-view';
 import { copy } from '@/lib/copy';
 import type { Task } from '@/lib/types';
@@ -34,6 +35,7 @@ export function AheadDays({ days, editingId, onEdit, onRemove }: Props) {
             style={({ pressed }) => [styles.main, pressed && styles.pressed]}
           >
             <Text style={text.row}>{task.title}</Text>
+            <TaskMeta time={task.time} />
           </Pressable>
           <Pressable
             onPress={() => onRemove(task)}
@@ -70,6 +72,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     paddingVertical: space[10],
+    gap: space[2],
   },
   iconButton: {
     width: touch,

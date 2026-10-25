@@ -1,4 +1,5 @@
 import { ruleOccursOn } from '@/lib/rules';
+import { withTime } from '@/lib/task-actions';
 import type { Rule, Task } from '@/lib/types';
 
 export type RolloverInput = {
@@ -27,8 +28,9 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
   const updated: Task[] = [];
   const removed: string[] = [];
 
+  // Время без дня бессмысленно — в стикерах его нет
   const toPocket = (task: Task) => {
-    updated.push({ ...task, date: null, returned: true, updatedAt: now });
+    updated.push({ ...withTime(task, null), date: null, returned: true, updatedAt: now });
   };
 
   // Выполненное из прошлых дней не трогаем — его скрывает запрос экрана
@@ -66,7 +68,7 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
     if (!ruleOccursOn(rule, today)) continue;
     // Экземпляр уже есть — даже выполненный — значит, на сегодня повтор создан
     if (todays.some((t) => t.ruleId === rule.id)) continue;
-    created.push({
+    const instance: Task = {
       id: makeId(),
       title: rule.title,
       date: today,
@@ -75,7 +77,8 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
       ruleId: rule.id,
       createdAt: now,
       updatedAt: now,
-    });
+    };
+    created.push(withTime(instance, rule.time ?? null));
   }
 
   return { created, updated, removed };

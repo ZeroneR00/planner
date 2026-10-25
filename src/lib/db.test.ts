@@ -120,21 +120,54 @@ describe('migrate', () => {
       ['w', 'мусор', 'weekly', 2, null, '2026-10-01', 1],
     );
     expect(migrate(old)).toBe(1);
-    expect(old.getFirstSync<{ user_version: number }>('PRAGMA user_version', [])?.user_version).toBe(2);
+    expect(old.getFirstSync<{ user_version: number }>('PRAGMA user_version', [])?.user_version).toBe(
+      MIGRATIONS.length,
+    );
     expect(loadData(old, TODAY).rules).toStrictEqual([
       { id: 'w', title: 'мусор', kind: 'weekly', weekdays: [2], startDate: '2026-10-01', active: true },
     ]);
+  });
+
+  it('версия 2 → 3: задачи и правила на месте, времени у них нет', () => {
+    const old = openTestDb();
+    old.execSync(at(MIGRATIONS, 0));
+    old.execSync(at(MIGRATIONS, 1));
+    old.execSync('PRAGMA user_version = 2');
+    old.runSync(
+      'INSERT INTO tasks (id, title, date, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      ['t', 'созвон', TODAY, BEFORE, BEFORE],
+    );
+    old.runSync('INSERT INTO rules (id, title, kind, start_date, active) VALUES (?, ?, ?, ?, ?)', [
+      'd',
+      'зарядка',
+      'daily',
+      '2026-10-01',
+      1,
+    ]);
+    expect(migrate(old)).toBe(2);
+    const data = loadData(old, TODAY);
+    expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон' })]);
+    expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
   });
 });
 
 describe('writeChanges и loadData', () => {
   it('задача после записи и чтения та же; у минимальной нет лишних полей', () => {
-    const full = task({ id: 'full', done: true, doneAt: NOW, ruleId: 'r1', returned: true, order: 3 });
+    const full = task({
+      id: 'full',
+      time: '15:00',
+      done: true,
+      doneAt: NOW,
+      ruleId: 'r1',
+      returned: true,
+      order: 3,
+    });
     const min = task({ id: 'min', date: null });
     writeChanges(db, { putTasks: [full, min] });
 
     const { tasks } = loadData(db, TODAY);
     expect(tasks).toStrictEqual([full, min]);
+    expect(tasks[1]).not.toHaveProperty('time');
     expect(tasks[1]).not.toHaveProperty('doneAt');
     expect(tasks[1]).not.toHaveProperty('ruleId');
     expect(tasks[1]).not.toHaveProperty('returned');
@@ -148,10 +181,23 @@ describe('writeChanges и loadData', () => {
       rule({ id: 'w2', kind: 'weekly', weekdays: [3, 4] }),
       rule({ id: 'm', kind: 'monthly', monthDay: 31 }),
       rule({ id: 'y', kind: 'yearly', month: 8, monthDay: 27 }),
+      rule({ id: 'i', kind: 'interval', days: 3 }),
+      rule({ id: 't', kind: 'daily', time: '07:00' }),
       rule({ id: 'off', active: false }),
     ];
     writeChanges(db, { putRules: rules });
-    expect(loadData(db, TODAY).rules).toStrictEqual(rules);
+    const loaded = loadData(db, TODAY).rules;
+    expect(loaded).toStrictEqual(rules);
+    expect(loaded[0]).not.toHaveProperty('time');
+  });
+
+  it('шаг повтора хранится только у interval', () => {
+    writeChanges(db, { putRules: [rule({ id: 'i', kind: 'interval', days: 2 }), rule({ id: 'd' })] });
+    const rows = db.getAllSync<{ id: string; every: number | null }>('SELECT id, every FROM rules ORDER BY id', []);
+    expect(rows).toEqual([
+      { id: 'd', every: null },
+      { id: 'i', every: 2 },
+    ]);
   });
 
   it('put существующего id заменяет строку', () => {

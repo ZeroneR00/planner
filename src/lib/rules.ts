@@ -1,5 +1,14 @@
 import { copy } from '@/lib/copy';
-import { WEEK_ORDER, addDays, at, dateParts, daysInMonth, formatDayMonth, weekdayOf } from '@/lib/dates';
+import {
+  WEEK_ORDER,
+  addDays,
+  at,
+  dateParts,
+  daysInMonth,
+  diffDays,
+  formatDayMonth,
+  weekdayOf,
+} from '@/lib/dates';
 import type { RepeatKind, RepeatPattern, Rule } from '@/lib/types';
 
 // За год срабатывает любой шаблон: самый редкий, yearly, — раз в 365–366 дней
@@ -25,11 +34,19 @@ export function occursOn(p: RepeatPattern, date: string): boolean {
       const { year, month, day } = dateParts(date);
       return month === p.month && day === Math.min(p.monthDay, daysInMonth(year, month));
     }
+    case 'interval':
+      // Без правила любой день может быть началом: поле записи начинает повтор с выбранного дня
+      return true;
   }
 }
 
 export function ruleOccursOn(rule: Rule, date: string): boolean {
-  return rule.active && date >= rule.startDate && occursOn(rule, date);
+  return (
+    rule.active &&
+    date >= rule.startDate &&
+    occursOn(rule, date) &&
+    (rule.kind !== 'interval' || diffDays(rule.startDate, date) % rule.days === 0)
+  );
 }
 
 export function nextOccurrence(p: RepeatPattern, from: string, inclusive = true): string {
@@ -42,7 +59,12 @@ export function nextOccurrence(p: RepeatPattern, from: string, inclusive = true)
 
 /** Ближайший день повтора начиная с from (включительно), но не раньше начала правила. */
 export function nextRuleDate(rule: Rule, from: string): string {
-  return nextOccurrence(rule, rule.startDate > from ? rule.startDate : from);
+  const start = rule.startDate > from ? rule.startDate : from;
+  if (rule.kind === 'interval') {
+    const steps = Math.ceil(diffDays(rule.startDate, start) / rule.days);
+    return addDays(rule.startDate, steps * rule.days);
+  }
+  return nextOccurrence(rule, start);
 }
 
 /** Шаблон для пункта меню ↻ при выбранном дне: weekly берёт день недели, monthly — число, yearly — число и месяц. */
@@ -60,6 +82,8 @@ export function patternFor(kind: RepeatKind, date: string): RepeatPattern {
       const { month, day } = dateParts(date);
       return { kind, month, monthDay: day };
     }
+    case 'interval':
+      return { kind, days: 2 };
   }
 }
 
@@ -83,6 +107,10 @@ export function repeatLabel(p: RepeatPattern): string {
       return copy.repeat.monthly(p.monthDay);
     case 'yearly':
       return copy.repeat.yearly(formatDayMonth(p.month, p.monthDay));
+    case 'interval':
+      if (p.days === 2) return copy.repeat.everyOtherDay;
+      if (p.days >= 14 && p.days % 7 === 0) return copy.repeat.everyWeeks(p.days / 7);
+      return copy.repeat.everyDays(p.days);
   }
 }
 
@@ -102,5 +130,7 @@ export function samePattern(a: RepeatPattern | null, b: RepeatPattern | null): b
       return b.kind === 'monthly' && a.monthDay === b.monthDay;
     case 'yearly':
       return b.kind === 'yearly' && a.month === b.month && a.monthDay === b.monthDay;
+    case 'interval':
+      return b.kind === 'interval' && a.days === b.days;
   }
 }

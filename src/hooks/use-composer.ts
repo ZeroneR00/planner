@@ -21,7 +21,7 @@ import {
   type Draft,
   type Hint,
 } from '@/lib/composer';
-import { nowIso } from '@/lib/dates';
+import { nowIso, nowTime } from '@/lib/dates';
 import {
   editHint,
   editUndoText,
@@ -51,7 +51,9 @@ export function useComposer() {
   const [notice, setNotice] = useState<Hint | null>(null);
   const [edit, setEdit] = useState<Editing | null>(null);
 
-  const when = resolveWhen(draft, today);
+  // Каждый рендер — свежее: «в 9», написанное в 8:59 и отправленное в 9:01, уже на завтра
+  const now = nowTime();
+  const when = resolveWhen(draft, today, now);
   const typing = hasText(draft);
   const showWhen = typing || edit !== null;
 
@@ -113,7 +115,7 @@ export function useComposer() {
     weekdays: when.repeat?.kind === 'weekly' ? when.repeat.weekdays : [],
     today,
     setText: (text: string) => {
-      setDraft((d) => editText(d, text, today, edit !== null));
+      setDraft((d) => editText(d, text, today, now, edit !== null));
       setNotice(null);
       if (edit === null && text.trim() === '') setSheet(null);
     },
@@ -126,7 +128,7 @@ export function useComposer() {
       setSheet(null);
     },
     // Меню не закрывается: дни отмечают по одному
-    toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, weekday)),
+    toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, now, weekday)),
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
     closeSheet: () => setSheet(null),
     startEdit: (task: Task) =>

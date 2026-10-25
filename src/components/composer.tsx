@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
@@ -84,6 +84,12 @@ export function Composer({ composer: c }: Props) {
               size={18}
               color={noDay ? colors.disabled : repeatOn ? colors.onAccent : colors.text}
             />
+            {/* Повтор виден сразу — и понятый из текста, и выбранный в меню */}
+            {when.repeat !== null && (
+              <Text numberOfLines={1} style={[text.chipOn, styles.repeatText]}>
+                {repeatLabel(when.repeat)}
+              </Text>
+            )}
           </Pressable>
         </View>
       )}
@@ -136,11 +142,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space[6],
   },
+  // Без повтора — круглая ↻, с повтором — пилюля с надписью; бегунок слева сужается сам
   repeat: {
-    width: touch,
+    minWidth: touch,
+    maxWidth: size.repeatPill,
     height: touch,
+    paddingHorizontal: space[12],
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space[6],
     borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
@@ -153,6 +164,9 @@ const styles = StyleSheet.create({
   repeatOn: {
     borderColor: colors.accent,
     backgroundColor: colors.accent,
+  },
+  repeatText: {
+    flexShrink: 1,
   },
   inputRow: {
     flexDirection: 'row',

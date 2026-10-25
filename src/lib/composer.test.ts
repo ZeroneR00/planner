@@ -19,20 +19,21 @@ import { patternFor } from '@/lib/rules';
 
 // Суббота — как на скриншотах прототипа
 const TODAY = '2026-10-17';
+const NOW = '10:00';
 
 /** Набирает текст по шагам, как пользователь. */
 function typed(...texts: string[]): Draft {
-  return texts.reduce((draft, text) => editText(draft, text, TODAY), emptyDraft);
+  return texts.reduce((draft, text) => editText(draft, text, TODAY, NOW), emptyDraft);
 }
 
 function resolve(draft: Draft): When {
-  return resolveWhen(draft, TODAY);
+  return resolveWhen(draft, TODAY, NOW);
 }
 
 describe('разбор поля', () => {
   it('без даты — в Карман', () => {
     const when = resolve(typed('идея для статьи'));
-    expect(when).toEqual({ title: 'идея для статьи', date: null, repeat: null, fromText: false });
+    expect(when).toEqual({ title: 'идея для статьи', date: null, repeat: null, time: null, fromText: false });
     expect(whenHint(when, TODAY)).toEqual({
       accent: false,
       parts: [{ text: 'Упадёт в стикеры, разберёшь потом' }],
@@ -44,6 +45,7 @@ describe('разбор поля', () => {
       title: 'купить хлеб',
       date: '2026-10-18',
       repeat: null,
+      time: null,
       fromText: true,
     });
   });
@@ -64,29 +66,29 @@ describe('разбор поля', () => {
 
   it('ручной чип главнее текста', () => {
     const when = resolve(pickDate(typed('завтра купить'), TODAY));
-    expect(when).toEqual({ title: 'купить', date: TODAY, repeat: null, fromText: false });
+    expect(when).toEqual({ title: 'купить', date: TODAY, repeat: null, time: null, fromText: false });
   });
 
   it('дописал без новой даты — ручной выбор остаётся, с новой датой — сброшен', () => {
     const manual = pickDate(typed('завтра купить'), TODAY);
-    expect(resolve(editText(manual, 'завтра купить хлеб', TODAY)).date).toBe(TODAY);
-    const friday = resolve(editText(manual, 'завтра купить хлеб в пятницу', TODAY));
+    expect(resolve(editText(manual, 'завтра купить хлеб', TODAY, NOW)).date).toBe(TODAY);
+    const friday = resolve(editText(manual, 'завтра купить хлеб в пятницу', TODAY, NOW));
     expect(friday.date).toBe('2026-10-23');
     expect(friday.fromText).toBe(true);
   });
 
   it('стёр текст — ручной выбор сброшен', () => {
-    const erased = editText(pickDate(typed('купить'), TODAY), '', TODAY);
+    const erased = editText(pickDate(typed('купить'), TODAY), '', TODAY, NOW);
     expect(erased).toEqual({ ...emptyDraft, text: '' });
     expect(hasText(erased)).toBe(false);
-    expect(resolve(editText(erased, 'идея', TODAY)).date).toBeNull();
+    expect(resolve(editText(erased, 'идея', TODAY, NOW)).date).toBeNull();
   });
 
   it('стёр текст в правке — выбор дня и повтора остаётся', () => {
     const manual = pickRepeat(pickDate(typed('мусор'), TODAY), { kind: 'daily' });
-    const erased = editText(manual, '', TODAY, true);
+    const erased = editText(manual, '', TODAY, NOW, true);
     expect(erased).toEqual({ ...manual, text: '' });
-    const when = resolve(editText(erased, 'вынести мусор', TODAY, true));
+    const when = resolve(editText(erased, 'вынести мусор', TODAY, NOW, true));
     expect(when.date).toBe(TODAY);
     expect(when.repeat).toEqual({ kind: 'daily' });
   });
@@ -124,7 +126,7 @@ describe('разбор поля', () => {
 
   it('«каждое 31-е» в ноябре остаётся 31-м', () => {
     const today = '2026-11-05';
-    const when = resolveWhen(editText(emptyDraft, 'каждое 31-е оплатить интернет', today), today);
+    const when = resolveWhen(editText(emptyDraft, 'каждое 31-е оплатить интернет', today, NOW), today, NOW);
     expect(when.date).toBe('2026-11-30');
     expect(when.repeat).toEqual({ kind: 'monthly', monthDay: 31 });
   });
@@ -149,24 +151,24 @@ describe('ряд дней в ↻', () => {
   }
 
   it('дни включаются и выключаются, начало — ближайший отмеченный день', () => {
-    const wed = toggleWeekday(once, TODAY, 3);
+    const wed = toggleWeekday(once, TODAY, NOW, 3);
     expect(days(wed)).toEqual({ date: '2026-10-21', repeat: { kind: 'weekly', weekdays: [3] } });
-    const wedThu = toggleWeekday(wed, TODAY, 4);
+    const wedThu = toggleWeekday(wed, TODAY, NOW, 4);
     expect(days(wedThu)).toEqual({ date: '2026-10-21', repeat: { kind: 'weekly', weekdays: [3, 4] } });
-    const thu = toggleWeekday(wedThu, TODAY, 3);
+    const thu = toggleWeekday(wedThu, TODAY, NOW, 3);
     expect(days(thu)).toEqual({ date: '2026-10-22', repeat: { kind: 'weekly', weekdays: [4] } });
     // Начало считается от выбранного дня, а не от прошлого сдвига
-    expect(days(toggleWeekday(thu, TODAY, 3)).date).toBe('2026-10-21');
-    expect(days(toggleWeekday(thu, TODAY, 4))).toEqual({ date: TODAY, repeat: null });
+    expect(days(toggleWeekday(thu, TODAY, NOW, 3)).date).toBe('2026-10-21');
+    expect(days(toggleWeekday(thu, TODAY, NOW, 4))).toEqual({ date: TODAY, repeat: null });
   });
 
   it('из другого повтора — еженедельный только с этим днём', () => {
     const daily = pickRepeat(once, { kind: 'daily' });
-    expect(resolve(toggleWeekday(daily, TODAY, 1)).repeat).toEqual({ kind: 'weekly', weekdays: [1] });
+    expect(resolve(toggleWeekday(daily, TODAY, NOW, 1)).repeat).toEqual({ kind: 'weekly', weekdays: [1] });
   });
 
   it('чип дня: не из отмеченных — повтор по нему одному, из отмеченных — дни остаются', () => {
-    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, 3), TODAY, 4);
+    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, NOW, 3), TODAY, NOW, 4);
     expect(resolve(pickDate(wedThu, '2026-10-23')).repeat).toEqual({ kind: 'weekly', weekdays: [5] });
     expect(days(pickDate(wedThu, '2026-10-22'))).toEqual({
       date: '2026-10-22',
@@ -175,7 +177,7 @@ describe('ряд дней в ↻', () => {
   });
 
   it('подсказка', () => {
-    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, 3), TODAY, 4);
+    const wedThu = toggleWeekday(toggleWeekday(once, TODAY, NOW, 3), TODAY, NOW, 4);
     expect(whenHint(resolve(wedThu), TODAY).parts.map((p) => p.text)).toEqual([
       'ср, 21 октября',
       'по ср и чт',
@@ -184,7 +186,7 @@ describe('ряд дней в ↻', () => {
 });
 
 describe('addedHint', () => {
-  const base: When = { title: 'x', date: null, repeat: null, fromText: false };
+  const base: When = { title: 'x', date: null, repeat: null, time: null, fromText: false };
 
   function line(when: Partial<When>): string {
     const hint = addedHint({ ...base, ...when }, TODAY);
@@ -237,6 +239,7 @@ describe('бегунок', () => {
     expect(repeatOptions('2026-10-20', null).map((o) => o.label)).toEqual([
       'Один раз',
       'Каждый день',
+      'Через день',
       'По будням',
       'Каждую неделю · по вторникам',
       'Каждый месяц · 20-го',
@@ -245,6 +248,7 @@ describe('бегунок', () => {
     expect(repeatOptions('2026-10-20', null).map((o) => o.key)).toEqual([
       'once',
       'daily',
+      'interval',
       'weekdays',
       'weekly',
       'monthly',
@@ -254,11 +258,78 @@ describe('бегунок', () => {
 
   it('repeatOptions: повтор того же вида остаётся как есть', () => {
     const options = repeatOptions('2026-10-21', { kind: 'weekly', weekdays: [3, 4] });
-    expect(options[3]).toEqual({
+    expect(options[4]).toEqual({
       key: 'weekly',
       pattern: { kind: 'weekly', weekdays: [3, 4] },
       label: 'Каждую неделю · по ср и чт',
     });
-    expect(options[5]?.pattern).toEqual({ kind: 'yearly', month: 10, monthDay: 21 });
+    expect(options[6]?.pattern).toEqual({ kind: 'yearly', month: 10, monthDay: 21 });
+    const every3 = repeatOptions('2026-10-21', { kind: 'interval', days: 3 });
+    expect(every3[2]).toEqual({ key: 'interval', pattern: { kind: 'interval', days: 3 }, label: 'Каждые 3 дня' });
+  });
+});
+
+describe('время', () => {
+  it('время без дня — сегодня, подсказка со временем', () => {
+    const when = resolve(typed('созвон в 15'));
+    expect(when).toEqual({ title: 'созвон', date: TODAY, repeat: null, time: '15:00', fromText: true });
+    expect(whenHint(when, TODAY)).toEqual({
+      accent: true,
+      parts: [
+        { text: 'сегодня, сб, 17 октября', icon: 'arrowRight' },
+        { text: '15:00' },
+        { text: 'понял из текста' },
+      ],
+    });
+  });
+
+  it('время уже прошло — завтра', () => {
+    expect(resolve(typed('созвон в 9'))).toMatchObject({ date: '2026-10-18', time: '09:00' });
+  });
+
+  it('показывается без ведущего нуля', () => {
+    expect(whenHint(resolve(typed('созвон в 11:00')), TODAY).parts[1]).toEqual({ text: '11:00' });
+    expect(whenHint(resolve(typed('созвон завтра в 9:00')), TODAY).parts[1]).toEqual({ text: '9:00' });
+  });
+
+  it('чип «В стикеры» после времени — без дня и без времени', () => {
+    const when = resolve(pickDate(typed('созвон в 15'), null));
+    expect(when).toMatchObject({ date: null, time: null });
+    expect(whenHint(when, TODAY).parts[0]?.text).toBe('Упадёт в стикеры, разберёшь потом');
+  });
+
+  it('чип дня, потом время — день остаётся', () => {
+    const monday = pickDate(typed('созвон'), '2026-10-19');
+    expect(resolve(editText(monday, 'созвон в 15', TODAY, NOW))).toMatchObject({
+      date: '2026-10-19',
+      time: '15:00',
+    });
+  });
+
+  it('«В стикеры», потом дописал время — снова сегодня', () => {
+    const pocket = pickDate(typed('созвон'), null);
+    expect(resolve(editText(pocket, 'созвон в 15', TODAY, NOW))).toMatchObject({ date: TODAY, time: '15:00' });
+  });
+
+  it('addedHint со временем', () => {
+    const when = resolve(typed('созвон в 15'));
+    expect(addedHint(when, TODAY).parts.map((p) => p.text)).toEqual(['Добавлено на сегодня', '15:00']);
+  });
+});
+
+describe('повтор «через день»', () => {
+  it('из текста — с сегодня', () => {
+    const when = resolve(typed('полить цветы через день'));
+    expect(when).toMatchObject({ title: 'полить цветы', date: TODAY, repeat: { kind: 'interval', days: 2 } });
+  });
+
+  it('чип дня сохраняет повтор и начинает с этого дня', () => {
+    const when = resolve(pickDate(typed('полить цветы через день'), '2026-10-19'));
+    expect(when).toMatchObject({ date: '2026-10-19', repeat: { kind: 'interval', days: 2 } });
+    const manual = pickRepeat(pickDate(typed('полить'), TODAY), { kind: 'interval', days: 2 });
+    expect(resolve(pickDate(manual, '2026-10-19'))).toMatchObject({
+      date: '2026-10-19',
+      repeat: { kind: 'interval', days: 2 },
+    });
   });
 });

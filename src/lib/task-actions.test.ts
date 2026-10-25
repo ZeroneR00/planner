@@ -186,7 +186,7 @@ describe('addTask', () => {
   ];
 
   function when(overrides: Partial<When>): When {
-    return { title: 'купить хлеб', date: null, repeat: null, fromText: false, ...overrides };
+    return { title: 'купить хлеб', date: null, repeat: null, time: null, fromText: false, ...overrides };
   }
 
   const fresh = { title: 'купить хлеб', done: false, createdAt: NOW, updatedAt: NOW };
@@ -231,5 +231,15 @@ describe('addTask', () => {
     expect(changes).toEqual({
       putRules: [{ ...repeat, id: 'id1', title: 'купить хлеб', startDate: '2026-10-21', active: true }],
     });
+  });
+
+  it('со временем — время у задачи', () => {
+    expect(only(addTask(data(tasks), when({ date: TODAY, time: '15:00' }), NOW, makeId)).time).toBe('15:00');
+  });
+
+  it('повтор со временем — время у правила и экземпляра', () => {
+    const changes = addTask(data(tasks), when({ date: TODAY, repeat: { kind: 'daily' }, time: '07:00' }), NOW, makeId);
+    expect(changes.putRules?.[0]?.time).toBe('07:00');
+    expect(changes.putTasks?.[0]?.time).toBe('07:00');
   });
 });

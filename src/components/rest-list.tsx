@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
+import { TaskMeta } from '@/components/task-meta';
 import { copy } from '@/lib/copy';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
@@ -39,14 +40,11 @@ export function RestList({ items, editingId, onToggle, onEdit }: Props) {
             style={({ pressed }) => [styles.main, pressed && styles.pressed]}
           >
             <Text style={[text.body, task.done && styles.titleDone]}>{task.title}</Text>
-            {repeat !== null && (
-              <View style={styles.meta}>
-                <Icon name="repeat" size={12} color={task.done ? colors.accent : colors.textSecondary} />
-                <Text style={[text.meta, styles.metaText, task.done && styles.metaDone]}>
-                  {task.done ? `${repeat} · ${copy.repeat.doneToday}` : repeat}
-                </Text>
-              </View>
-            )}
+            <TaskMeta
+              time={task.time}
+              label={repeat !== null && task.done ? `${repeat} · ${copy.repeat.doneToday}` : repeat}
+              done={task.done}
+            />
           </Pressable>
           {task.id === editingId && <FocusRing offset={0} radius={radius.row} />}
         </View>
@@ -102,17 +100,6 @@ const styles = StyleSheet.create({
   titleDone: {
     color: colors.textDone,
     textDecorationLine: 'line-through',
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[4],
-  },
-  metaText: {
-    flexShrink: 1,
-  },
-  metaDone: {
-    color: colors.accent,
   },
   pressed: {
     opacity: pressedOpacity,

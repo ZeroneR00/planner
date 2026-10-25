@@ -8,6 +8,7 @@ import {
   formatDayLong,
   formatDayMonth,
   formatDayShort,
+  formatTime,
 } from '@/lib/dates';
 import { parseWhen } from '@/lib/parse-when';
 import { nextOccurrence, occursOn, patternFor, repeatLabel, samePattern } from '@/lib/rules';
@@ -21,7 +22,13 @@ export type Draft = { text: string; date: Choice<string | null>; repeat: Choice<
 
 export const emptyDraft: Draft = { text: '', date: { manual: false }, repeat: { manual: false } };
 
-export type When = { title: string; date: string | null; repeat: RepeatPattern | null; fromText: boolean };
+export type When = {
+  title: string;
+  date: string | null;
+  repeat: RepeatPattern | null;
+  time: string | null; // 'HH:MM'; без дня — null
+  fromText: boolean;
+};
 
 export type HintPart = { text: string; icon?: 'arrowRight' | 'repeat' }; // имена — как в IconName
 export type Hint = { accent: boolean; parts: HintPart[] }; // части выводятся через « · »
@@ -36,15 +43,18 @@ export function hasText(draft: Draft): boolean {
   return draft.text.trim() !== '';
 }
 
-export function editText(draft: Draft, text: string, today: string, editing = false): Draft {
+export function editText(draft: Draft, text: string, today: string, now: string, editing = false): Draft {
   // Стёр всё — следующая мысль начинается с чистого листа, а не молча уходит на прошлый чип.
   // В правке выбор остаётся: стёр, чтобы написать название заново, а день и повтор — те же
   if (text.trim() === '') return editing ? { ...draft, text } : { ...emptyDraft, text };
-  const prev = parseWhen(draft.text, today);
-  const next = parseWhen(text, today);
+  const prev = parseWhen(draft.text, today, now);
+  const next = parseWhen(text, today, now);
   if (next.hit && (next.date !== prev.date || !samePattern(next.repeat, prev.repeat))) {
     return { ...emptyDraft, text };
   }
+  // Задача со временем в стикеры не падает: новое время отменяет ручной выбор стикеров
+  const toPocket = draft.date.manual && draft.date.value === null;
+  if (toPocket && next.time !== null && next.time !== prev.time) return { ...emptyDraft, text };
   return { ...draft, text };
 }
 
@@ -66,8 +76,8 @@ export function pickRepeat(draft: Draft, repeat: RepeatPattern | null): Draft {
 }
 
 /** Тап по дню в ряду ↻: день включается или выключается; выключили последний — «Один раз». */
-export function toggleWeekday(draft: Draft, today: string, weekday: number): Draft {
-  const current = resolveWhen(draft, today).repeat;
+export function toggleWeekday(draft: Draft, today: string, now: string, weekday: number): Draft {
+  const current = resolveWhen(draft, today, now).repeat;
   const days = current?.kind === 'weekly' ? current.weekdays : [];
   const next = days.includes(weekday)
     ? days.filter((d) => d !== weekday)
@@ -75,18 +85,21 @@ export function toggleWeekday(draft: Draft, today: string, weekday: number): Dra
   return pickRepeat(draft, next.length === 0 ? null : { kind: 'weekly', weekdays: next });
 }
 
-export function resolveWhen(draft: Draft, today: string): When {
-  const parsed = parseWhen(draft.text, today);
+/** now — текущее время 'HH:MM': время без дня — сегодня, а если уже прошло — завтра. */
+export function resolveWhen(draft: Draft, today: string, now: string): When {
+  const parsed = parseWhen(draft.text, today, now);
   const title = parsed.title.replace(/\s+/g, ' ').trim();
-  const picked = draft.date.manual ? draft.date.value : parsed.date;
-  if (picked === null) return { title, date: null, repeat: null, fromText: false };
+  const { time } = parsed;
+  const textDate = parsed.date ?? (time === null ? null : time < now ? addDays(today, 1) : today);
+  const picked = draft.date.manual ? draft.date.value : textDate;
+  if (picked === null) return { title, date: null, repeat: null, time: null, fromText: false };
   const fromText = parsed.hit && !draft.date.manual;
   if (draft.repeat.manual) {
     const repeat = draft.repeat.value;
     // Дни отметили в ряду ↻, а выбранный день не из них — повтор начинается с ближайшего отмеченного.
     // Считаем от выбранного дня, а не от прошлого сдвига, поэтому начало не «уползает»
     const date = repeat === null || occursOn(repeat, picked) ? picked : nextOccurrence(repeat, picked);
-    return { title, date, repeat, fromText };
+    return { title, date, repeat, time, fromText };
   }
   // Повтор из текста берём как есть, если он срабатывает в этот день: «каждое 31-е» 30 ноября остаётся 31-м
   const repeat =
@@ -95,13 +108,14 @@ export function resolveWhen(draft: Draft, today: string): When {
       : occursOn(parsed.repeat, picked)
         ? parsed.repeat
         : patternFor(parsed.repeat.kind, picked);
-  return { title, date: picked, repeat, fromText };
+  return { title, date: picked, repeat, time, fromText };
 }
 
 /** Строка над полем, пока печатаешь. */
 export function whenHint(when: When, today: string): Hint {
   if (when.date === null) return { accent: false, parts: [{ text: copy.composer.toPocket }] };
   const parts: HintPart[] = [{ text: formatDayLong(when.date, today), icon: 'arrowRight' }];
+  if (when.time !== null) parts.push({ text: formatTime(when.time) });
   if (when.repeat !== null) parts.push({ text: repeatLabel(when.repeat), icon: 'repeat' });
   if (when.fromText) parts.push({ text: copy.composer.fromText });
   return { accent: true, parts };
@@ -110,13 +124,18 @@ export function whenHint(when: When, today: string): Hint {
 /** Строка над полем после добавления — до следующей буквы. */
 export function addedHint(when: When, today: string): Hint {
   if (when.date === null) return { accent: false, parts: [{ text: copy.composer.addedToPocket }] };
-  if (when.repeat !== null) {
-    const from = when.date === today ? copy.dates.today : formatDayShort(when.date);
-    const label = copy.composer.addedRepeat(capitalize(repeatLabel(when.repeat)), from);
-    return { accent: false, parts: [{ text: label, icon: 'repeat' }] };
+  const parts = [addedPart(when.date, when.repeat, today)];
+  if (when.time !== null) parts.push({ text: formatTime(when.time) });
+  return { accent: false, parts };
+}
+
+function addedPart(date: string, repeat: RepeatPattern | null, today: string): HintPart {
+  if (repeat !== null) {
+    const from = date === today ? copy.dates.today : formatDayShort(date);
+    return { text: copy.composer.addedRepeat(capitalize(repeatLabel(repeat)), from), icon: 'repeat' };
   }
-  if (when.date === today) return { accent: false, parts: [{ text: copy.composer.addedToday }] };
-  return { accent: false, parts: [{ text: copy.composer.scheduled(formatDayLong(when.date, today)) }] };
+  if (date === today) return { text: copy.composer.addedToday };
+  return { text: copy.composer.scheduled(formatDayLong(date, today)) };
 }
 
 /** Чипы бегунка без «Дата»: «В карман», «Сегодня», «Завтра» и ещё NEAR_DAYS − 1 дней. */
@@ -148,7 +167,7 @@ export function calendarChipLabel(date: string | null, today: string): string {
   return date !== null && isFar(date, today) ? formatDayShort(date) : copy.composer.calendar;
 }
 
-const OPTION_KINDS: readonly RepeatKind[] = ['daily', 'weekdays', 'weekly', 'monthly', 'yearly'];
+const OPTION_KINDS: readonly RepeatKind[] = ['daily', 'interval', 'weekdays', 'weekly', 'monthly', 'yearly'];
 
 function optionLabel(p: RepeatPattern | null): string {
   if (p === null) return copy.composer.repeatOnce;
@@ -165,6 +184,8 @@ function optionLabel(p: RepeatPattern | null): string {
       return copy.composer.repeatMonthly(p.monthDay);
     case 'yearly':
       return copy.composer.repeatYearly(formatDayMonth(p.month, p.monthDay));
+    case 'interval':
+      return capitalize(repeatLabel(p));
   }
 }
 

@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
-import { Icon } from '@/components/icon';
+import { TaskMeta } from '@/components/task-meta';
 import { copy } from '@/lib/copy';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
@@ -38,12 +38,7 @@ export function NowCard({ item, doneCount, editingId, onDone, onLater, onEdit }:
               <Text style={text.nowTitle}>{item.task.title}</Text>
               {item.task.id === editingId && <FocusRing offset={space[6]} radius={radius.focus} />}
             </Pressable>
-            {item.repeat !== null && (
-              <View style={styles.repeat}>
-                <Icon name="repeat" size={13} color={colors.textSecondary} />
-                <Text style={text.note}>{item.repeat}</Text>
-              </View>
-            )}
+            <TaskMeta time={item.task.time} label={item.repeat} large />
           </View>
           <View style={styles.buttons}>
             <Pressable
@@ -84,11 +79,6 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     gap: space[6],
-  },
-  repeat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[4],
   },
   buttons: {
     flexDirection: 'row',

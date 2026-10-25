@@ -26,6 +26,7 @@ const TODAY = '2026-10-18'; // воскресенье
 const TOMORROW = '2026-10-19';
 const NOW = '2026-10-18T09:30:00.000Z';
 const BEFORE = '2026-10-01T06:00:00.000Z';
+const CLOCK = '10:00'; // время на часах для разбора «в 9»
 
 function task(overrides: Partial<Task> & { id: string }): Task {
   return {
@@ -56,10 +57,10 @@ beforeEach(() => {
 /** Правка, как в поле: тап по задаче, действия с черновиком, ✓. */
 function save(d: PlannerData, t: Task, change: (draft: Draft) => Draft): Changes | null {
   const { edit, draft } = startEdit(d, t);
-  return saveEdit(d, edit, resolveWhen(change(draft), d.today), NOW, makeId);
+  return saveEdit(d, edit, resolveWhen(change(draft), d.today, CLOCK), NOW, makeId);
 }
 
-const retitle = (text: string) => (d: Draft) => editText(d, text, TODAY, true);
+const retitle = (text: string) => (d: Draft) => editText(d, text, TODAY, CLOCK, true);
 
 /** Единственная задача из putTasks. */
 function only(changes: Changes | null): Task {
@@ -76,7 +77,7 @@ describe('startEdit', () => {
     expect(startEdit(data([t]), t)).toEqual({
       edit: {
         target: { kind: 'task', taskId: 'a' },
-        origin: { title: 'купить хлеб', date: TODAY, repeat: null, fromText: false },
+        origin: { title: 'купить хлеб', date: TODAY, repeat: null, time: null, fromText: false },
       },
       draft: {
         text: 'купить хлеб',
@@ -172,14 +173,14 @@ describe('saveEdit: задача', () => {
     const t = task({ id: 'p', date: null });
     const { edit, draft } = startEdit(data([t]), t);
     const moved = { ...t, date: TODAY, order: 3, updatedAt: NOW };
-    const when = resolveWhen(retitle('новое')(draft), TODAY);
+    const when = resolveWhen(retitle('новое')(draft), TODAY, CLOCK);
     expect(only(saveEdit(data([moved]), edit, when, NOW, makeId))).toEqual({ ...moved, title: 'новое' });
   });
 
   it('задачи уже нет — ничего', () => {
     const t = task({ id: 'a' });
     const { edit, draft } = startEdit(data([t]), t);
-    expect(saveEdit(data([]), edit, resolveWhen(draft, TODAY), NOW, makeId)).toBeNull();
+    expect(saveEdit(data([]), edit, resolveWhen(draft, TODAY, CLOCK), NOW, makeId)).toBeNull();
   });
 });
 
@@ -274,6 +275,7 @@ describe('правка из «Повторяется»', () => {
       title: 'вынести мусор',
       date: tuesday,
       repeat: { kind: 'weekly', weekdays: [2] },
+      time: null,
       fromText: false,
     });
     expect(draft.repeat).toEqual({ manual: true, value: { kind: 'weekly', weekdays: [2] } });
@@ -282,7 +284,7 @@ describe('правка из «Повторяется»', () => {
   function saveRule(change: (draft: Draft) => Draft): Changes | null {
     const d = data([], [r]);
     const { edit, draft } = startRuleEdit(d, r);
-    return saveEdit(d, edit, resolveWhen(change(draft), d.today), NOW, makeId);
+    return saveEdit(d, edit, resolveWhen(change(draft), d.today, CLOCK), NOW, makeId);
   }
 
   it('новый текст — правило переименовано, начало прежнее, задач не добавилось', () => {
@@ -290,7 +292,7 @@ describe('правка из «Повторяется»', () => {
   });
 
   it('добавили день в ряду ↻ — дни сохраняются, начало прежнее', () => {
-    expect(saveRule((d) => toggleWeekday(d, TODAY, 4))).toEqual({ putRules: [{ ...r, weekdays: [2, 4] }] });
+    expect(saveRule((d) => toggleWeekday(d, TODAY, CLOCK, 4))).toEqual({ putRules: [{ ...r, weekdays: [2, 4] }] });
   });
 
   it('«Один раз» — правило выключено, обычная задача на ближайший день', () => {
@@ -302,8 +304,69 @@ describe('правка из «Повторяется»', () => {
   });
 });
 
+describe('правка времени', () => {
+  const call = task({ id: 'a', title: 'созвон', time: '15:00' });
+
+  it('время возвращается в поле текстом', () => {
+    const { edit, draft } = startEdit(data([call]), call);
+    expect(draft.text).toBe('созвон в 15:00');
+    expect(edit.origin.time).toBe('15:00');
+  });
+
+  it('стёрли время — у задачи его нет', () => {
+    const result = only(save(data([call]), call, retitle('созвон')));
+    expect(result).toEqual({ ...task({ id: 'a', title: 'созвон' }), updatedAt: NOW });
+    expect(result).not.toHaveProperty('time');
+  });
+
+  it('поменяли время', () => {
+    expect(only(save(data([call]), call, retitle('созвон в 16'))).time).toBe('16:00');
+  });
+
+  it('в стикеры — время снято', () => {
+    const result = only(save(data([call]), call, (d) => pickDate(d, null)));
+    expect(result.date).toBeNull();
+    expect(result).not.toHaveProperty('time');
+  });
+
+  it('повтор: время меняется у правила и сегодняшнего экземпляра', () => {
+    const r = rule({ kind: 'daily' }, { time: '07:00' });
+    const inst = task({ id: 'i', title: 'зарядка', ruleId: 'r', time: '07:00' });
+    const { draft } = startEdit(data([inst], [r]), inst);
+    expect(draft.text).toBe('зарядка в 07:00');
+    expect(save(data([inst], [r]), inst, retitle('зарядка в 8 утра'))).toEqual({
+      putRules: [{ ...r, time: '08:00' }],
+      putTasks: [{ ...inst, time: '08:00', updatedAt: NOW }],
+    });
+  });
+});
+
+describe('правка повтора «через день»', () => {
+  const r = rule({ kind: 'interval', days: 2 }, { startDate: '2026-10-16' });
+  const inst = task({ id: 'i', title: 'зарядка', ruleId: 'r' });
+
+  it('открывается с тем же шагом', () => {
+    expect(startEdit(data([inst], [r]), inst).draft.repeat).toEqual({
+      manual: true,
+      value: { kind: 'interval', days: 2 },
+    });
+  });
+
+  it('без смены дня начало прежнее', () => {
+    expect(save(data([inst], [r]), inst, retitle('полить цветы'))?.putRules).toEqual([
+      { ...r, title: 'полить цветы' },
+    ]);
+  });
+
+  it('смена дня — начало с нового дня', () => {
+    const changes = save(data([inst], [r]), inst, (d) => pickDate(d, TOMORROW));
+    expect(changes?.putRules).toEqual([{ ...r, startDate: TOMORROW }]);
+    expect(changes?.removeTasks).toEqual(['i']);
+  });
+});
+
 describe('подсказки правки', () => {
-  const daily: When = { title: 'зарядка', date: TODAY, repeat: { kind: 'daily' }, fromText: true };
+  const daily: When = { title: 'зарядка', date: TODAY, repeat: { kind: 'daily' }, time: null, fromText: true };
 
   it('правка повтора — «для всех повторов», без «понял из текста»', () => {
     expect(editHint(daily, TODAY, true)).toEqual({
@@ -318,7 +381,7 @@ describe('подсказки правки', () => {
   });
 
   it('в стикеры — серым', () => {
-    const pocket: When = { title: 'идея', date: null, repeat: null, fromText: false };
+    const pocket: When = { title: 'идея', date: null, repeat: null, time: null, fromText: false };
     expect(editHint(pocket, TODAY, false)).toEqual({
       accent: false,
       parts: [{ text: 'в стикеры', icon: 'arrowRight' }],
@@ -326,7 +389,7 @@ describe('подсказки правки', () => {
   });
 
   it('итог после ✓', () => {
-    const origin: When = { title: 'купить хлеб', date: TODAY, repeat: null, fromText: false };
+    const origin: When = { title: 'купить хлеб', date: TODAY, repeat: null, time: null, fromText: false };
     const taskEdit: EditState = { target: { kind: 'task', taskId: 'a' }, origin };
     const ruleEdit: EditState = {
       target: { kind: 'rule', ruleId: 'r', taskId: 'i' },
@@ -343,7 +406,7 @@ describe('подсказки правки', () => {
 });
 
 describe('editUndoText', () => {
-  const sticker: When = { title: 'идея', date: null, repeat: null, fromText: false };
+  const sticker: When = { title: 'идея', date: null, repeat: null, time: null, fromText: false };
   const stickerEdit: EditState = { target: { kind: 'task', taskId: 'a' }, origin: sticker };
   const todayEdit: EditState = { target: { kind: 'task', taskId: 'a' }, origin: { ...sticker, date: TODAY } };
 

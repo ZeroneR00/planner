@@ -1,7 +1,7 @@
 import { applyChanges, type Changes } from '@/lib/changes';
 import { at } from '@/lib/dates';
 import { rollover } from '@/lib/rollover';
-import type { Env, PlannerData, Rule, Task } from '@/lib/types';
+import type { Env, PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 export type BindValue = string | number | null;
 
@@ -49,6 +49,11 @@ export const MIGRATIONS: readonly string[] = [
   UPDATE rules SET weekdays = CAST(weekday AS TEXT) WHERE kind = 'weekly';
   ALTER TABLE rules DROP COLUMN weekday;
   `,
+  `
+  ALTER TABLE tasks ADD COLUMN time TEXT;       -- 'HH:MM'; только у задачи с датой
+  ALTER TABLE rules ADD COLUMN time TEXT;       -- 'HH:MM'; переходит в экземпляры
+  ALTER TABLE rules ADD COLUMN every INTEGER;   -- только interval: шаг в днях
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -70,6 +75,7 @@ type TaskRow = {
   id: string;
   title: string;
   date: string | null;
+  time: string | null;
   done: number;
   done_at: string | null;
   sort_order: number;
@@ -86,12 +92,15 @@ type RuleRow = {
   weekdays: string | null;
   month: number | null;
   month_day: number | null;
+  every: number | null;
   start_date: string;
   active: number;
+  time: string | null;
 };
 
-const TASK_COLUMNS = 'id, title, date, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
-const RULE_COLUMNS = 'id, title, kind, weekdays, month, month_day, start_date, active';
+const TASK_COLUMNS =
+  'id, title, date, time, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
+const RULE_COLUMNS = 'id, title, kind, weekdays, month, month_day, every, start_date, active, time';
 
 function placeholders(columns: string): string {
   return columns
@@ -116,6 +125,7 @@ function taskFromRow(row: TaskRow): Task {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (row.time !== null) task.time = row.time;
   if (row.done_at !== null) task.doneAt = row.done_at;
   if (row.rule_id !== null) task.ruleId = row.rule_id;
   if (row.returned === 1) task.returned = true;
@@ -128,6 +138,7 @@ function taskToParams(task: Task): BindValue[] {
     task.id,
     task.title,
     task.date,
+    task.time ?? null,
     task.done ? 1 : 0,
     task.doneAt ?? null,
     task.order,
@@ -153,7 +164,13 @@ function weekdaysFrom(row: RuleRow): number[] {
 }
 
 function ruleFromRow(row: RuleRow): Rule {
-  const base = { id: row.id, title: row.title, startDate: row.start_date, active: row.active === 1 };
+  const base: Omit<Rule, keyof RepeatPattern> = {
+    id: row.id,
+    title: row.title,
+    startDate: row.start_date,
+    active: row.active === 1,
+  };
+  if (row.time !== null) base.time = row.time;
   switch (row.kind) {
     case 'daily':
       return { ...base, kind: 'daily' };
@@ -170,6 +187,8 @@ function ruleFromRow(row: RuleRow): Rule {
         month: required(row.month, 'month', row),
         monthDay: required(row.month_day, 'month_day', row),
       };
+    case 'interval':
+      return { ...base, kind: 'interval', days: required(row.every, 'every', row) };
     default:
       throw new Error(`Неизвестный вид повтора «${row.kind}» у правила ${row.id}`);
   }
@@ -184,8 +203,10 @@ function ruleToParams(rule: Rule): BindValue[] {
     rule.kind === 'weekly' ? rule.weekdays.join(',') : null,
     rule.kind === 'yearly' ? rule.month : null,
     rule.kind === 'monthly' || rule.kind === 'yearly' ? rule.monthDay : null,
+    rule.kind === 'interval' ? rule.days : null,
     rule.startDate,
     rule.active ? 1 : 0,
+    rule.time ?? null,
   ];
 }
 

@@ -140,3 +140,38 @@ describe('samePattern', () => {
     expect(samePattern(null, { kind: 'daily' })).toBe(false);
   });
 });
+
+describe('повтор каждые N дней', () => {
+  const every2: Rule = { id: 'r', title: 'цветы', kind: 'interval', days: 2, startDate: '2026-10-17', active: true };
+
+  it('ruleOccursOn — от начала через шаг', () => {
+    expect(ruleOccursOn(every2, '2026-10-17')).toBe(true);
+    expect(ruleOccursOn(every2, '2026-10-18')).toBe(false);
+    expect(ruleOccursOn(every2, '2026-10-19')).toBe(true);
+    expect(ruleOccursOn(every2, '2026-10-16')).toBe(false);
+    expect(ruleOccursOn({ ...every2, active: false }, '2026-10-19')).toBe(false);
+  });
+
+  it('nextRuleDate', () => {
+    expect(nextRuleDate(every2, '2026-10-18')).toBe('2026-10-19');
+    expect(nextRuleDate(every2, '2026-10-10')).toBe('2026-10-17');
+    expect(nextRuleDate({ ...every2, days: 3 }, '2026-10-18')).toBe('2026-10-20');
+  });
+
+  it.each([
+    [2, 'через день'],
+    [3, 'каждые 3 дня'],
+    [5, 'каждые 5 дней'],
+    [31, 'каждый 31 день'],
+    [14, 'раз в 2 недели'],
+    [35, 'раз в 5 недель'],
+  ])('repeatLabel %i → %s', (days, label) => {
+    expect(repeatLabel({ kind: 'interval', days })).toBe(label);
+  });
+
+  it('samePattern и patternFor', () => {
+    expect(samePattern({ kind: 'interval', days: 2 }, { kind: 'interval', days: 2 })).toBe(true);
+    expect(samePattern({ kind: 'interval', days: 2 }, { kind: 'interval', days: 3 })).toBe(false);
+    expect(patternFor('interval', '2026-10-20')).toEqual({ kind: 'interval', days: 2 });
+  });
+});

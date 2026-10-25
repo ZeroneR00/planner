@@ -29,6 +29,17 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+/** Локальное время 'HH:MM': для «через час» и «в 9», когда 9 уже прошло. */
+export function nowTime(): string {
+  const now = new Date();
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+/** '09:00' → '9:00'. Храним с нулём — строки так сравниваются по порядку. */
+export function formatTime(time: string): string {
+  return time.startsWith('0') ? time.slice(1) : time;
+}
+
 export function dateParts(date: string): { year: number; month: number; day: number } {
   return {
     year: Number(date.slice(0, 4)),
@@ -48,6 +59,20 @@ function fromUtc(ms: number): string {
 
 export function addDays(date: string, n: number): string {
   return fromUtc(toUtc(date) + n * DAY_MS);
+}
+
+/** Если в месяце нет такого числа — последний день: 31 января + 1 месяц = 28 февраля. */
+export function addMonths(date: string, n: number): string {
+  const { year, month, day } = dateParts(date);
+  const index = year * 12 + (month - 1) + n;
+  const y = Math.floor(index / 12);
+  const m = (index % 12) + 1;
+  return `${y}-${pad(m)}-${pad(Math.min(day, daysInMonth(y, m)))}`;
+}
+
+/** Понедельник следующей недели (неделя с понедельника). */
+export function nextWeekStart(date: string): string {
+  return addDays(date, 7 - ((weekdayOf(date) + 6) % 7));
 }
 
 /** Сколько дней от `from` до `to`; отрицательное, если `to` раньше. */

@@ -1,5 +1,6 @@
 import {
   addDays,
+  addMonths,
   at,
   capitalize,
   daysInMonth,
@@ -9,11 +10,13 @@ import {
   formatDayLong,
   formatDayShort,
   formatHeaderDate,
+  formatTime,
   formatMonthTitle,
   makeDate,
   monthGrid,
   monthShift,
   monthStart,
+  nextWeekStart,
   today,
   weekdayHeaders,
   weekdayOf,
@@ -129,5 +132,26 @@ describe('календарь', () => {
 
   it('weekdayHeaders', () => {
     expect(weekdayHeaders()).toEqual(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']);
+  });
+});
+
+describe('месяцы, недели и время', () => {
+  it('addMonths: нет числа в месяце — последний день', () => {
+    expect(addMonths('2026-10-17', 1)).toBe('2026-11-17');
+    expect(addMonths('2026-12-17', 1)).toBe('2027-01-17');
+    expect(addMonths('2026-01-31', 1)).toBe('2026-02-28');
+    expect(addMonths('2028-02-29', 12)).toBe('2029-02-28');
+  });
+
+  it('nextWeekStart — понедельник следующей недели', () => {
+    expect(nextWeekStart('2026-10-17')).toBe('2026-10-19'); // сб
+    expect(nextWeekStart('2026-10-18')).toBe('2026-10-19'); // вс
+    expect(nextWeekStart('2026-10-19')).toBe('2026-10-26'); // пн
+  });
+
+  it('formatTime без ведущего нуля', () => {
+    expect(formatTime('09:00')).toBe('9:00');
+    expect(formatTime('00:05')).toBe('0:05');
+    expect(formatTime('15:30')).toBe('15:30');
   });
 });

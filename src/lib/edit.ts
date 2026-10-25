@@ -2,8 +2,9 @@ import type { Changes } from '@/lib/changes';
 import { addedHint, whenHint, type Draft, type Hint, type When } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { formatDayBrief } from '@/lib/dates';
+import { timePhrase } from '@/lib/parse-when';
 import { nextRuleDate, ruleOccursOn } from '@/lib/rules';
-import { addTask, firstOrder, nextOrder, ruleInstance } from '@/lib/task-actions';
+import { addTask, firstOrder, nextOrder, ruleInstance, withTime } from '@/lib/task-actions';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 // Правка задачи по тапу. Итог сравниваем с тем, как было в начале правки (origin), меняем только
@@ -28,6 +29,8 @@ function patternOf(rule: Rule): RepeatPattern {
       return { kind: rule.kind, monthDay: rule.monthDay };
     case 'yearly':
       return { kind: rule.kind, month: rule.month, monthDay: rule.monthDay };
+    case 'interval':
+      return { kind: rule.kind, days: rule.days };
   }
 }
 
@@ -41,8 +44,8 @@ export function startEdit(data: PlannerData, task: Task): { edit: EditState; dra
       ? { kind: 'rule', ruleId: rule.id, taskId: task.id }
       : { kind: 'task', taskId: task.id };
   return rule !== undefined
-    ? editFor(target, rule.title, task.date, patternOf(rule))
-    : editFor(target, task.title, task.date, null);
+    ? editFor(target, rule.title, task.date, patternOf(rule), rule.time ?? null)
+    : editFor(target, task.title, task.date, null, task.time ?? null);
 }
 
 /** Правка из «Повторяется»: день — сегодня, если есть экземпляр, иначе ближайший день правила. */
@@ -50,7 +53,7 @@ export function startRuleEdit(data: PlannerData, rule: Rule): { edit: EditState;
   const instance = data.tasks.find((t) => t.ruleId === rule.id && t.date === data.today);
   const date = instance?.date ?? nextRuleDate(rule, data.today);
   const target: EditTarget = { kind: 'rule', ruleId: rule.id, taskId: instance?.id ?? null };
-  return editFor(target, rule.title, date, patternOf(rule));
+  return editFor(target, rule.title, date, patternOf(rule), rule.time ?? null);
 }
 
 function editFor(
@@ -58,11 +61,13 @@ function editFor(
   title: string,
   date: string | null,
   repeat: RepeatPattern | null,
+  time: string | null,
 ): { edit: EditState; draft: Draft } {
   return {
-    edit: { target, origin: { title, date, repeat, fromText: false } },
+    edit: { target, origin: { title, date, repeat, time, fromText: false } },
     draft: {
-      text: title,
+      // Время — текстом в поле: поправить или стереть его можно так же, как написать
+      text: time === null ? title : `${title} ${timePhrase(time)}`,
       date: { manual: true, value: date },
       // Весь шаблон, а не вид: «каждое 31-е», открытое 30 ноября, не станет 30-м, а дни недели — те же
       repeat: { manual: true, value: repeat },
@@ -70,9 +75,10 @@ function editFor(
   };
 }
 
+// Время берём из правки: when.time без дня всегда null, поэтому в стикерах времени не остаётся
 function editedTask(data: PlannerData, task: Task, when: When, origin: When, now: string): Task {
   if (when.date === origin.date) {
-    if (task.date !== null) return { ...task, title: when.title, updatedAt: now };
+    if (task.date !== null) return withTime({ ...task, title: when.title, updatedAt: now }, when.time);
     // Как при переносе из Кармана: смена дня заменяет старый пропуск повтора только при returned,
     // иначе в Кармане оказалось бы два экземпляра одного повтора
     const { returned, ruleId, ...rest } = task;
@@ -81,7 +87,8 @@ function editedTask(data: PlannerData, task: Task, when: When, origin: When, now
   // Перенос = «надо сделать тогда»: отметка «сделано» снимается
   const { returned, ruleId, doneAt, ...rest } = task;
   const order = when.date === null ? firstOrder(data.tasks, null) : nextOrder(data.tasks, when.date);
-  return { ...rest, title: when.title, date: when.date, done: false, order, updatedAt: now };
+  const moved: Task = { ...rest, title: when.title, date: when.date, done: false, order, updatedAt: now };
+  return withTime(moved, when.time);
 }
 
 function saveTask(
@@ -116,17 +123,21 @@ function saveRule(
   }
   const same = when.date === origin.date && when.repeat.kind === origin.repeat?.kind;
   // Собираем заново, а не спредом rule: при смене вида остались бы поля старого вида
-  const next: Rule = {
-    ...when.repeat,
-    id: rule.id,
-    title: when.title,
-    startDate: same ? rule.startDate : when.date,
-    active: true,
-  };
+  const next = withTime<Rule>(
+    {
+      ...when.repeat,
+      id: rule.id,
+      title: when.title,
+      startDate: same ? rule.startDate : when.date,
+      active: true,
+    },
+    when.time,
+  );
   const current = data.tasks.find((t) => t.ruleId === rule.id && t.date === data.today);
   if (current !== undefined) {
     if (current.done || ruleOccursOn(next, data.today)) {
-      return { putRules: [next], putTasks: [{ ...current, title: when.title, updatedAt: now }] };
+      const instance = withTime({ ...current, title: when.title, updatedAt: now }, when.time);
+      return { putRules: [next], putTasks: [instance] };
     }
     // Повтор увели с сегодня: несделанный экземпляр уходит, сделанный остаётся историей
     return { putRules: [next], removeTasks: [current.id] };

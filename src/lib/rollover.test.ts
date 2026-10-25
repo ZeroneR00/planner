@@ -135,6 +135,19 @@ describe('rollover', () => {
     expect(run([inPocket, instance], [rule({ id: 'r' })])).toEqual(EMPTY);
   });
 
+  it('11: экземпляр берёт время правила, пропуск уходит в Карман без времени', () => {
+    const diff = run([task({ id: 'call', date: '2026-10-17', time: '15:00' })], [rule({ id: 'r', time: '07:00' })]);
+    expect(diff.updated).toEqual([task({ id: 'call', ...pocketed })]);
+    expect(diff.updated[0]).not.toHaveProperty('time');
+    expect(diff.created[0]?.time).toBe('07:00');
+  });
+
+  it('12: через день — экземпляр только в свой день', () => {
+    const every2 = rule({ id: 'r', kind: 'interval', days: 2, startDate: '2026-10-16' });
+    expect(run([], [every2]).created).toHaveLength(1);
+    expect(run([], [{ ...every2, startDate: '2026-10-17' }]).created).toHaveLength(0);
+  });
+
   it('10: повторный запуск на применённом результате — пустой diff', () => {
     const tasks = [
       task({ id: 'a', date: '2026-10-15' }),

@@ -17,18 +17,19 @@ export function demoChanges({ today, now, makeId }: Env): Changes {
     updatedAt: now,
     ...extra,
   });
-  const rule = (title: string, pattern: RepeatPattern): Rule => ({
+  const rule = (title: string, pattern: RepeatPattern, extra: Pick<Rule, 'time'> = {}): Rule => ({
     ...pattern,
     id: makeId(),
     title,
     startDate: today,
     active: true,
+    ...extra,
   });
 
   return {
     putTasks: [
       task('Проверить новые заказы', today, 0, { done: true, doneAt: now }),
-      task('Созвон с заказчиком', today, 1),
+      task('Созвон с заказчиком', today, 1, { time: '15:00' }),
       task('Вёрстка формы заказа', today, 2),
       task('Правки по макету', null, 0, { returned: true }),
       task('Идея: тёмная тема для сайта', null, 1),
@@ -38,7 +39,7 @@ export function demoChanges({ today, now, makeId }: Env): Changes {
       task('Продлить домен', addDays(today, 10), 2),
     ],
     putRules: [
-      rule('Прогулка', { kind: 'daily' }),
+      rule('Прогулка', { kind: 'daily' }, { time: '19:00' }),
       rule('Вынести мусор', { kind: 'weekly', weekdays: [2] }),
       rule('Оплатить хостинг', { kind: 'monthly', monthDay: 1 }),
     ],

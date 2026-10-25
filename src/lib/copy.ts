@@ -4,6 +4,16 @@
 const POCKET = 'Стикеры';
 const POCKET_ACC = 'стикеры';
 
+// «1 день», «3 дня», «5 дней»; 11–14 — всегда many
+function plural(n: number, one: string, few: string, many: string): string {
+  const tens = n % 100;
+  const units = n % 10;
+  if (tens >= 11 && tens <= 14) return many;
+  if (units === 1) return one;
+  if (units >= 2 && units <= 4) return few;
+  return many;
+}
+
 export const copy = {
   today: {
     title: 'Сегодня',
@@ -91,6 +101,9 @@ export const copy = {
     weeklyMany: (first: string, last: string) => `по ${first} и ${last}`,
     monthly: (day: number) => `каждый месяц, ${day}-го`,
     yearly: (day: string) => `каждый год, ${day}`,
+    everyOtherDay: 'через день',
+    everyDays: (n: number) => `${plural(n, 'каждый', 'каждые', 'каждые')} ${n} ${plural(n, 'день', 'дня', 'дней')}`,
+    everyWeeks: (n: number) => `раз в ${n} ${plural(n, 'неделю', 'недели', 'недель')}`,
     doneToday: 'на сегодня готово',
   },
   undo: {

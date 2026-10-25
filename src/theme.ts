@@ -85,6 +85,7 @@ export const size = {
   undoRing: 28, // круг с таймером на плашке «Вернуть»
   undoProgress: 2, // полоска времени внизу плашки
   daySheet: 220, // минимальная ширина меню «Когда?»
+  repeatPill: 160, // наибольшая ширина ↻ с надписью повтора
 } as const;
 
 // Готовые стили текста. letterSpacing и lineHeight в RN — в dp, а не в em и не множителем,
@@ -140,5 +141,6 @@ export const text = {
   },
   caption: { fontFamily: fonts.regular, fontSize: 12, color: colors.textHint },
   mono: { fontFamily: fonts.mono, fontSize: 12, color: colors.textSecondary },
+  monoNote: { fontFamily: fonts.mono, fontSize: 13, color: colors.textSecondary }, // время в «Сейчас»
   monoCount: { fontFamily: fonts.mono, fontSize: 13, color: colors.accent },
 } as const satisfies Record<string, TextStyle>;
