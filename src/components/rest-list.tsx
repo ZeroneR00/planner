@@ -2,8 +2,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
+import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
 import { copy } from '@/lib/copy';
+import { shownTitle } from '@/lib/photo';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
 import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
@@ -26,20 +28,23 @@ export function RestList({ items, editingId, onToggle, onEdit }: Props) {
             onPress={() => onToggle(task)}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: task.done }}
-            accessibilityLabel={task.done ? copy.a11y.uncheck(task.title) : copy.a11y.check(task.title)}
+            accessibilityLabel={task.done ? copy.a11y.uncheck(shownTitle(task)) : copy.a11y.check(shownTitle(task))}
             style={({ pressed }) => [styles.check, pressed && styles.pressed]}
           >
             <View style={[styles.circle, task.done && styles.circleDone]}>
               {task.done && <Icon name="check" size={13} color={colors.onAccent} strokeWidth={3} />}
             </View>
           </Pressable>
+          {task.photo !== undefined && <PhotoThumb name={task.photo} style={styles.thumb} />}
           <Pressable
             onPress={() => onEdit(task)}
             accessibilityRole="button"
-            accessibilityLabel={copy.a11y.edit(task.title)}
+            accessibilityLabel={copy.a11y.edit(shownTitle(task))}
             style={({ pressed }) => [styles.main, pressed && styles.pressed]}
           >
-            <Text style={[text.body, task.done && styles.titleDone]}>{task.title}</Text>
+            <Text style={[text.body, task.title === '' && styles.untitled, task.done && styles.titleDone]}>
+              {shownTitle(task)}
+            </Text>
             <TaskMeta
               time={task.time}
               label={repeat !== null && task.done ? `${repeat} · ${copy.repeat.doneToday}` : repeat}
@@ -96,6 +101,13 @@ const styles = StyleSheet.create({
     gap: space[2],
     paddingVertical: space[6],
     paddingRight: space[10],
+  },
+  // «Фото» вместо подписи — вторичным цветом: это не текст задачи
+  untitled: {
+    color: colors.textSecondary,
+  },
+  thumb: {
+    marginRight: space[8],
   },
   titleDone: {
     color: colors.textDone,

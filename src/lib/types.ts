@@ -16,6 +16,7 @@ export type Rule = RepeatPattern & {
   startDate: string;
   active: boolean;
   time?: string; // 'HH:MM'; переходит в экземпляры
+  photo?: string; // имя файла в папке фото; переходит в экземпляры
 };
 
 export type Task = {
@@ -23,6 +24,7 @@ export type Task = {
   title: string;
   date: string | null; // null — задача в Кармане
   time?: string; // 'HH:MM'; только у задачи с датой
+  photo?: string; // имя файла в папке фото
   done: boolean;
   doneAt?: string;
   order: number;

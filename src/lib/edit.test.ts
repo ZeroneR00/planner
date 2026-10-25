@@ -463,3 +463,57 @@ describe('editUndoText', () => {
     expect(editUndoText(ruleEdit, { ...sticker, date: TOMORROW }, TODAY)).toBeNull();
   });
 });
+
+describe('правка задачи-фото', () => {
+  const shot = task({ id: 'f', title: '', photo: 'a.jpg', order: 2 });
+  const trash = rule({ kind: 'weekly', weekdays: [2] }, { title: 'вынести мусор', photo: 'm.jpg' });
+
+  function saveTrash(change: (draft: Draft) => Draft): Changes | null {
+    const d = data([], [trash]);
+    const { edit, draft } = startRuleEdit(d, trash);
+    return saveEdit(d, edit, resolveWhen(change(draft), d.today, CLOCK), NOW, makeId);
+  }
+
+  it('startEdit и startRuleEdit запоминают фото', () => {
+    expect(startEdit(data([shot]), shot).edit.photo).toBe('a.jpg');
+    expect(startRuleEdit(data([], [trash]), trash).edit.photo).toBe('m.jpg');
+    const plain = task({ id: 'a' });
+    expect(startEdit(data([plain]), plain).edit).not.toHaveProperty('photo');
+  });
+
+  it('подпись к фото — фото на месте', () => {
+    expect(only(save(data([shot]), shot, retitle('чек за свет')))).toStrictEqual({
+      ...shot,
+      title: 'чек за свет',
+      updatedAt: NOW,
+    });
+  });
+
+  it('пустая подпись со временем — в поле только время', () => {
+    const t = task({ id: 'f', title: '', photo: 'a.jpg', time: '15:00' });
+    expect(startEdit(data([t]), t).draft.text).toBe('в 15:00');
+  });
+
+  it('задача с фото → повтор: фото у правила и экземпляра', () => {
+    const changes = save(data([shot]), shot, (d) => pickRepeat(d, { kind: 'daily' }));
+    expect(changes?.removeTasks).toEqual(['f']);
+    expect(changes?.putRules?.[0]?.photo).toBe('a.jpg');
+    expect(changes?.putTasks?.[0]?.photo).toBe('a.jpg');
+  });
+
+  it('правка повтора с фото — фото остаётся у правила', () => {
+    expect(saveTrash(retitle('мусор'))).toEqual({ putRules: [{ ...trash, title: 'мусор' }] });
+  });
+
+  it('«Один раз» у повтора с фото без экземпляра — задача с фото', () => {
+    const changes = saveTrash((d) => pickRepeat(d, null));
+    expect(changes?.putRules).toEqual([{ ...trash, active: false }]);
+    expect(changes?.putTasks?.[0]?.photo).toBe('m.jpg');
+  });
+
+  it('перенос фото без подписи — плашка «Фото»', () => {
+    const origin: When = { title: '', date: null, repeat: null, time: null, fromText: false };
+    const edit: EditState = { target: { kind: 'task', taskId: 'f' }, origin, photo: 'a.jpg' };
+    expect(editUndoText(edit, { ...origin, date: TOMORROW }, TODAY)).toBe('На завтра: Фото');
+  });
+});

@@ -1,10 +1,11 @@
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
-import { createContext, use, useState, type ReactNode } from 'react';
+import { createContext, use, useEffect, useState, type ReactNode } from 'react';
 
+import { cleanupPhotos } from '@/hooks/use-photos';
 import { useReminders } from '@/hooks/use-reminders';
 import { applyChanges, type Changes } from '@/lib/changes';
 import { nowIso, today } from '@/lib/dates';
-import { migrate, startDay, writeChanges, type Db } from '@/lib/db';
+import { migrate, photoNames, startDay, writeChanges, type Db } from '@/lib/db';
 import { demoChanges } from '@/lib/demo';
 import { makeId } from '@/lib/id';
 import type { Env, PlannerData } from '@/lib/types';
@@ -39,6 +40,10 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   // второй вызов ничего не изменит: rollover идемпотентен
   const [data, setData] = useState(() => startToday(db));
   const reminders = useReminders(data);
+  // Один раз при запуске: файлы фото, на которые больше нет ссылок
+  useEffect(() => {
+    cleanupPhotos(photoNames(db));
+  }, [db]);
   const commit = (changes: Changes) => {
     writeChanges(db, changes); // сначала база: упала запись — память не трогаем
     setData((d) => applyChanges(d, changes));

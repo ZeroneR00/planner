@@ -54,6 +54,11 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE rules ADD COLUMN time TEXT;       -- 'HH:MM'; переходит в экземпляры
   ALTER TABLE rules ADD COLUMN every INTEGER;   -- только interval: шаг в днях
   `,
+  // Только имя файла: путь к папке приложения меняется между Expo Go, сборкой и обновлениями
+  `
+  ALTER TABLE tasks ADD COLUMN photo TEXT;
+  ALTER TABLE rules ADD COLUMN photo TEXT;
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -76,6 +81,7 @@ type TaskRow = {
   title: string;
   date: string | null;
   time: string | null;
+  photo: string | null;
   done: number;
   done_at: string | null;
   sort_order: number;
@@ -96,11 +102,13 @@ type RuleRow = {
   start_date: string;
   active: number;
   time: string | null;
+  photo: string | null;
 };
 
 const TASK_COLUMNS =
-  'id, title, date, time, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
-const RULE_COLUMNS = 'id, title, kind, weekdays, month, month_day, every, start_date, active, time';
+  'id, title, date, time, photo, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
+const RULE_COLUMNS =
+  'id, title, kind, weekdays, month, month_day, every, start_date, active, time, photo';
 
 function placeholders(columns: string): string {
   return columns
@@ -126,6 +134,7 @@ function taskFromRow(row: TaskRow): Task {
     updatedAt: row.updated_at,
   };
   if (row.time !== null) task.time = row.time;
+  if (row.photo !== null) task.photo = row.photo;
   if (row.done_at !== null) task.doneAt = row.done_at;
   if (row.rule_id !== null) task.ruleId = row.rule_id;
   if (row.returned === 1) task.returned = true;
@@ -139,6 +148,7 @@ function taskToParams(task: Task): BindValue[] {
     task.title,
     task.date,
     task.time ?? null,
+    task.photo ?? null,
     task.done ? 1 : 0,
     task.doneAt ?? null,
     task.order,
@@ -171,6 +181,7 @@ function ruleFromRow(row: RuleRow): Rule {
     active: row.active === 1,
   };
   if (row.time !== null) base.time = row.time;
+  if (row.photo !== null) base.photo = row.photo;
   switch (row.kind) {
     case 'daily':
       return { ...base, kind: 'daily' };
@@ -207,6 +218,7 @@ function ruleToParams(rule: Rule): BindValue[] {
     rule.startDate,
     rule.active ? 1 : 0,
     rule.time ?? null,
+    rule.photo ?? null,
   ];
 }
 
@@ -220,6 +232,15 @@ export function loadData(db: Db, today: string): PlannerData {
     .map(taskFromRow);
   const rules = db.getAllSync<RuleRow>('SELECT * FROM rules', []).map(ruleFromRow);
   return { today, tasks, rules };
+}
+
+/** Имена всех фото, на которые есть ссылка, включая историю и выключенные правила. */
+export function photoNames(db: Db): Set<string> {
+  const rows = db.getAllSync<{ photo: string }>(
+    'SELECT photo FROM tasks WHERE photo IS NOT NULL UNION SELECT photo FROM rules WHERE photo IS NOT NULL',
+    [],
+  );
+  return new Set(rows.map((row) => row.photo));
 }
 
 /** Всё одной транзакцией. Порядок как в applyChanges: сначала удалить, потом записать. */

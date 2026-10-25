@@ -252,6 +252,36 @@ describe('addTask', () => {
       { ...call, order: 6 },
     ]);
   });
+
+  it('фото в стикеры — у задачи, подпись может быть пустой', () => {
+    expect(only(addTask(data(tasks), when({ title: '' }), NOW, makeId, 'a.jpg'))).toStrictEqual({
+      id: 'id1',
+      ...fresh,
+      title: '',
+      date: null,
+      order: -1,
+      photo: 'a.jpg',
+    });
+  });
+
+  it('фото на день — у задачи вместе со временем', () => {
+    const added = only(addTask(data(tasks), when({ date: TODAY, time: '15:00' }), NOW, makeId, 'a.jpg'));
+    expect(added.photo).toBe('a.jpg');
+    expect(added.time).toBe('15:00');
+  });
+
+  it('повтор с фото — фото у правила и экземпляра', () => {
+    const changes = addTask(data(tasks), when({ date: TODAY, repeat: { kind: 'daily' } }), NOW, makeId, 'a.jpg');
+    expect(changes.putRules?.[0]?.photo).toBe('a.jpg');
+    expect(changes.putTasks?.[0]?.photo).toBe('a.jpg');
+  });
+
+  it('без фото — ключа photo нет', () => {
+    const changes = addTask(data(tasks), when({ date: TODAY, repeat: { kind: 'daily' } }), NOW, makeId);
+    expect(changes.putRules?.[0]).not.toHaveProperty('photo');
+    expect(changes.putTasks?.[0]).not.toHaveProperty('photo');
+    expect(only(addTask(data(tasks), when({}), NOW, makeId))).not.toHaveProperty('photo');
+  });
 });
 
 describe('placeInDay', () => {

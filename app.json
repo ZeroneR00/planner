@@ -30,7 +30,20 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Камера нужна, чтобы записать задачу фотографией",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Доступ к фото нужен, чтобы прикрепить снимок к задаче"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

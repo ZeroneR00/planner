@@ -56,6 +56,10 @@ describe('planReminders: задачи', () => {
       't:doc:2026-11-18T09:00',
     ]);
   });
+
+  it('фото без подписи — напоминание «Фото»', () => {
+    expect(plan([task({ id: 'f', title: '', photo: 'a.jpg', time: '15:00' })])[0]?.title).toBe('Фото');
+  });
 });
 
 describe('planReminders: повторы', () => {

@@ -1,4 +1,5 @@
 import { addDays } from '@/lib/dates';
+import { shownTitle } from '@/lib/photo';
 import { ruleOccursOn } from '@/lib/rules';
 import { compareStrings } from '@/lib/today-view';
 import type { PlannerData } from '@/lib/types';
@@ -31,7 +32,7 @@ export function planReminders(
 
   for (const task of data.tasks) {
     if (task.done || task.date === null || task.time === undefined) continue;
-    add(`t:${task.id}:${momentKey(task.date, task.time)}`, task.title, task.date, task.time);
+    add(`t:${task.id}:${momentKey(task.date, task.time)}`, shownTitle(task), task.date, task.time);
   }
 
   for (const rule of data.rules) {
@@ -41,7 +42,7 @@ export function planReminders(
       if (!ruleOccursOn(rule, date)) continue;
       // Экземпляр в этот день есть — сделанный или нет, его покрывают задачи
       if (data.tasks.some((t) => t.ruleId === rule.id && t.date === date)) continue;
-      add(`r:${rule.id}:${momentKey(date, rule.time)}`, rule.title, date, rule.time);
+      add(`r:${rule.id}:${momentKey(date, rule.time)}`, shownTitle(rule), date, rule.time);
     }
   }
 

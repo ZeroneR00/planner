@@ -1,5 +1,5 @@
 import { ruleOccursOn } from '@/lib/rules';
-import { placeInDay, withTime } from '@/lib/task-actions';
+import { placeInDay, withPhoto, withTime } from '@/lib/task-actions';
 import type { Rule, Task } from '@/lib/types';
 
 export type RolloverInput = {
@@ -83,7 +83,7 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
       createdAt: now,
       updatedAt: now,
     };
-    day.set(instance.id, withTime(instance, time));
+    day.set(instance.id, withPhoto(withTime(instance, time), rule.photo));
     createdIds.push(instance.id);
   }
   for (const id of createdIds) {

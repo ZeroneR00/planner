@@ -3,6 +3,7 @@ import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type TextInputI
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
+import { CameraSheet } from '@/components/camera-sheet';
 import { EditBar } from '@/components/edit-bar';
 import { HintLine } from '@/components/hint-line';
 import { Icon } from '@/components/icon';
@@ -37,6 +38,11 @@ export function Composer({ composer: c }: Props) {
   const openSheet = (sheet: Sheet) => {
     Keyboard.dismiss();
     c.toggleSheet(sheet);
+  };
+
+  const openCamera = () => {
+    Keyboard.dismiss();
+    c.openCamera();
   };
 
   return (
@@ -94,20 +100,33 @@ export function Composer({ composer: c }: Props) {
         </View>
       )}
       <View style={styles.inputRow}>
-        <TextInput
-          ref={inputRef}
-          value={c.text}
-          onChangeText={c.setText}
-          onFocus={c.closeSheet}
-          onSubmitEditing={c.submit}
-          placeholder={copy.composer.placeholder}
-          placeholderTextColor={colors.textHint}
-          cursorColor={colors.accent}
-          returnKeyType="send"
-          submitBehavior="submit"
-          accessibilityLabel={c.editing ? copy.composer.editInputLabel : copy.composer.inputLabel}
-          style={[text.input, styles.input, c.editing && styles.inputEditing]}
-        />
+        <View style={styles.field}>
+          <TextInput
+            ref={inputRef}
+            value={c.text}
+            onChangeText={c.setText}
+            onFocus={c.closeSheet}
+            onSubmitEditing={c.submit}
+            placeholder={copy.composer.placeholder}
+            placeholderTextColor={colors.textHint}
+            cursorColor={colors.accent}
+            returnKeyType="send"
+            submitBehavior="submit"
+            accessibilityLabel={c.editing ? copy.composer.editInputLabel : copy.composer.inputLabel}
+            style={[text.input, styles.input, c.editing ? styles.inputEditing : styles.inputWithCamera]}
+          />
+          {/* В правке фото не меняют — камеры нет */}
+          {!c.editing && (
+            <Pressable
+              onPress={openCamera}
+              accessibilityRole="button"
+              accessibilityLabel={copy.photo.take}
+              style={({ pressed }) => [styles.camera, pressed && styles.pressed]}
+            >
+              <Icon name="camera" size={22} color={colors.textSecondary} />
+            </Pressable>
+          )}
+        </View>
         <Pressable
           onPress={c.submit}
           disabled={!c.canSubmit}
@@ -124,6 +143,7 @@ export function Composer({ composer: c }: Props) {
           />
         </Pressable>
       </View>
+      {c.camera && <CameraSheet onPhoto={(uri) => void c.addPhoto(uri)} onClose={c.closeCamera} />}
     </View>
   );
 }
@@ -173,9 +193,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space[8],
   },
-  input: {
+  field: {
     flex: 1,
     minWidth: 0,
+  },
+  input: {
     height: size.field,
     paddingHorizontal: space[16],
     borderWidth: 1,
@@ -185,6 +207,19 @@ const styles = StyleSheet.create({
   },
   inputEditing: {
     borderColor: colors.accent,
+  },
+  // Текст не заходит под 📷
+  inputWithCamera: {
+    paddingRight: touch + space[4],
+  },
+  camera: {
+    position: 'absolute',
+    right: space[4],
+    top: (size.field - touch) / 2,
+    width: touch,
+    height: touch,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   send: {
     width: size.field,

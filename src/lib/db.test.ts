@@ -5,6 +5,7 @@ import {
   loadData,
   migrate,
   MIGRATIONS,
+  photoNames,
   startDay,
   writeChanges,
   type BindValue,
@@ -149,6 +150,28 @@ describe('migrate', () => {
     expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон' })]);
     expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
   });
+
+  it('версия 3 → 4: задачи и правила на месте, фото у них нет', () => {
+    const old = openTestDb();
+    for (const version of [0, 1, 2]) old.execSync(at(MIGRATIONS, version));
+    old.execSync('PRAGMA user_version = 3');
+    old.runSync(
+      'INSERT INTO tasks (id, title, date, time, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['t', 'созвон', TODAY, '15:00', BEFORE, BEFORE],
+    );
+    old.runSync('INSERT INTO rules (id, title, kind, start_date, active) VALUES (?, ?, ?, ?, ?)', [
+      'd',
+      'зарядка',
+      'daily',
+      '2026-10-01',
+      1,
+    ]);
+    expect(migrate(old)).toBe(3);
+    expect(MIGRATIONS).toHaveLength(4);
+    const data = loadData(old, TODAY);
+    expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон', time: '15:00' })]);
+    expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
+  });
 });
 
 describe('writeChanges и loadData', () => {
@@ -156,6 +179,7 @@ describe('writeChanges и loadData', () => {
     const full = task({
       id: 'full',
       time: '15:00',
+      photo: 'p1.jpg',
       done: true,
       doneAt: NOW,
       ruleId: 'r1',
@@ -168,6 +192,7 @@ describe('writeChanges и loadData', () => {
     const { tasks } = loadData(db, TODAY);
     expect(tasks).toStrictEqual([full, min]);
     expect(tasks[1]).not.toHaveProperty('time');
+    expect(tasks[1]).not.toHaveProperty('photo');
     expect(tasks[1]).not.toHaveProperty('doneAt');
     expect(tasks[1]).not.toHaveProperty('ruleId');
     expect(tasks[1]).not.toHaveProperty('returned');
@@ -183,12 +208,26 @@ describe('writeChanges и loadData', () => {
       rule({ id: 'y', kind: 'yearly', month: 8, monthDay: 27 }),
       rule({ id: 'i', kind: 'interval', days: 3 }),
       rule({ id: 't', kind: 'daily', time: '07:00' }),
+      rule({ id: 'p', kind: 'weekly', weekdays: [1], photo: 'p2.jpg' }),
       rule({ id: 'off', active: false }),
     ];
     writeChanges(db, { putRules: rules });
     const loaded = loadData(db, TODAY).rules;
     expect(loaded).toStrictEqual(rules);
     expect(loaded[0]).not.toHaveProperty('time');
+    expect(loaded[0]).not.toHaveProperty('photo');
+  });
+
+  it('photoNames видит фото истории и выключенных правил, без повторов', () => {
+    writeChanges(db, {
+      putTasks: [
+        task({ id: 'old', date: YESTERDAY, done: true, doneAt: BEFORE, photo: 'old.jpg' }),
+        task({ id: 'inst', ruleId: 'off', photo: 'rule.jpg' }),
+        task({ id: 'plain' }),
+      ],
+      putRules: [rule({ id: 'off', active: false, photo: 'rule.jpg' }), rule({ id: 'd' })],
+    });
+    expect(photoNames(db)).toEqual(new Set(['old.jpg', 'rule.jpg']));
   });
 
   it('шаг повтора хранится только у interval', () => {

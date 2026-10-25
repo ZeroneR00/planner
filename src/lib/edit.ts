@@ -3,8 +3,9 @@ import { addedHint, whenHint, type Draft, type Hint, type When } from '@/lib/com
 import { copy } from '@/lib/copy';
 import { formatDayBrief } from '@/lib/dates';
 import { timePhrase } from '@/lib/parse-when';
+import { shownTitle } from '@/lib/photo';
 import { nextRuleDate, ruleOccursOn } from '@/lib/rules';
-import { addTask, firstOrder, placeInDay, ruleInstance, withTime } from '@/lib/task-actions';
+import { addTask, firstOrder, placeInDay, ruleInstance, withPhoto, withTime } from '@/lib/task-actions';
 import type { PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 // Правка задачи по тапу. Итог сравниваем с тем, как было в начале правки (origin), меняем только
@@ -15,7 +16,8 @@ export type EditTarget =
   | { kind: 'task'; taskId: string }
   // taskId — экземпляр на сегодня; null — правку начали из «Повторяется», а экземпляра нет
   | { kind: 'rule'; ruleId: string; taskId: string | null };
-export type EditState = { target: EditTarget; origin: When }; // origin — как было до правки
+// origin — как было до правки; photo — снимок задачи или правила: в правке его не меняют
+export type EditState = { target: EditTarget; origin: When; photo?: string };
 
 function patternOf(rule: Rule): RepeatPattern {
   switch (rule.kind) {
@@ -44,8 +46,8 @@ export function startEdit(data: PlannerData, task: Task): { edit: EditState; dra
       ? { kind: 'rule', ruleId: rule.id, taskId: task.id }
       : { kind: 'task', taskId: task.id };
   return rule !== undefined
-    ? editFor(target, rule.title, task.date, patternOf(rule), rule.time ?? null)
-    : editFor(target, task.title, task.date, null, task.time ?? null);
+    ? editFor(target, rule.title, task.date, patternOf(rule), rule.time ?? null, rule.photo)
+    : editFor(target, task.title, task.date, null, task.time ?? null, task.photo);
 }
 
 /** Правка из «Повторяется»: день — сегодня, если есть экземпляр, иначе ближайший день правила. */
@@ -53,7 +55,7 @@ export function startRuleEdit(data: PlannerData, rule: Rule): { edit: EditState;
   const instance = data.tasks.find((t) => t.ruleId === rule.id && t.date === data.today);
   const date = instance?.date ?? nextRuleDate(rule, data.today);
   const target: EditTarget = { kind: 'rule', ruleId: rule.id, taskId: instance?.id ?? null };
-  return editFor(target, rule.title, date, patternOf(rule), rule.time ?? null);
+  return editFor(target, rule.title, date, patternOf(rule), rule.time ?? null, rule.photo);
 }
 
 function editFor(
@@ -62,12 +64,14 @@ function editFor(
   date: string | null,
   repeat: RepeatPattern | null,
   time: string | null,
+  photo: string | undefined,
 ): { edit: EditState; draft: Draft } {
+  const edit: EditState = { target, origin: { title, date, repeat, time, fromText: false } };
   return {
-    edit: { target, origin: { title, date, repeat, time, fromText: false } },
+    edit: withPhoto(edit, photo),
     draft: {
       // Время — текстом в поле: поправить или стереть его можно так же, как написать
-      text: time === null ? title : `${title} ${timePhrase(time)}`,
+      text: time === null ? title : [title, timePhrase(time)].filter((part) => part !== '').join(' '),
       date: { manual: true, value: date },
       // Весь шаблон, а не вид: «каждое 31-е», открытое 30 ноября, не станет 30-м, а дни недели — те же
       repeat: { manual: true, value: repeat },
@@ -112,7 +116,7 @@ function saveTask(
   if (when.repeat !== null) {
     // Без самой задачи: иначе она могла бы попасть в сдвинутые, а put побеждает remove — и она бы вернулась
     const rest = { ...data, tasks: data.tasks.filter((t) => t.id !== task.id) };
-    return { removeTasks: [task.id], ...addTask(rest, when, now, makeId) };
+    return { removeTasks: [task.id], ...addTask(rest, when, now, makeId, task.photo) };
   }
   return { putTasks: editedTask(data, task, when, origin, now) };
 }
@@ -130,22 +134,25 @@ function saveRule(
   if (when.date === null || when.repeat === null) {
     const stopped: Rule = { ...rule, active: false };
     if (instance === undefined) {
-      return { putRules: [stopped], ...addTask(data, { ...when, repeat: null }, now, makeId) };
+      return { putRules: [stopped], ...addTask(data, { ...when, repeat: null }, now, makeId, rule.photo) };
     }
     const { ruleId, ...plain } = instance;
     return { putRules: [stopped], putTasks: editedTask(data, plain, when, origin, now) };
   }
   const same = when.date === origin.date && when.repeat.kind === origin.repeat?.kind;
   // Собираем заново, а не спредом rule: при смене вида остались бы поля старого вида
-  const next = withTime<Rule>(
-    {
-      ...when.repeat,
-      id: rule.id,
-      title: when.title,
-      startDate: same ? rule.startDate : when.date,
-      active: true,
-    },
-    when.time,
+  const next = withPhoto(
+    withTime<Rule>(
+      {
+        ...when.repeat,
+        id: rule.id,
+        title: when.title,
+        startDate: same ? rule.startDate : when.date,
+        active: true,
+      },
+      when.time,
+    ),
+    rule.photo,
   );
   const current = data.tasks.find((t) => t.ruleId === rule.id && t.date === data.today);
   if (current !== undefined) {
@@ -204,5 +211,5 @@ export function savedHint(edit: EditState, when: When, today: string, remindersO
 /** Текст плашки «Вернуть» после правки: только если задачу перенесли на другой день. */
 export function editUndoText(edit: EditState, when: When, today: string): string | null {
   if (edit.target.kind !== 'task' || when.date === edit.origin.date || when.date === null) return null;
-  return copy.undo.moved(formatDayBrief(when.date, today), when.title);
+  return copy.undo.moved(formatDayBrief(when.date, today), shownTitle({ title: when.title, photo: edit.photo }));
 }

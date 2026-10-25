@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { BackHandler } from 'react-native';
 
+import { savePhoto } from '@/hooks/use-photos';
 import { usePlanner } from '@/hooks/use-planner';
 import { useUndo } from '@/hooks/use-undo';
 import {
@@ -21,6 +22,7 @@ import {
   type Draft,
   type Hint,
 } from '@/lib/composer';
+import { copy } from '@/lib/copy';
 import { nowIso, nowTime } from '@/lib/dates';
 import {
   editHint,
@@ -50,6 +52,7 @@ export function useComposer() {
   // Что добавили последним — показываем, пока не начали печатать следующее
   const [notice, setNotice] = useState<Hint | null>(null);
   const [edit, setEdit] = useState<Editing | null>(null);
+  const [camera, setCamera] = useState(false);
 
   // Каждый рендер — свежее: «в 9», написанное в 8:59 и отправленное в 9:01, уже на завтра
   const now = nowTime();
@@ -100,7 +103,9 @@ export function useComposer() {
     // Новый объект на каждую начатую правку — по нему поле берёт фокус и ставит курсор в конец
     editOrigin: edit?.origin ?? null,
     showWhen,
-    canSubmit: when.title !== '',
+    // У задачи-фото подпись можно стереть совсем — останется «Фото»
+    canSubmit: when.title !== '' || edit?.photo !== undefined,
+    camera,
     hint:
       edit !== null
         ? editHint(when, today, edit.target.kind === 'rule')
@@ -141,8 +146,29 @@ export function useComposer() {
     cancelEdit: () => {
       if (edit !== null) finishEdit(edit);
     },
+    openCamera: () => {
+      setSheet(null);
+      setCamera(true);
+    },
+    closeCamera: () => setCamera(false),
+    // Снимок — сразу задача: подпись, день и время — из того, что уже написано в поле
+    addPhoto: async (uri: string) => {
+      setCamera(false);
+      let name: string;
+      try {
+        name = await savePhoto(uri);
+      } catch (error) {
+        if (__DEV__) console.warn('Фото не сохранилось', error);
+        setNotice({ accent: false, parts: [{ text: copy.photo.saveFailed }] });
+        return;
+      }
+      planner.commit(addTask(planner, when, nowIso(), makeId, name));
+      setDraft(emptyDraft);
+      setSheet(null);
+      setNotice(addedHint(when, today, planner.remindersOff));
+    },
     submit: () => {
-      if (when.title === '') return;
+      if (when.title === '' && edit?.photo === undefined) return;
       if (edit !== null) {
         const changes = saveEdit(planner, edit, when, nowIso(), makeId);
         // Задача уехала на другой день — пропадает с глаз, поэтому плашка «Вернуть» вместо подсказки

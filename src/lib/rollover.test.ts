@@ -163,6 +163,12 @@ describe('rollover', () => {
     expect(run(applyDiff(tasks, diff), rules)).toEqual(EMPTY);
   });
 
+  it('14: экземпляр правила с фото получает фото, без фото — ключа нет', () => {
+    const diff = run([], [rule({ id: 'p', photo: 'a.jpg' }), rule({ id: 'd' })]);
+    expect(diff.created[0]?.photo).toBe('a.jpg');
+    expect(diff.created[1]).not.toHaveProperty('photo');
+  });
+
   it('10: повторный запуск на применённом результате — пустой diff', () => {
     const tasks = [
       task({ id: 'a', date: '2026-10-15' }),

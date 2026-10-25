@@ -2,7 +2,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
+import { PhotoThumb } from '@/components/photo-thumb';
 import { copy } from '@/lib/copy';
+import { shownTitle } from '@/lib/photo';
 import type { Task } from '@/lib/types';
 import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
 
@@ -30,13 +32,14 @@ export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onR
       ) : (
         tasks.map((task) => (
           <View key={task.id} style={styles.row}>
+            {task.photo !== undefined && <PhotoThumb name={task.photo} style={styles.thumb} />}
             <Pressable
               onPress={() => onEdit(task)}
               accessibilityRole="button"
-              accessibilityLabel={copy.a11y.edit(task.title)}
+              accessibilityLabel={copy.a11y.edit(shownTitle(task))}
               style={({ pressed }) => [styles.main, pressed && styles.pressed]}
             >
-              <Text style={[text.row, styles.title]}>{task.title}</Text>
+              <Text style={[text.row, styles.title, task.title === '' && styles.untitled]}>{shownTitle(task)}</Text>
               {task.returned === true && (
                 <View style={styles.meta}>
                   <Icon name="return" size={12} color={colors.warning} />
@@ -48,7 +51,7 @@ export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onR
               <Pressable
                 onPress={() => onMarkDone(task)}
                 accessibilityRole="button"
-                accessibilityLabel={copy.a11y.markDone(task.title)}
+                accessibilityLabel={copy.a11y.markDone(shownTitle(task))}
                 style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
               >
                 <Icon name="check" size={20} color={colors.accent} strokeWidth={2.4} />
@@ -57,7 +60,7 @@ export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onR
             <Pressable
               onPress={() => onWhen(task)}
               accessibilityRole="button"
-              accessibilityLabel={copy.a11y.when(task.title)}
+              accessibilityLabel={copy.a11y.when(shownTitle(task))}
               style={({ pressed }) => [styles.when, pressed && styles.pressed]}
             >
               <Text style={text.action}>{copy.pocket.when}</Text>
@@ -65,7 +68,7 @@ export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onR
             <Pressable
               onPress={() => onRemove(task)}
               accessibilityRole="button"
-              accessibilityLabel={copy.a11y.remove(task.title)}
+              accessibilityLabel={copy.a11y.remove(shownTitle(task))}
               style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
             >
               <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2} />
@@ -109,6 +112,13 @@ const styles = StyleSheet.create({
   },
   title: {
     paddingVertical: space[4],
+  },
+  // «Фото» вместо подписи — вторичным цветом: это не текст задачи
+  untitled: {
+    color: colors.textSecondary,
+  },
+  thumb: {
+    marginRight: space[12],
   },
   meta: {
     flexDirection: 'row',

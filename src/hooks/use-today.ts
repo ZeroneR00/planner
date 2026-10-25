@@ -6,6 +6,7 @@ import { usePlanner } from '@/hooks/use-planner';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
 import { formatDayBrief, nowIso } from '@/lib/dates';
+import { shownTitle } from '@/lib/photo';
 import {
   markDoneFromPocket,
   moveToDay,
@@ -42,15 +43,15 @@ export function useToday() {
     toggle: (task: Task) => planner.commit(toggleDone(task, nowIso())),
     postpone: (task: Task) => planner.commit(postpone(planner, task, nowIso())),
     markDone: (task: Task) =>
-      undo.commit(markDoneFromPocket(planner, task, nowIso()), copy.undo.done(task.title)),
-    remove: (task: Task) => undo.commit(removeTask(task), copy.undo.removed(task.title)),
+      undo.commit(markDoneFromPocket(planner, task, nowIso()), copy.undo.done(shownTitle(task))),
+    remove: (task: Task) => undo.commit(removeTask(task), copy.undo.removed(shownTitle(task))),
     moving,
     // Повторный тап по «Когда?» того же стикера закрывает меню
     openMove: (task: Task) => setMoving((current) => (current?.id === task.id ? null : task)),
     closeMove: () => setMoving(null),
     moveTo: (date: string) => {
       if (moving === null) return;
-      const text = copy.undo.moved(formatDayBrief(date, planner.today), moving.title);
+      const text = copy.undo.moved(formatDayBrief(date, planner.today), shownTitle(moving));
       undo.commit(moveToDay(planner, moving, date, nowIso()), text);
       setMoving(null);
     },
