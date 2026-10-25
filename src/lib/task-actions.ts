@@ -1,6 +1,7 @@
 import type { Changes } from '@/lib/changes';
 import type { When } from '@/lib/composer';
 import { ruleOccursOn } from '@/lib/rules';
+import { byOrder } from '@/lib/today-view';
 import type { PlannerData, Rule, Task } from '@/lib/types';
 
 // Действия с задачей с экрана «Сегодня». Возвращают Changes, а не пишут сами:
@@ -25,6 +26,28 @@ export function firstOrder(tasks: readonly Task[], date: string | null): number 
 }
 
 /**
+ * Место в дне «по часам при записи»: перед первой несделанной задачей с более поздним временем,
+ * иначе в конец. Задачи с этого места и ниже сдвигаются на 1 — их тоже нужно записать.
+ * skipId — сама задача при правке и переносе.
+ */
+export function placeInDay(
+  tasks: readonly Task[],
+  date: string,
+  time: string | null,
+  skipId?: string,
+): { order: number; shifted: Task[] } {
+  const day = tasks.filter((t) => t.date === date && t.id !== skipId).sort(byOrder);
+  const end = { order: nextOrder(day, date), shifted: [] };
+  if (time === null) return end;
+  // Строго позже: при одинаковом времени новая встаёт после старой
+  const anchor = day.find((t) => !t.done && t.time !== undefined && t.time > time);
+  if (anchor === undefined) return end;
+  // updatedAt у сдвинутых не трогаем: это не их правка
+  const shifted = day.filter((t) => t.order >= anchor.order).map((t) => ({ ...t, order: t.order + 1 }));
+  return { order: anchor.order, shifted };
+}
+
+/**
  * Задача или правило с этим временем. null — ключ убираем совсем, а не ставим undefined:
  * так же выглядит задача, прочитанная из базы.
  */
@@ -34,7 +57,7 @@ export function withTime<T extends { time?: string }>(item: T, time: string | nu
 }
 
 /**
- * Новая задача из поля записи. Карман — сверху, день — в конец.
+ * Новая задача из поля записи. Карман — сверху, день — по часам или в конец.
  * Повтор — правило и, если оно срабатывает сегодня, экземпляр на сегодня.
  */
 export function addTask(data: PlannerData, when: When, now: string, makeId: () => string): Changes {
@@ -44,8 +67,9 @@ export function addTask(data: PlannerData, when: When, now: string, makeId: () =
     return { putTasks: [{ id: makeId(), ...base, date, order: firstOrder(data.tasks, null) }] };
   }
   if (repeat === null) {
-    const task: Task = { id: makeId(), ...base, date, order: nextOrder(data.tasks, date) };
-    return { putTasks: [withTime(task, when.time)] };
+    const { order, shifted } = placeInDay(data.tasks, date, when.time);
+    const task: Task = { id: makeId(), ...base, date, order };
+    return { putTasks: [withTime(task, when.time), ...shifted] };
   }
   const rule = withTime<Rule>(
     { ...repeat, id: makeId(), title: when.title, startDate: date, active: true },
@@ -53,22 +77,23 @@ export function addTask(data: PlannerData, when: When, now: string, makeId: () =
   );
   // Смена дня пока только при запуске — экземпляр на сегодня создаём сразу, будущие создаст она
   if (!ruleOccursOn(rule, data.today)) return { putRules: [rule] };
-  return { putRules: [rule], putTasks: [ruleInstance(data, rule, now, makeId)] };
+  return { putRules: [rule], putTasks: ruleInstance(data, rule, now, makeId) };
 }
 
-/** Экземпляр правила на сегодня — в конец дня. */
-export function ruleInstance(data: PlannerData, rule: Rule, now: string, makeId: () => string): Task {
+/** Экземпляр правила на сегодня — по часам или в конец дня; за ним — сдвинутые задачи. */
+export function ruleInstance(data: PlannerData, rule: Rule, now: string, makeId: () => string): Task[] {
+  const { order, shifted } = placeInDay(data.tasks, data.today, rule.time ?? null);
   const task: Task = {
     id: makeId(),
     title: rule.title,
     date: data.today,
     done: false,
-    order: nextOrder(data.tasks, data.today),
+    order,
     ruleId: rule.id,
     createdAt: now,
     updatedAt: now,
   };
-  return withTime(task, rule.time ?? null);
+  return [withTime(task, rule.time ?? null), ...shifted];
 }
 
 export function toggleDone(task: Task, now: string): Changes {

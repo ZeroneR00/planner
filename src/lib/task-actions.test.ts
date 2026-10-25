@@ -6,6 +6,7 @@ import {
   markDoneFromPocket,
   moveToDay,
   nextOrder,
+  placeInDay,
   postpone,
   removeTask,
   stopRule,
@@ -241,5 +242,53 @@ describe('addTask', () => {
     const changes = addTask(data(tasks), when({ date: TODAY, repeat: { kind: 'daily' }, time: '07:00' }), NOW, makeId);
     expect(changes.putRules?.[0]?.time).toBe('07:00');
     expect(changes.putTasks?.[0]?.time).toBe('07:00');
+  });
+
+  it('со временем — встаёт по часам и возвращает сдвинутые', () => {
+    const call = task({ id: 'call', order: 5, time: '15:00' });
+    const changes = addTask(data([...tasks, call]), when({ date: TODAY, time: '07:00' }), NOW, makeId);
+    expect(changes.putTasks).toEqual([
+      { id: 'id1', ...fresh, date: TODAY, order: 5, time: '07:00' },
+      { ...call, order: 6 },
+    ]);
+  });
+});
+
+describe('placeInDay', () => {
+  const bread = task({ id: 'bread', order: 0 });
+  const call = task({ id: 'call', order: 1, time: '15:00' });
+
+  it('пустой день — 0', () => {
+    expect(placeInDay([], TODAY, '07:00')).toEqual({ order: 0, shifted: [] });
+  });
+
+  it('без времени — в конец', () => {
+    expect(placeInDay([bread, call], TODAY, null)).toEqual({ order: 2, shifted: [] });
+  });
+
+  it('7:00 при хлебе и созвоне в 15:00 — перед созвоном', () => {
+    expect(placeInDay([bread, call], TODAY, '07:00')).toEqual({ order: 1, shifted: [{ ...call, order: 2 }] });
+  });
+
+  it('то же время — после', () => {
+    expect(placeInDay([bread, call], TODAY, '15:00')).toEqual({ order: 2, shifted: [] });
+  });
+
+  it('сделанная поздняя задача — не якорь', () => {
+    expect(placeInDay([bread, { ...call, done: true }], TODAY, '07:00')).toEqual({ order: 2, shifted: [] });
+  });
+
+  it('сдвигает и сделанные ниже якоря, другие дни не трогает', () => {
+    const done = task({ id: 'done', order: 2, done: true });
+    const other = task({ id: 'other', date: '2026-10-19', order: 1, time: '20:00' });
+    expect(placeInDay([bread, call, done, other], TODAY, '07:00').shifted).toEqual([
+      { ...call, order: 2 },
+      { ...done, order: 3 },
+    ]);
+  });
+
+  it('skipId — сама задача не якорь и не место в конце', () => {
+    expect(placeInDay([bread, call], TODAY, '16:00', 'call')).toEqual({ order: 1, shifted: [] });
+    expect(placeInDay([bread, call], TODAY, '07:00', 'call')).toEqual({ order: 1, shifted: [] });
   });
 });

@@ -152,7 +152,7 @@ export function useComposer() {
           setNotice(null);
         } else {
           if (changes !== null) planner.commit(changes);
-          setNotice(changes === null ? null : savedHint(edit, when, today));
+          setNotice(changes === null ? null : savedHint(edit, when, today, planner.remindersOff));
         }
         finishEdit(edit);
         return;
@@ -160,7 +160,7 @@ export function useComposer() {
       planner.commit(addTask(planner, when, nowIso(), makeId));
       setDraft(emptyDraft);
       setSheet(null);
-      setNotice(addedHint(when, today));
+      setNotice(addedHint(when, today, planner.remindersOff));
     },
   };
 }

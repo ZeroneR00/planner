@@ -1,6 +1,7 @@
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
 import { createContext, use, useState, type ReactNode } from 'react';
 
+import { useReminders } from '@/hooks/use-reminders';
 import { applyChanges, type Changes } from '@/lib/changes';
 import { nowIso, today } from '@/lib/dates';
 import { migrate, startDay, writeChanges, type Db } from '@/lib/db';
@@ -27,7 +28,8 @@ function startToday(db: Db): PlannerData {
   return data;
 }
 
-type Planner = PlannerData & { commit: (changes: Changes) => void };
+// remindersOff — человек запретил уведомления: показываем это после добавления задачи со временем
+type Planner = PlannerData & { commit: (changes: Changes) => void; remindersOff: boolean };
 
 const PlannerContext = createContext<Planner | null>(null);
 
@@ -36,11 +38,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   // Один раз при запуске. Если React вызовет инициализатор дважды (StrictMode в dev),
   // второй вызов ничего не изменит: rollover идемпотентен
   const [data, setData] = useState(() => startToday(db));
+  const reminders = useReminders(data);
   const commit = (changes: Changes) => {
     writeChanges(db, changes); // сначала база: упала запись — память не трогаем
     setData((d) => applyChanges(d, changes));
   };
-  return <PlannerContext value={{ ...data, commit }}>{children}</PlannerContext>;
+  return (
+    <PlannerContext value={{ ...data, commit, remindersOff: reminders.off }}>{children}</PlannerContext>
+  );
 }
 
 export function usePlanner(): Planner {

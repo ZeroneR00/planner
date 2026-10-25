@@ -205,6 +205,14 @@ describe('addedHint', () => {
     const weekly = addedHint({ ...base, date: '2026-10-20', repeat: { kind: 'weekly', weekdays: [2] } }, TODAY);
     expect(weekly.parts).toEqual([{ text: 'Каждый вт, начиная с 20 окт', icon: 'repeat' }]);
   });
+
+  it('уведомления выключены — последней частью, только у задачи со временем', () => {
+    const timed = addedHint({ ...base, date: TODAY, time: '15:00' }, TODAY, true);
+    expect(timed.parts.map((p) => p.text)).toEqual(['Добавлено на сегодня', '15:00', 'уведомления выключены']);
+    expect(addedHint({ ...base, date: TODAY }, TODAY, true).parts.map((p) => p.text)).toEqual([
+      'Добавлено на сегодня',
+    ]);
+  });
 });
 
 describe('бегунок', () => {

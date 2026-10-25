@@ -13,7 +13,7 @@ export type TodayView = {
 };
 
 // Не localeCompare: ISO-время и id сравниваем побайтно, без правил языка
-function compareStrings(a: string, b: string): number {
+export function compareStrings(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 

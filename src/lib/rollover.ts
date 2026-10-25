@@ -1,5 +1,5 @@
 import { ruleOccursOn } from '@/lib/rules';
-import { withTime } from '@/lib/task-actions';
+import { placeInDay, withTime } from '@/lib/task-actions';
 import type { Rule, Task } from '@/lib/types';
 
 export type RolloverInput = {
@@ -63,22 +63,36 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
   }
 
   const todays = tasks.filter((t) => t.date === today);
-  let order = todays.reduce((max, t) => Math.max(max, t.order), -1) + 1;
+  // Рабочий список дня: экземпляр со временем встаёт по часам и сдвигает тех, кто ниже
+  const day = new Map(todays.map((t) => [t.id, t]));
+  const createdIds: string[] = [];
   for (const rule of rules) {
     if (!ruleOccursOn(rule, today)) continue;
     // Экземпляр уже есть — даже выполненный — значит, на сегодня повтор создан
     if (todays.some((t) => t.ruleId === rule.id)) continue;
+    const time = rule.time ?? null;
+    const { order, shifted } = placeInDay([...day.values()], today, time);
+    for (const t of shifted) day.set(t.id, t);
     const instance: Task = {
       id: makeId(),
       title: rule.title,
       date: today,
       done: false,
-      order: order++,
+      order,
       ruleId: rule.id,
       createdAt: now,
       updatedAt: now,
     };
-    created.push(withTime(instance, rule.time ?? null));
+    day.set(instance.id, withTime(instance, time));
+    createdIds.push(instance.id);
+  }
+  for (const id of createdIds) {
+    const task = day.get(id);
+    if (task !== undefined) created.push(task);
+  }
+  for (const task of todays) {
+    const placed = day.get(task.id);
+    if (placed !== undefined && placed.order !== task.order) updated.push(placed);
   }
 
   return { created, updated, removed };

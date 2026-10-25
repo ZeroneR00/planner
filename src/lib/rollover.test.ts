@@ -148,6 +148,21 @@ describe('rollover', () => {
     expect(run([], [{ ...every2, startDate: '2026-10-17' }]).created).toHaveLength(0);
   });
 
+  it('13: экземпляр со временем встаёт по часам, сдвинутые — в updated', () => {
+    const bread = task({ id: 'bread', order: 0 });
+    const call = task({ id: 'call', order: 1, time: '15:00' });
+    const tasks = [bread, call];
+    const rules = [rule({ id: 'r', time: '07:00' }), rule({ id: 's', time: '06:00' })];
+    const diff = run(tasks, rules);
+    // 6:00 встал перед 7:00, созданным в этом же проходе, — тот тоже сдвинулся
+    expect(diff.created.map((t) => [t.ruleId, t.order])).toEqual([
+      ['r', 2],
+      ['s', 1],
+    ]);
+    expect(diff.updated).toEqual([{ ...call, order: 3 }]);
+    expect(run(applyDiff(tasks, diff), rules)).toEqual(EMPTY);
+  });
+
   it('10: повторный запуск на применённом результате — пустой diff', () => {
     const tasks = [
       task({ id: 'a', date: '2026-10-15' }),

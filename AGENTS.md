@@ -52,6 +52,7 @@ src/
   components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
   hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
     use-planner.tsx # PlannerProvider, usePlanner: данные в памяти, commit → база
+    use-reminders.ts # expo-notifications: разрешение, канал, синхронизация
   lib/
     types.ts        # Task, Rule, RepeatPattern
     copy.ts         # ВСЕ тексты интерфейса на русском — в одном месте
@@ -60,6 +61,7 @@ src/
     normalize.ts    # числа словами → цифры, знаки → пробелы — для parse-when
     rules.ts        # повторы: срабатывает ли правило в дату, следующая дата
     rollover.ts     # смена дня: несделанное → Стикеры, экземпляры повторов
+    reminders.ts    # какие напоминания должны стоять, сравнение с запланированными
     changes.ts      # Changes и applyChanges — единственный путь записи
     db.ts           # схема, миграции, запросы — через интерфейс Db
     id.ts           # makeId — uuid без пакета

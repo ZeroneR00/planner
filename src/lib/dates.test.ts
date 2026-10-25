@@ -12,6 +12,7 @@ import {
   formatHeaderDate,
   formatTime,
   formatMonthTitle,
+  localDateTime,
   makeDate,
   monthGrid,
   monthShift,
@@ -34,6 +35,20 @@ describe('today', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-10-17T21:30:00Z'));
     expect(today()).toBe('2026-10-18');
+  });
+});
+
+describe('localDateTime', () => {
+  it('дата и время — локальные, а не UTC', () => {
+    const moment = localDateTime('2026-10-25', '07:05');
+    expect([
+      moment.getFullYear(),
+      moment.getMonth(),
+      moment.getDate(),
+      moment.getHours(),
+      moment.getMinutes(),
+    ]).toEqual([2026, 9, 25, 7, 5]);
+    expect(moment.toISOString()).toBe('2026-10-25T04:05:00.000Z'); // Москва — UTC+3
   });
 });
 

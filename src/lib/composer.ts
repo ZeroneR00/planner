@@ -122,10 +122,11 @@ export function whenHint(when: When, today: string): Hint {
 }
 
 /** Строка над полем после добавления — до следующей буквы. */
-export function addedHint(when: When, today: string): Hint {
+export function addedHint(when: When, today: string, remindersOff = false): Hint {
   if (when.date === null) return { accent: false, parts: [{ text: copy.composer.addedToPocket }] };
   const parts = [addedPart(when.date, when.repeat, today)];
   if (when.time !== null) parts.push({ text: formatTime(when.time) });
+  if (when.time !== null && remindersOff) parts.push({ text: copy.composer.remindersOff });
   return { accent: false, parts };
 }
 

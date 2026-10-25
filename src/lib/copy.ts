@@ -73,6 +73,10 @@ export const copy = {
     saved: 'Изменено',
     savedRule: 'Изменено для всех повторов',
     repeatStopped: 'Больше не повторяется',
+    remindersOff: 'уведомления выключены',
+  },
+  reminders: {
+    channel: 'Напоминания', // имя канала в настройках уведомлений Android
   },
   // Индекс дня недели: 0 = вс, как Date.getDay()
   dates: {

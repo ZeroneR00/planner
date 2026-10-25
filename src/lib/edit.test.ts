@@ -160,7 +160,7 @@ describe('saveEdit: задача', () => {
           title: 'полить цветы',
           date: TODAY,
           done: false,
-          order: 1,
+          order: 0, // сама задача убрана и места не занимает
           ruleId: 'id0',
           createdAt: NOW,
           updatedAt: NOW,
@@ -338,6 +338,44 @@ describe('правка времени', () => {
       putRules: [{ ...r, time: '08:00' }],
       putTasks: [{ ...inst, time: '08:00', updatedAt: NOW }],
     });
+  });
+});
+
+describe('правка времени: место в дне по часам', () => {
+  const bread = task({ id: 'bread', order: 0 });
+  const gym = task({ id: 'gym', title: 'зал', order: 1, time: '10:00' });
+  const call = task({ id: 'a', title: 'созвон', order: 2, time: '15:00' });
+
+  it('15:00 → 7:00 в тот же день — встаёт выше', () => {
+    expect(save(data([bread, gym, call]), call, retitle('созвон в 7 утра'))?.putTasks).toEqual([
+      { ...call, time: '07:00', order: 1, updatedAt: NOW },
+      { ...gym, order: 2 },
+    ]);
+  });
+
+  it('стёрли время — место прежнее', () => {
+    const first = { ...call, order: 0 };
+    const late = task({ id: 'late', order: 1, time: '16:00' });
+    expect(only(save(data([first, late]), first, retitle('созвон'))).order).toBe(0);
+  });
+
+  it('перенос на день со временем — по часам там', () => {
+    const morning = task({ id: 'm', date: TOMORROW, order: 0, time: '09:00' });
+    const evening = task({ id: 'e', date: TOMORROW, order: 1, time: '18:00' });
+    const changes = save(data([call, morning, evening]), call, (d) => pickDate(d, TOMORROW));
+    expect(changes?.putTasks).toEqual([
+      { ...call, date: TOMORROW, order: 1, updatedAt: NOW },
+      { ...evening, order: 2 },
+    ]);
+  });
+
+  it('повтор, включённый в правке, не возвращает удалённую задачу', () => {
+    const changes = save(data([bread, call]), call, (d) =>
+      pickRepeat(retitle('созвон в 7 утра')(d), { kind: 'daily' }),
+    );
+    expect(changes?.removeTasks).toEqual(['a']);
+    expect(changes?.putTasks?.map((t) => t.id)).not.toContain('a');
+    expect(changes?.putTasks?.[0]).toMatchObject({ ruleId: 'id0', time: '07:00', order: 1 });
   });
 });
 
