@@ -1,8 +1,8 @@
 import { addDays } from '@/lib/dates';
 import { shownTitle } from '@/lib/photo';
 import { ruleOccursOn } from '@/lib/rules';
-import { compareStrings } from '@/lib/today-view';
-import type { PlannerData } from '@/lib/types';
+import { compareStrings, isAhead } from '@/lib/today-view';
+import type { PlannerData, Task } from '@/lib/types';
 
 // Напоминания — одноразовые уведомления на конкретные дата и время. Время и дата входят в id,
 // поэтому смена времени — это отмена старого и постановка нового.
@@ -65,4 +65,33 @@ export function diffReminders(
     else cancel.push(s.id);
   }
   return { cancel, schedule: planned.filter((r) => !kept.has(r.id)) };
+}
+
+/** Куда вести по тапу на уведомление: экран и id задачи или правила, которое подсветить. */
+export type RevealTarget = { screen: 'today' | 'ahead'; id: string };
+
+// Во времени есть «:», поэтому не split(':'): t:<id задачи>:2026-10-18T15:00, r:<id правила>:…
+const REMINDER_ID = /^([tr]):([^:]+):(\d{4}-\d{2}-\d{2})T/;
+
+function taskTarget(task: Task, today: string): RevealTarget | null {
+  if (task.date === today || (task.date === null && !task.done)) return { screen: 'today', id: task.id };
+  if (isAhead(task, today)) return { screen: 'ahead', id: task.id };
+  return null; // прошлый день или сделанная будущая — на экранах её нет
+}
+
+/** null — по уведомлению больше нечего показать: приложение просто открывается. */
+export function reminderTarget(
+  reminderId: string,
+  data: Pick<PlannerData, 'tasks' | 'rules' | 'today'>,
+): RevealTarget | null {
+  const [, kind, id, date] = REMINDER_ID.exec(reminderId) ?? [];
+  if (id === undefined) return null; // id не наш
+  const task =
+    kind === 't'
+      ? data.tasks.find((t) => t.id === id)
+      : data.tasks.find((t) => t.ruleId === id && t.date === date);
+  if (task !== undefined) return taskTarget(task, data.today);
+  // Экземпляра повтора ещё нет — показываем само правило в «Повторяется»
+  if (kind === 'r' && data.rules.some((r) => r.id === id && r.active)) return { screen: 'ahead', id };
+  return null;
 }

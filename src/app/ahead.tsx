@@ -9,6 +9,7 @@ import { RepeatList } from '@/components/repeat-list';
 import { UndoBar } from '@/components/undo-bar';
 import { useAhead } from '@/hooks/use-ahead';
 import { useComposer } from '@/hooks/use-composer';
+import { RevealScrollContext, useFlash, useRevealScroll } from '@/hooks/use-reveal';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
 import { colors, pressedOpacity, space, text, touch } from '@/theme';
@@ -17,6 +18,8 @@ export default function AheadScreen() {
   const ahead = useAhead();
   const composer = useComposer();
   const undo = useUndo();
+  const flash = useFlash();
+  const { scrollRef, reveal } = useRevealScroll();
   return (
     // Снизу отступ от системной панели даёт поле записи: при открытой клавиатуре он не нужен
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
@@ -34,22 +37,27 @@ export default function AheadScreen() {
         </View>
         <View style={styles.screen}>
           <ScrollView
+            ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerStyle={styles.content}
           >
-            <AheadDays
-              days={ahead.days}
-              editingId={composer.editingId}
-              onEdit={composer.startEdit}
-              onRemove={ahead.remove}
-            />
-            <RepeatList
-              rules={ahead.rules}
-              editingRuleId={composer.editingRuleId}
-              onEdit={composer.startRuleEdit}
-              onStop={ahead.stop}
-            />
+            <RevealScrollContext value={reveal}>
+              <AheadDays
+                days={ahead.days}
+                editingId={composer.editingId}
+                flash={flash}
+                onEdit={composer.startEdit}
+                onRemove={ahead.remove}
+              />
+              <RepeatList
+                rules={ahead.rules}
+                editingRuleId={composer.editingRuleId}
+                flash={flash}
+                onEdit={composer.startRuleEdit}
+                onStop={ahead.stop}
+              />
+            </RevealScrollContext>
           </ScrollView>
           <UndoBar
             notice={undo.notice}

@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
+import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Task } from '@/lib/types';
@@ -11,6 +13,7 @@ import { colors, pressedOpacity, radius, size, space, text, touch } from '@/them
 type Props = {
   tasks: readonly Task[];
   editingId: string | null;
+  flash: Flash | null; // подсветка после тапа по напоминанию
   onMarkDone: (task: Task) => void;
   movingId: string | null;
   onWhen: (task: Task) => void;
@@ -18,7 +21,7 @@ type Props = {
   onEdit: (task: Task) => void;
 };
 
-export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onRemove, onEdit }: Props) {
+export function PocketList({ tasks, editingId, flash, movingId, onMarkDone, onWhen, onRemove, onEdit }: Props) {
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
@@ -74,6 +77,7 @@ export function PocketList({ tasks, editingId, movingId, onMarkDone, onWhen, onR
               <Icon name="close" size={18} color={colors.textSecondary} strokeWidth={2} />
             </Pressable>
             {(task.id === editingId || task.id === movingId) && <FocusRing offset={0} radius={radius.row} />}
+            {flash?.id === task.id && <FlashRing key={flash.key} offset={0} radius={radius.row} />}
           </View>
         ))
       )}

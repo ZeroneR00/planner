@@ -56,6 +56,7 @@ src/
     use-planner.tsx # PlannerProvider, usePlanner: данные в памяти, commit → база
     use-reminders.ts # expo-notifications: разрешение, канал, синхронизация
     use-voice.ts    # expo-speech-recognition: диктовка, громкость; в Expo Go модуля нет
+    use-reveal.tsx  # тап по напоминанию: на какой экран, прокрутка и подсветка задачи
   lib/
     types.ts        # Task, Rule, RepeatPattern
     copy.ts         # ВСЕ тексты интерфейса на русском — в одном месте

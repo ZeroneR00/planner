@@ -1,4 +1,4 @@
-import { MAX_REMINDERS, diffReminders, planReminders, type Reminder } from '@/lib/reminders';
+import { MAX_REMINDERS, diffReminders, planReminders, reminderTarget, type Reminder } from '@/lib/reminders';
 import type { Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18'; // воскресенье
@@ -134,5 +134,48 @@ describe('diffReminders', () => {
 
   it('новое — поставить, лишнее — отменить', () => {
     expect(diffReminders([b], [{ id: a.id, title: a.title }])).toEqual({ cancel: [a.id], schedule: [b] });
+  });
+});
+
+describe('reminderTarget: куда ведёт тап по уведомлению', () => {
+  const target = (id: string, tasks: Task[], rules: Rule[] = []) =>
+    reminderTarget(id, { tasks, rules, today: TODAY });
+
+  it('задача сегодня — «Сегодня», сделанная тоже', () => {
+    expect(target('t:a:2026-10-18T15:00', [task({ id: 'a', time: '15:00' })])).toEqual({ screen: 'today', id: 'a' });
+    expect(target('t:a:2026-10-18T15:00', [task({ id: 'a', done: true })])).toEqual({ screen: 'today', id: 'a' });
+  });
+
+  it('уехала в стикеры — «Сегодня», а сделанный стикер нигде не виден', () => {
+    expect(target('t:a:2026-10-17T15:00', [task({ id: 'a', date: null })])).toEqual({ screen: 'today', id: 'a' });
+    expect(target('t:a:2026-10-17T15:00', [task({ id: 'a', date: null, done: true })])).toBeNull();
+  });
+
+  it('перенесли на завтра — «Впереди», сделанная будущая не видна', () => {
+    expect(target('t:a:2026-10-18T15:00', [task({ id: 'a', date: '2026-10-19' })])).toEqual({
+      screen: 'ahead',
+      id: 'a',
+    });
+    expect(target('t:a:2026-10-18T15:00', [task({ id: 'a', date: '2026-10-19', done: true })])).toBeNull();
+  });
+
+  it('удалённая и вчерашняя — некуда вести', () => {
+    expect(target('t:a:2026-10-18T15:00', [task({ id: 'b' })])).toBeNull();
+    expect(target('t:a:2026-10-17T15:00', [task({ id: 'a', date: '2026-10-17', done: true })])).toBeNull();
+  });
+
+  it('повтор с экземпляром на эту дату — сам экземпляр', () => {
+    const tasks = [task({ id: 'old', ruleId: 'r1', date: '2026-10-17', done: true }), task({ id: 'x', ruleId: 'r1' })];
+    expect(target('r:r1:2026-10-18T19:00', tasks, [rule({ id: 'r1' })])).toEqual({ screen: 'today', id: 'x' });
+  });
+
+  it('повтор без экземпляра — правило во «Впереди», остановленное — некуда', () => {
+    expect(target('r:r1:2026-10-18T19:00', [], [rule({ id: 'r1' })])).toEqual({ screen: 'ahead', id: 'r1' });
+    expect(target('r:r1:2026-10-18T19:00', [], [rule({ id: 'r1', active: false })])).toBeNull();
+  });
+
+  it('чужой id — некуда', () => {
+    expect(target('expo-123', [task({ id: 'a' })])).toBeNull();
+    expect(target('t:a', [task({ id: 'a' })])).toBeNull();
   });
 });

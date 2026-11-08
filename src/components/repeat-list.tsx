@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
 import type { AheadRule } from '@/lib/ahead-view';
+import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Rule } from '@/lib/types';
@@ -13,12 +15,13 @@ import { colors, pressedOpacity, radius, size, space, text, touch } from '@/them
 type Props = {
   rules: readonly AheadRule[];
   editingRuleId: string | null;
+  flash: Flash | null; // подсветка после тапа по напоминанию
   onEdit: (rule: Rule) => void;
   onStop: (rule: Rule) => void;
 };
 
 /** «Повторяется» на экране «Впереди». Повторов нет — раздела нет. */
-export function RepeatList({ rules, editingRuleId, onEdit, onStop }: Props) {
+export function RepeatList({ rules, editingRuleId, flash, onEdit, onStop }: Props) {
   if (rules.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -45,6 +48,7 @@ export function RepeatList({ rules, editingRuleId, onEdit, onStop }: Props) {
             <Text style={text.note}>{copy.ahead.stop}</Text>
           </Pressable>
           {rule.id === editingRuleId && <FocusRing offset={0} radius={radius.row} />}
+          {flash?.id === rule.id && <FlashRing key={flash.key} offset={0} radius={radius.row} />}
         </View>
       ))}
     </View>

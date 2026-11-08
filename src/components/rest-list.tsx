@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
+import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { DayItem } from '@/lib/today-view';
@@ -13,11 +15,12 @@ import { colors, pressedOpacity, radius, size, space, text, touch } from '@/them
 type Props = {
   items: readonly DayItem[];
   editingId: string | null;
+  flash: Flash | null; // подсветка после тапа по напоминанию
   onToggle: (task: Task) => void;
   onEdit: (task: Task) => void;
 };
 
-export function RestList({ items, editingId, onToggle, onEdit }: Props) {
+export function RestList({ items, editingId, flash, onToggle, onEdit }: Props) {
   if (items.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -52,6 +55,7 @@ export function RestList({ items, editingId, onToggle, onEdit }: Props) {
             />
           </Pressable>
           {task.id === editingId && <FocusRing offset={0} radius={radius.row} />}
+          {flash?.id === task.id && <FlashRing key={flash.key} offset={0} radius={radius.row} />}
         </View>
       ))}
     </View>

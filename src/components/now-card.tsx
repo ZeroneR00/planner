@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
+import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { DayItem } from '@/lib/today-view';
@@ -13,12 +15,13 @@ type Props = {
   item: DayItem | null;
   doneCount: number;
   editingId: string | null;
+  flash: Flash | null; // подсветка после тапа по напоминанию
   onDone: (task: Task) => void;
   onLater: (task: Task) => void;
   onEdit: (task: Task) => void;
 };
 
-export function NowCard({ item, doneCount, editingId, onDone, onLater, onEdit }: Props) {
+export function NowCard({ item, doneCount, editingId, flash, onDone, onLater, onEdit }: Props) {
   return (
     <View style={styles.card}>
       <View style={styles.top}>
@@ -42,6 +45,7 @@ export function NowCard({ item, doneCount, editingId, onDone, onLater, onEdit }:
                 {shownTitle(item.task)}
               </Text>
               {item.task.id === editingId && <FocusRing offset={space[6]} radius={radius.focus} />}
+              {flash?.id === item.task.id && <FlashRing key={flash.key} offset={space[6]} radius={radius.focus} />}
             </Pressable>
             <TaskMeta time={item.task.time} label={item.repeat} large />
           </View>

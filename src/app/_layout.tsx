@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { DB_NAME, PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
+import { RevealProvider } from '@/hooks/use-reveal';
 import { UndoProvider } from '@/hooks/use-undo';
 import { colors, fonts } from '@/theme';
 
@@ -59,7 +60,10 @@ export default function RootLayout() {
       <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
         <PlannerProvider>
           <UndoProvider>
-            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+            {/* Внутри базы: тап по напоминанию ищет задачу в данных и ведёт к ней */}
+            <RevealProvider>
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+            </RevealProvider>
           </UndoProvider>
         </PlannerProvider>
       </SQLiteProvider>

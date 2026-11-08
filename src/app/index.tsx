@@ -10,6 +10,7 @@ import { PocketList } from '@/components/pocket-list';
 import { RestList } from '@/components/rest-list';
 import { UndoBar } from '@/components/undo-bar';
 import { useComposer } from '@/hooks/use-composer';
+import { RevealScrollContext, useFlash, useRevealScroll } from '@/hooks/use-reveal';
 import { useToday } from '@/hooks/use-today';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
@@ -21,6 +22,8 @@ export default function TodayScreen() {
   const day = useToday();
   const composer = useComposer();
   const undo = useUndo();
+  const flash = useFlash();
+  const { scrollRef, reveal } = useRevealScroll();
   // Правка и меню «Когда?» не открыты одновременно
   const edit = (task: Task) => {
     day.closeMove();
@@ -40,37 +43,43 @@ export default function TodayScreen() {
         <View style={styles.screen}>
           {/* handled — тап по кнопкам при открытой клавиатуре срабатывает с первого раза */}
           <ScrollView
+            ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerStyle={styles.content}
           >
-            <NowCard
-              item={day.now}
-              doneCount={day.doneCount}
-              editingId={composer.editingId}
-              onDone={day.toggle}
-              onLater={day.postpone}
-              onEdit={edit}
-            />
-            <PocketList
-              tasks={day.pocket}
-              editingId={composer.editingId}
-              movingId={day.moving?.id ?? null}
-              onMarkDone={day.markDone}
-              onWhen={(task) => {
-                composer.cancelEdit();
-                Keyboard.dismiss();
-                day.openMove(task);
-              }}
-              onRemove={day.remove}
-              onEdit={edit}
-            />
-            <RestList
-              items={day.rest}
-              editingId={composer.editingId}
-              onToggle={day.toggle}
-              onEdit={edit}
-            />
+            <RevealScrollContext value={reveal}>
+              <NowCard
+                item={day.now}
+                doneCount={day.doneCount}
+                editingId={composer.editingId}
+                flash={flash}
+                onDone={day.toggle}
+                onLater={day.postpone}
+                onEdit={edit}
+              />
+              <PocketList
+                tasks={day.pocket}
+                editingId={composer.editingId}
+                flash={flash}
+                movingId={day.moving?.id ?? null}
+                onMarkDone={day.markDone}
+                onWhen={(task) => {
+                  composer.cancelEdit();
+                  Keyboard.dismiss();
+                  day.openMove(task);
+                }}
+                onRemove={day.remove}
+                onEdit={edit}
+              />
+              <RestList
+                items={day.rest}
+                editingId={composer.editingId}
+                flash={flash}
+                onToggle={day.toggle}
+                onEdit={edit}
+              />
+            </RevealScrollContext>
           </ScrollView>
           <UndoBar
             notice={undo.notice}

@@ -1,14 +1,19 @@
 import {
   AndroidImportance,
+  DEFAULT_ACTION_IDENTIFIER,
   SchedulableTriggerInputTypes,
+  addNotificationResponseReceivedListener,
   cancelScheduledNotificationAsync,
+  clearLastNotificationResponse,
   getAllScheduledNotificationsAsync,
+  getLastNotificationResponse,
   getPermissionsAsync,
   requestPermissionsAsync,
   scheduleNotificationAsync,
   setNotificationChannelAsync,
   setNotificationHandler,
   type NotificationPermissionsStatus,
+  type NotificationResponse,
 } from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
@@ -117,4 +122,28 @@ export function useReminders(data: PlannerData): { off: boolean } {
   }, [resync]);
 
   return { off };
+}
+
+/** Тап по уведомлению — и запустивший приложение, и пока оно открыто. onTap получает id напоминания. */
+export function useReminderTaps(onTap: (reminderId: string) => void): void {
+  const latest = useRef(onTap);
+  useEffect(() => {
+    latest.current = onTap;
+  }, [onTap]);
+
+  useEffect(() => {
+    // Кнопки в уведомлении (если появятся) — не «открыть задачу»
+    const handle = (response: NotificationResponse) => {
+      if (response.actionIdentifier !== DEFAULT_ACTION_IDENTIFIER) return;
+      latest.current(response.notification.request.identifier);
+    };
+    // Приложение запустили тапом по уведомлению. Стираем, чтобы при перемонтировании не сработало снова
+    const launch = getLastNotificationResponse();
+    if (launch !== null) {
+      clearLastNotificationResponse();
+      handle(launch);
+    }
+    const subscription = addNotificationResponseReceivedListener(handle);
+    return () => subscription.remove();
+  }, []);
 }
