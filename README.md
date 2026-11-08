@@ -10,7 +10,13 @@
 
 ```bash
 npm install
-npx expo start      # QR-код открыть в Expo Go на Android-телефоне (та же Wi-Fi-сеть)
+npx expo start      # открыть «Планировщик» на Android-телефоне (та же Wi-Fi-сеть); Expo Go — клавиша s
+```
+
+«Планировщик» — своя сборка (development build) из облака Expo: в ней работает голос, которого нет в Expo Go. Код приходит с компьютера, поэтому пересобирать нужно только после нового нативного пакета:
+
+```bash
+npx eas-cli build -p android --profile development   # ссылка на APK — в конце сборки и на expo.dev
 ```
 
 ## Проверки

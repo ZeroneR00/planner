@@ -5,6 +5,7 @@ import { BackHandler } from 'react-native';
 import { savePhoto } from '@/hooks/use-photos';
 import { usePlanner } from '@/hooks/use-planner';
 import { useUndo } from '@/hooks/use-undo';
+import { useVoice } from '@/hooks/use-voice';
 import {
   addedHint,
   calendarChipLabel,
@@ -21,6 +22,7 @@ import {
   whenHint,
   type Draft,
   type Hint,
+  type When,
 } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { nowIso, nowTime } from '@/lib/dates';
@@ -36,6 +38,7 @@ import {
 import { makeId } from '@/lib/id';
 import { addTask } from '@/lib/task-actions';
 import type { RepeatPattern, Rule, Task } from '@/lib/types';
+import { listeningHint, voiceHint } from '@/lib/voice';
 
 export type Sheet = 'repeat' | 'calendar';
 
@@ -58,13 +61,40 @@ export function useComposer() {
   const now = nowTime();
   const when = resolveWhen(draft, today, now);
   const typing = hasText(draft);
-  const showWhen = typing || edit !== null;
+
+  const add = (w: When, photo?: string) => {
+    planner.commit(addTask(planner, w, nowIso(), makeId, photo));
+    setDraft(emptyDraft);
+    setSheet(null);
+    setNotice(addedHint(w, today, planner.remindersOff));
+  };
+
+  const voice = useVoice({
+    // Услышанное по ходу — прямо в поле; фраза приходит целиком, поэтому разбирается с чистого черновика
+    onText: (text) => setDraft({ ...emptyDraft, text }),
+    // Замолчал — задача сразу записана. Сказал только «завтра» — текст остаётся в поле, дописать
+    onFinal: (text) => {
+      if (text.trim() === '') return;
+      const spoken = editText(emptyDraft, text, today, nowTime());
+      const heard = resolveWhen(spoken, today, nowTime());
+      if (heard.title === '') setDraft(spoken);
+      else add(heard);
+    },
+    onError: (error) => setNotice(voiceHint(error)),
+  });
+  const { abort: abortVoice } = voice;
+
+  // Пока слушаем, бегунок и ↻ спрятаны — футер не прыгает от каждого слова
+  const showWhen = (typing || edit !== null) && !voice.listening;
 
   const finishEdit = useCallback((e: Editing) => {
     setDraft(e.stash ?? emptyDraft);
     setEdit(null);
     setSheet(null);
   }, []);
+
+  // Ушли с экрана — диктовка прерывается
+  useFocusEffect(useCallback(() => abortVoice, [abortVoice]));
 
   // Первое «Назад» прячет клавиатуру (это делает система), второе — отменяет правку
   useFocusEffect(
@@ -80,6 +110,7 @@ export function useComposer() {
 
   // Повторный тап по тому же отменяет правку, по другому — переключает на него
   const begin = (same: boolean, start: () => { edit: EditState; draft: Draft }) => {
+    abortVoice();
     if (edit !== null && same) {
       finishEdit(edit);
       return;
@@ -109,9 +140,12 @@ export function useComposer() {
     hint:
       edit !== null
         ? editHint(when, today, edit.target.kind === 'rule')
-        : typing
-          ? whenHint(when, today)
-          : notice,
+        : voice.listening
+          ? listeningHint
+          : typing
+            ? whenHint(when, today)
+            : notice,
+    mic: { available: voice.available, listening: voice.listening, level: voice.level },
     sheet: showWhen ? sheet : null,
     chips: whenChips(today),
     selectedChip: chipKey(when.date, today),
@@ -135,7 +169,16 @@ export function useComposer() {
     // Меню не закрывается: дни отмечают по одному
     toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, now, weekday)),
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
-    closeSheet: () => setSheet(null),
+    toggleVoice: () => {
+      setSheet(null);
+      setNotice(null);
+      voice.toggle();
+    },
+    // Тап по полю во время диктовки — остановить и поправить услышанное руками
+    focusField: () => {
+      setSheet(null);
+      abortVoice();
+    },
     startEdit: (task: Task) =>
       begin(edit?.target.taskId === task.id, () => startEdit(planner, task)),
     // Из «Повторяется»: «та же» — по правилу, экземпляра на сегодня может не быть
@@ -147,6 +190,7 @@ export function useComposer() {
       if (edit !== null) finishEdit(edit);
     },
     openCamera: () => {
+      abortVoice();
       setSheet(null);
       setCamera(true);
     },
@@ -162,10 +206,7 @@ export function useComposer() {
         setNotice({ accent: false, parts: [{ text: copy.photo.saveFailed }] });
         return;
       }
-      planner.commit(addTask(planner, when, nowIso(), makeId, name));
-      setDraft(emptyDraft);
-      setSheet(null);
-      setNotice(addedHint(when, today, planner.remindersOff));
+      add(when, name);
     },
     submit: () => {
       if (when.title === '' && edit?.photo === undefined) return;
@@ -183,10 +224,7 @@ export function useComposer() {
         finishEdit(edit);
         return;
       }
-      planner.commit(addTask(planner, when, nowIso(), makeId));
-      setDraft(emptyDraft);
-      setSheet(null);
-      setNotice(addedHint(when, today, planner.remindersOff));
+      add(when);
     },
   };
 }

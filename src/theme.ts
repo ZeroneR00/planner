@@ -20,6 +20,7 @@ export const colors = {
   onAccent: '#111316',
   warning: '#FDBA74',
   danger: '#F87171',
+  listeningRing: '#F8717159', // пульсирующий ореол микрофона: danger 35 %
 
   outline: '#3A3F47',
   control: '#5F656E',

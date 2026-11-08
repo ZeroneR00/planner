@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "planner",
+    "name": "Планировщик",
     "slug": "planner",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#111316",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Распознавание речи нужно, чтобы превратить голос в текст задачи",
+        "NSMicrophoneUsageDescription": "Микрофон нужен, чтобы надиктовать задачу"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +22,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.zeroner00.planner",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -43,11 +52,27 @@
         {
           "photosPermission": "Доступ к фото нужен, чтобы прикрепить снимок к задаче"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Микрофон нужен, чтобы надиктовать задачу",
+          "speechRecognitionPermission": "Распознавание речи нужно, чтобы превратить голос в текст задачи",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "76a3e17b-8ad3-46e3-ab9a-875fbc2c654f"
+      }
+    },
+    "owner": "zeroner"
   }
 }

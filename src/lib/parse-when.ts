@@ -381,19 +381,29 @@ const TIME_MATCHERS: TimeMatcher[] = [
   { re: re('\\sчерез\\s+полтора\\s+часа(?=\\s)'), resolve: (_m, ctx) => later(ctx.now, 90) },
 ];
 
+const MORNING_PART: PartWord = { part: 'утра', time: MORNING };
+const AFTERNOON_PART: PartWord = { part: 'дня', time: AFTERNOON };
+const EVENING_PART: PartWord = { part: 'вечера', time: EVENING };
+
+// Разговорные «утречком», «с утра», «в обед», «вечерком» — то же утро, день и вечер
 const PART_WORDS: Record<string, PartWord> = {
-  утром: { part: 'утра', time: MORNING },
-  днем: { part: 'дня', time: AFTERNOON },
-  вечером: { part: 'вечера', time: EVENING },
+  утром: MORNING_PART,
+  утречком: MORNING_PART,
+  днем: AFTERNOON_PART,
+  вечером: EVENING_PART,
+  вечерком: EVENING_PART,
 };
 
 const PART_MATCHERS: PartMatcher[] = [
   {
     // «с днём рождения» — не время
-    re: re('\\s(с\\s+)?(утром|днем|вечером)(\\s+рождения)?(?=\\s)'),
+    re: re('\\s(с\\s+)?(утром|утречком|днем|вечером|вечерком)(\\s+рождения)?(?=\\s)'),
     resolve: (m) =>
       m[1] !== undefined || m[3] !== undefined ? null : (PART_WORDS[group(m, 2).toLowerCase()] ?? null),
   },
+  // Предлог — часть фразы, поэтому отдельно: в первой регулярке «с» перед словом значит «не время»
+  { re: re('\\sс\\s+утра(?=\\s)'), resolve: () => MORNING_PART },
+  { re: re('\\sв\\s+обед(?=\\s)'), resolve: () => AFTERNOON_PART },
 ];
 
 /** Первое совпадение, которое приняли: по порядку регулярок, а у одной регулярки — по позиции в тексте. */

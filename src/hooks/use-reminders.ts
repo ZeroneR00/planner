@@ -8,6 +8,7 @@ import {
   scheduleNotificationAsync,
   setNotificationChannelAsync,
   setNotificationHandler,
+  type NotificationPermissionsStatus,
 } from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
@@ -31,6 +32,16 @@ setNotificationHandler({
   }),
 });
 
+// Спрашиваем не чаще раза за запуск: после «Запретить» не дёргаем человека при каждой правке.
+// Второй раз Android сам разрешает спросить один раз, а потом больше не показывает вопрос
+let askedThisLaunch = false;
+
+// На Android 13+ пакет до первого вопроса отвечает status: 'denied' (уведомления у нового приложения
+// ещё выключены), поэтому «запретил» — это «не выдано и спросить нельзя», а не status
+function refused(p: NotificationPermissionsStatus): boolean {
+  return !p.granted && (!p.canAskAgain || askedThisLaunch);
+}
+
 async function ensureAllowed(): Promise<boolean> {
   // Канал — до запроса: на Android 13 без канала системный вопрос не появляется
   if (Platform.OS === 'android') {
@@ -41,8 +52,8 @@ async function ensureAllowed(): Promise<boolean> {
   }
   const current = await getPermissionsAsync();
   if (current.granted) return true;
-  // Спрашиваем один раз: после «Запретить» не дёргаем человека при каждой правке
-  if (current.status !== 'undetermined') return false;
+  if (refused(current)) return false;
+  askedThisLaunch = true;
   return (await requestPermissionsAsync()).granted;
 }
 
@@ -55,9 +66,7 @@ async function sync(planned: readonly Reminder[]): Promise<boolean> {
   // Нечего ставить — не спрашиваем, но запрет помним: иначе первая задача со временем
   // после пустого списка не показала бы «уведомления выключены»
   const allowed =
-    planned.length === 0
-      ? (await getPermissionsAsync()).status !== 'denied'
-      : await ensureAllowed();
+    planned.length === 0 ? !refused(await getPermissionsAsync()) : await ensureAllowed();
   const { cancel, schedule } = diffReminders(allowed ? planned : [], scheduled);
   for (const id of cancel) await cancelScheduledNotificationAsync(id);
   for (const r of schedule) {
