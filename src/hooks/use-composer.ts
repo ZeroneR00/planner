@@ -15,6 +15,7 @@ import {
   hasText,
   pickDate,
   pickRepeat,
+  pickTime,
   repeatOptions,
   resolveWhen,
   toggleWeekday,
@@ -37,10 +38,11 @@ import {
 } from '@/lib/edit';
 import { makeId } from '@/lib/id';
 import { addTask } from '@/lib/task-actions';
+import { timeGrid } from '@/lib/time-grid';
 import type { RepeatPattern, Rule, Task } from '@/lib/types';
 import { listeningHint, voiceHint } from '@/lib/voice';
 
-export type Sheet = 'repeat' | 'calendar';
+export type Sheet = 'repeat' | 'calendar' | 'time';
 
 // stash — недописанная мысль: вернётся в поле, когда правка закончится
 type Editing = EditState & { stash: Draft | null };
@@ -152,6 +154,8 @@ export function useComposer() {
     calendarLabel: calendarChipLabel(when.date, today),
     repeatOptions: repeatOptions(when.date ?? today, when.repeat),
     weekdays: when.repeat?.kind === 'weekly' ? when.repeat.weekdays : [],
+    // Без дня времени нет — и панели тоже
+    timeGrid: when.date === null ? null : timeGrid(when.time, when.date, today, now),
     today,
     setText: (text: string) => {
       setDraft((d) => editText(d, text, today, now, edit !== null));
@@ -165,6 +169,11 @@ export function useComposer() {
     pickRepeat: (repeat: RepeatPattern | null) => {
       setDraft((d) => pickRepeat(d, repeat));
       setSheet(null);
+    },
+    // Тап по часу панель не закрывает — можно выбрать минуты; минуты, «Утром» и «Без времени» закрывают
+    pickTime: (time: string | null, close: boolean) => {
+      setDraft((d) => pickTime(d, time));
+      if (close) setSheet(null);
     },
     // Меню не закрывается: дни отмечают по одному
     toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, now, weekday)),

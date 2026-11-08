@@ -16,11 +16,22 @@ import type { RepeatKind, RepeatPattern } from '@/lib/types';
 
 // Поле записи: что написано, что выбрано вручную и как приложение это поняло.
 // Побеждает последнее действие: чип или пункт ↻ главнее текста, пока текст не дал новую дату или новый повтор.
+// Время — отдельно: выбранное в панели ⏰ главнее текста, пока в тексте не появилось новое время.
 
 export type Choice<T> = { manual: false } | { manual: true; value: T }; // manual: false — решает текст
-export type Draft = { text: string; date: Choice<string | null>; repeat: Choice<RepeatPattern | null> };
+export type Draft = {
+  text: string;
+  date: Choice<string | null>;
+  repeat: Choice<RepeatPattern | null>;
+  time: Choice<string | null>;
+};
 
-export const emptyDraft: Draft = { text: '', date: { manual: false }, repeat: { manual: false } };
+export const emptyDraft: Draft = {
+  text: '',
+  date: { manual: false },
+  repeat: { manual: false },
+  time: { manual: false },
+};
 
 export type When = {
   title: string;
@@ -49,13 +60,16 @@ export function editText(draft: Draft, text: string, today: string, now: string,
   if (text.trim() === '') return editing ? { ...draft, text } : { ...emptyDraft, text };
   const prev = parseWhen(draft.text, today, now);
   const next = parseWhen(text, today, now);
+  const newTime = next.time !== null && next.time !== prev.time;
+  // Дата и время независимы: новая дата из текста время из панели не сбрасывает
+  const time: Draft['time'] = newTime ? { manual: false } : draft.time;
   if (next.hit && (next.date !== prev.date || !samePattern(next.repeat, prev.repeat))) {
-    return { ...emptyDraft, text };
+    return { ...emptyDraft, text, time };
   }
   // Задача со временем в стикеры не падает: новое время отменяет ручной выбор стикеров
   const toPocket = draft.date.manual && draft.date.value === null;
-  if (toPocket && next.time !== null && next.time !== prev.time) return { ...emptyDraft, text };
-  return { ...draft, text };
+  if (toPocket && newTime) return { ...emptyDraft, text };
+  return { ...draft, text, time };
 }
 
 export function pickDate(draft: Draft, date: string | null): Draft {
@@ -75,6 +89,11 @@ export function pickRepeat(draft: Draft, repeat: RepeatPattern | null): Draft {
   return { ...draft, repeat: { manual: true, value: repeat } };
 }
 
+/** Время из панели ⏰; null — «Без времени». */
+export function pickTime(draft: Draft, time: string | null): Draft {
+  return { ...draft, time: { manual: true, value: time } };
+}
+
 /** Тап по дню в ряду ↻: день включается или выключается; выключили последний — «Один раз». */
 export function toggleWeekday(draft: Draft, today: string, now: string, weekday: number): Draft {
   const current = resolveWhen(draft, today, now).repeat;
@@ -89,7 +108,7 @@ export function toggleWeekday(draft: Draft, today: string, now: string, weekday:
 export function resolveWhen(draft: Draft, today: string, now: string): When {
   const parsed = parseWhen(draft.text, today, now);
   const title = parsed.title.replace(/\s+/g, ' ').trim();
-  const { time } = parsed;
+  const time = draft.time.manual ? draft.time.value : parsed.time;
   const textDate = parsed.date ?? (time === null ? null : time < now ? addDays(today, 1) : today);
   const picked = draft.date.manual ? draft.date.value : textDate;
   if (picked === null) return { title, date: null, repeat: null, time: null, fromText: false };

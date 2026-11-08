@@ -4,7 +4,6 @@ import {
   at,
   dateParts,
   daysInMonth,
-  formatTime,
   makeDate,
   nextWeekStart,
   weekdayOf,
@@ -69,9 +68,10 @@ const MONTH = `(${MONTHS.join('|')})`;
 const PART = '(?:\\s+(утра|дня|вечера|ночи))?';
 const AT = '(?:в|к)';
 
-const MORNING = '09:00';
-const AFTERNOON = '13:00';
-const EVENING = '19:00';
+// Те же часы у кнопок «Утром / Днём / Вечером» в панели ⏰
+export const MORNING = '09:00';
+export const AFTERNOON = '13:00';
+export const EVENING = '19:00';
 
 const MINUTES_IN_DAY = 24 * 60;
 
@@ -487,11 +487,4 @@ export function parseWhen(text: string, today: string, now: string): ParsedWhen 
     time,
     hit: true,
   };
-}
-
-/** Фраза для поля правки, которая разбирается обратно в то же время: '15:00' → 'в 15:00', '03:00' → 'в 03:00'. */
-export function timePhrase(time: string): string {
-  const hour = Number(time.slice(0, 2));
-  // Без нуля «в 3:00» разобралось бы как 15:00
-  return `в ${hour >= 1 && hour <= 7 ? time : formatTime(time)}`;
 }

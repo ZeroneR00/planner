@@ -4,6 +4,7 @@ import {
   editText,
   pickDate,
   pickRepeat,
+  pickTime,
   resolveWhen,
   toggleWeekday,
   type Draft,
@@ -83,6 +84,7 @@ describe('startEdit', () => {
         text: 'купить хлеб',
         date: { manual: true, value: TODAY },
         repeat: { manual: true, value: null },
+        time: { manual: true, value: null },
       },
     });
   });
@@ -307,20 +309,29 @@ describe('правка из «Повторяется»', () => {
 describe('правка времени', () => {
   const call = task({ id: 'a', title: 'созвон', time: '15:00' });
 
-  it('время возвращается в поле текстом', () => {
+  it('в поле только название, время — на ⏰', () => {
     const { edit, draft } = startEdit(data([call]), call);
-    expect(draft.text).toBe('созвон в 15:00');
+    expect(draft.text).toBe('созвон');
+    expect(draft.time).toEqual({ manual: true, value: '15:00' });
     expect(edit.origin.time).toBe('15:00');
   });
 
-  it('стёрли время — у задачи его нет', () => {
-    const result = only(save(data([call]), call, retitle('созвон')));
+  it('поправили название — время то же', () => {
+    expect(only(save(data([call]), call, retitle('созвон с Петей'))).time).toBe('15:00');
+  });
+
+  it('«Без времени» — у задачи его нет', () => {
+    const result = only(save(data([call]), call, (d) => pickTime(d, null)));
     expect(result).toEqual({ ...task({ id: 'a', title: 'созвон' }), updatedAt: NOW });
     expect(result).not.toHaveProperty('time');
   });
 
-  it('поменяли время', () => {
+  it('поменяли время словами', () => {
     expect(only(save(data([call]), call, retitle('созвон в 16'))).time).toBe('16:00');
+  });
+
+  it('поменяли время в панели', () => {
+    expect(only(save(data([call]), call, (d) => pickTime(d, '16:30'))).time).toBe('16:30');
   });
 
   it('в стикеры — время снято', () => {
@@ -333,7 +344,8 @@ describe('правка времени', () => {
     const r = rule({ kind: 'daily' }, { time: '07:00' });
     const inst = task({ id: 'i', title: 'зарядка', ruleId: 'r', time: '07:00' });
     const { draft } = startEdit(data([inst], [r]), inst);
-    expect(draft.text).toBe('зарядка в 07:00');
+    expect(draft.text).toBe('зарядка');
+    expect(draft.time).toEqual({ manual: true, value: '07:00' });
     expect(save(data([inst], [r]), inst, retitle('зарядка в 8 утра'))).toEqual({
       putRules: [{ ...r, time: '08:00' }],
       putTasks: [{ ...inst, time: '08:00', updatedAt: NOW }],
@@ -489,9 +501,11 @@ describe('правка задачи-фото', () => {
     });
   });
 
-  it('пустая подпись со временем — в поле только время', () => {
+  it('пустая подпись со временем — поле пустое, время на ⏰', () => {
     const t = task({ id: 'f', title: '', photo: 'a.jpg', time: '15:00' });
-    expect(startEdit(data([t]), t).draft.text).toBe('в 15:00');
+    const { draft } = startEdit(data([t]), t);
+    expect(draft.text).toBe('');
+    expect(draft.time).toEqual({ manual: true, value: '15:00' });
   });
 
   it('задача с фото → повтор: фото у правила и экземпляра', () => {

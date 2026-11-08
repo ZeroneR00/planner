@@ -2,7 +2,6 @@ import type { Changes } from '@/lib/changes';
 import { addedHint, whenHint, type Draft, type Hint, type When } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { formatDayBrief } from '@/lib/dates';
-import { timePhrase } from '@/lib/parse-when';
 import { shownTitle } from '@/lib/photo';
 import { nextRuleDate, ruleOccursOn } from '@/lib/rules';
 import { addTask, firstOrder, placeInDay, ruleInstance, withPhoto, withTime } from '@/lib/task-actions';
@@ -70,11 +69,12 @@ function editFor(
   return {
     edit: withPhoto(edit, photo),
     draft: {
-      // Время — текстом в поле: поправить или стереть его можно так же, как написать
-      text: time === null ? title : [title, timePhrase(time)].filter((part) => part !== '').join(' '),
+      // В поле — только название: день на бегунке, время на ⏰
+      text: title,
       date: { manual: true, value: date },
       // Весь шаблон, а не вид: «каждое 31-е», открытое 30 ноября, не станет 30-м, а дни недели — те же
       repeat: { manual: true, value: repeat },
+      time: { manual: true, value: time },
     },
   };
 }

@@ -1,4 +1,4 @@
-import { parseWhen, timePhrase } from '@/lib/parse-when';
+import { parseWhen } from '@/lib/parse-when';
 
 // Суббота
 const TODAY = '2026-10-17';
@@ -252,20 +252,5 @@ describe('parseWhen: особые случаи', () => {
 
   it('голое «в 9» не в конце пропускается, но следующее в конце — время', () => {
     expect(parse('разбить в 2 этапа в 9')).toMatchObject({ title: 'разбить в 2 этапа', time: '09:00' });
-  });
-});
-
-describe('timePhrase', () => {
-  it.each([
-    ['15:00', 'в 15:00'],
-    ['09:00', 'в 9:00'],
-    ['03:00', 'в 03:00'],
-    ['00:00', 'в 0:00'],
-  ])('%s → «%s»', (time, phrase) => {
-    expect(timePhrase(time)).toBe(phrase);
-  });
-
-  it.each(['00:00', '03:00', '07:30', '09:00', '13:00', '23:59'])('%s разбирается обратно', (time) => {
-    expect(parse(`созвон ${timePhrase(time)}`)).toMatchObject({ title: 'созвон', time });
   });
 });

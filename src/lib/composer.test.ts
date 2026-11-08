@@ -7,6 +7,7 @@ import {
   hasText,
   pickDate,
   pickRepeat,
+  pickTime,
   repeatOptions,
   resolveWhen,
   toggleWeekday,
@@ -322,6 +323,63 @@ describe('время', () => {
   it('addedHint со временем', () => {
     const when = resolve(typed('созвон в 15'));
     expect(addedHint(when, TODAY).parts.map((p) => p.text)).toEqual(['Добавлено на сегодня', '15:00']);
+  });
+});
+
+describe('время из панели ⏰', () => {
+  const MONDAY = '2026-10-19';
+
+  it('день, потом время — оба на месте', () => {
+    const draft = pickTime(pickDate(typed('созвон'), MONDAY), '15:30');
+    expect(resolve(draft)).toEqual({ title: 'созвон', date: MONDAY, repeat: null, time: '15:30', fromText: false });
+  });
+
+  it('главнее времени из текста', () => {
+    expect(resolve(pickTime(typed('созвон завтра в 15'), '16:00'))).toMatchObject({
+      date: '2026-10-18',
+      time: '16:00',
+    });
+  });
+
+  it('новое время в тексте снова главнее', () => {
+    const draft = pickTime(typed('созвон завтра'), '16:00');
+    expect(resolve(editText(draft, 'созвон завтра в 18', TODAY, NOW)).time).toBe('18:00');
+  });
+
+  it('правка текста без нового времени его не трогает', () => {
+    const draft = pickTime(typed('созвон в 15'), '16:00');
+    expect(resolve(editText(draft, 'созвон с Петей в 15', TODAY, NOW)).time).toBe('16:00');
+  });
+
+  it('новая дата в тексте время из панели не сбрасывает', () => {
+    const draft = pickTime(pickDate(typed('созвон'), MONDAY), '15:30');
+    expect(resolve(editText(draft, 'созвон завтра', TODAY, NOW))).toMatchObject({
+      date: '2026-10-18',
+      time: '15:30',
+    });
+  });
+
+  it('«Без времени» убирает и время из текста', () => {
+    expect(resolve(pickTime(typed('созвон завтра в 15'), null))).toMatchObject({ date: '2026-10-18', time: null });
+  });
+
+  it('стёр текст целиком — время сброшено', () => {
+    const draft = pickTime(pickDate(typed('созвон'), MONDAY), '15:30');
+    expect(editText(draft, '', TODAY, NOW).time).toEqual({ manual: false });
+  });
+
+  it('день из текста стёрли — время без дня: сегодня или завтра', () => {
+    const later = pickTime(typed('созвон завтра'), '15:00');
+    expect(resolve(editText(later, 'созвон', TODAY, NOW))).toMatchObject({ date: TODAY, time: '15:00' });
+    const passed = pickTime(typed('созвон завтра'), '09:00');
+    expect(resolve(editText(passed, 'созвон', TODAY, NOW))).toMatchObject({ date: '2026-10-18', time: '09:00' });
+  });
+
+  it('«В стикеры» — без времени', () => {
+    expect(resolve(pickDate(pickTime(typed('созвон завтра'), '15:00'), null))).toMatchObject({
+      date: null,
+      time: null,
+    });
   });
 });
 

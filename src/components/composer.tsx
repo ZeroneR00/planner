@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type TextInputInstance } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
@@ -8,11 +8,14 @@ import { EditBar } from '@/components/edit-bar';
 import { HintLine } from '@/components/hint-line';
 import { Icon } from '@/components/icon';
 import { MicButton } from '@/components/mic-button';
+import { PillButton } from '@/components/pill-button';
 import { RepeatSheet } from '@/components/repeat-sheet';
+import { TimeSheet } from '@/components/time-sheet';
 import { WhenChips } from '@/components/when-chips';
 import type { Composer as ComposerModel, Sheet } from '@/hooks/use-composer';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { copy } from '@/lib/copy';
+import { formatTime } from '@/lib/dates';
 import { repeatLabel } from '@/lib/rules';
 import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
 
@@ -33,7 +36,8 @@ export function Composer({ composer: c }: Props) {
     inputRef.current?.setSelection(end, end);
   }, [editOrigin]);
   const noDay = when.date === null;
-  const repeatOn = when.repeat !== null;
+  const time = when.time !== null ? formatTime(when.time) : null;
+  const repeat = when.repeat !== null ? repeatLabel(when.repeat) : null;
 
   // Клавиатура прячется и после выбора не возвращается — иначе кнопки уехали бы из-под пальца
   const openSheet = (sheet: Sheet) => {
@@ -72,6 +76,7 @@ export function Composer({ composer: c }: Props) {
       {c.sheet === 'calendar' && (
         <CalendarSheet today={c.today} selected={when.date} onPick={c.pickDate} />
       )}
+      {c.sheet === 'time' && c.timeGrid !== null && <TimeSheet grid={c.timeGrid} onPick={c.pickTime} />}
       {c.showWhen && (
         <View style={styles.whenRow}>
           <WhenChips
@@ -81,32 +86,21 @@ export function Composer({ composer: c }: Props) {
             onPick={c.pickDate}
             onOpenCalendar={() => openSheet('calendar')}
           />
-          <Pressable
-            onPress={() => openSheet('repeat')}
+          {/* Время и повтор видны сразу — и понятые из текста, и выбранные в панели */}
+          <PillButton
+            icon="clock"
+            label={time}
             disabled={noDay}
-            accessibilityRole="button"
-            accessibilityLabel={
-              when.repeat !== null ? copy.composer.repeatOn(repeatLabel(when.repeat)) : copy.composer.repeat
-            }
-            accessibilityState={{ disabled: noDay, selected: repeatOn }}
-            style={({ pressed }) => [
-              styles.repeat,
-              noDay ? styles.repeatOff : repeatOn && styles.repeatOn,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Icon
-              name="loop"
-              size={18}
-              color={noDay ? colors.disabled : repeatOn ? colors.onAccent : colors.text}
-            />
-            {/* Повтор виден сразу — и понятый из текста, и выбранный в меню */}
-            {when.repeat !== null && (
-              <Text numberOfLines={1} style={[text.chipOn, styles.repeatText]}>
-                {repeatLabel(when.repeat)}
-              </Text>
-            )}
-          </Pressable>
+            accessibilityLabel={time !== null ? copy.composer.timeOn(time) : copy.composer.time}
+            onPress={() => openSheet('time')}
+          />
+          <PillButton
+            icon="loop"
+            label={repeat}
+            disabled={noDay}
+            accessibilityLabel={repeat !== null ? copy.composer.repeatOn(repeat) : copy.composer.repeat}
+            onPress={() => openSheet('repeat')}
+          />
         </View>
       )}
       <View style={styles.inputRow}>
@@ -175,32 +169,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[6],
-  },
-  // Без повтора — круглая ↻, с повтором — пилюля с надписью; бегунок слева сужается сам
-  repeat: {
-    minWidth: touch,
-    maxWidth: size.repeatPill,
-    height: touch,
-    paddingHorizontal: space[12],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[6],
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-  },
-  repeatOff: {
-    borderColor: colors.line,
-    backgroundColor: 'transparent',
-  },
-  repeatOn: {
-    borderColor: colors.accent,
-    backgroundColor: colors.accent,
-  },
-  repeatText: {
-    flexShrink: 1,
   },
   inputRow: {
     flexDirection: 'row',

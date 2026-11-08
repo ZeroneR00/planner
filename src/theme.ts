@@ -151,4 +151,6 @@ export const text = {
   mono: { fontFamily: fonts.mono, fontSize: 12, color: colors.textSecondary },
   monoNote: { fontFamily: fonts.mono, fontSize: 13, color: colors.textSecondary }, // время в «Сейчас»
   monoCount: { fontFamily: fonts.mono, fontSize: 13, color: colors.accent },
+  timeCell: { fontFamily: fonts.mono, fontSize: 15, color: colors.text }, // часы и минуты в панели ⏰
+  timeCellOn: { fontFamily: fonts.mono, fontSize: 15, color: colors.onAccent },
 } as const satisfies Record<string, TextStyle>;
