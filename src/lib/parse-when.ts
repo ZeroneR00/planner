@@ -8,6 +8,7 @@ import {
   nextWeekStart,
   weekdayOf,
 } from '@/lib/dates';
+import { stripIntro, TAIL } from '@/lib/intro';
 import { normalize } from '@/lib/normalize';
 import { nextOccurrence, patternFor } from '@/lib/rules';
 import type { RepeatPattern } from '@/lib/types';
@@ -74,6 +75,10 @@ export const AFTERNOON = '13:00';
 export const EVENING = '19:00';
 
 const MINUTES_IN_DAY = 24 * 60;
+
+// «в 9 позвонить шефу», «в 9 что надо…» — время; «в 2 этапа» — нет.
+// Без «-ти» намеренно: «в 3 части» не время. Числа словами уже цифры, «пять» сюда не попадёт
+const ACTION_AFTER = /^\s+(?:что|чтобы|чтоб|надо|нужно|\S+(?:ть|ться|чь|чься))(?=\s)/i;
 
 // Глобальные: одна регулярка может совпасть несколько раз, и первое совпадение бывает не тем
 // («в 2 этапа … в 9») — поэтому перебираем все
@@ -455,6 +460,11 @@ export function parseWhen(text: string, today: string, now: string): ParsedWhen 
     scan = scan.slice(0, m.index) + ' '.repeat(m[0].length) + scan.slice(m.index + m[0].length);
   };
 
+  // Хвост «пожалуйста» — первым: тогда «позвонить в 9 пожалуйста» кончается на «в 9», и это время.
+  // Одно «пожалуйста» без задачи не трогаем
+  const tail = first([{ re: re(TAIL) }], scan, (_matcher, m) => (scan.slice(0, m.index).trim() === '' ? null : m));
+  if (tail !== null) cut(tail.m);
+
   const day = first(MATCHERS, scan, (matcher, m) => matcher.resolve(m, today));
   if (day !== null) cut(day.m);
 
@@ -462,14 +472,17 @@ export function parseWhen(text: string, today: string, now: string): ParsedWhen 
   const ctx: TimeContext = {
     now,
     // «утром в 7 позвонить» — уточнение есть, значит «в 7» — время, хоть и не в конце
-    bareOk: (m) => partWord !== null || /^\s*(?:[,.;:!?]|$)/.test(masked.slice(endOf(m))),
+    bareOk: (m) =>
+      partWord !== null ||
+      /^\s*(?:[,.;:!?]|$)/.test(masked.slice(endOf(m))) ||
+      ACTION_AFTER.test(scan.slice(m.index + m[0].length)),
   };
   const clockHit = first(TIME_MATCHERS, scan, (matcher, m) => matcher.resolve(m, ctx));
   if (clockHit !== null) cut(clockHit.m);
   if (partWord !== null) cut(partWord.m);
 
   if (day === null && clockHit === null && partWord === null) {
-    return { title: text, date: null, repeat: null, time: null, hit: false };
+    return { title: stripIntro(tail === null ? text : tidy(masked)), date: null, repeat: null, time: null, hit: false };
   }
 
   let time = clockHit?.found.time ?? partWord?.found.time ?? null;
@@ -481,7 +494,7 @@ export function parseWhen(text: string, today: string, now: string): ParsedWhen 
   }
   const shift = found?.kind === 'exact' ? found.days : null;
   return {
-    title: tidy(masked),
+    title: stripIntro(tidy(masked)),
     date: day?.found.date ?? (shift === null ? null : addDays(today, shift)),
     repeat: day?.found.repeat ?? null,
     time,
