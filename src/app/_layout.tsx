@@ -10,9 +10,10 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { DB_NAME, PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
+import { PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
 import { RevealProvider } from '@/hooks/use-reveal';
 import { UndoProvider } from '@/hooks/use-undo';
+import { DB_NAME } from '@/lib/db';
 import { colors, fonts } from '@/theme';
 
 // Держим сплэш, пока не загрузятся шрифты, — иначе первый кадр нарисуется системным шрифтом и «прыгнет».

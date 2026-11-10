@@ -5,11 +5,14 @@ import {
   addNotificationResponseReceivedListener,
   cancelScheduledNotificationAsync,
   clearLastNotificationResponse,
+  dismissNotificationAsync,
   getAllScheduledNotificationsAsync,
   getLastNotificationResponse,
   getPermissionsAsync,
+  getPresentedNotificationsAsync,
   requestPermissionsAsync,
   scheduleNotificationAsync,
+  setNotificationCategoryAsync,
   setNotificationChannelAsync,
   setNotificationHandler,
   type NotificationPermissionsStatus,
@@ -18,9 +21,13 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
+import { applyChanges } from '@/lib/changes';
 import { copy } from '@/lib/copy';
-import { localDateTime, nowTime, today } from '@/lib/dates';
-import { diffReminders, planReminders, type Reminder } from '@/lib/reminders';
+import { localDateTime, nowIso, nowTime, today } from '@/lib/dates';
+import { startDay, writeChanges, type Db } from '@/lib/db';
+import { makeId } from '@/lib/id';
+import { isReminderAction, reminderActionChanges, type ReminderAction } from '@/lib/reminder-actions';
+import { REMINDER_CATEGORY, diffReminders, planReminders, staleShown } from '@/lib/reminders';
 import type { PlannerData } from '@/lib/types';
 
 // Единственное место с expo- Какие напоминания должны стоять, решает reminders.ts
@@ -36,6 +43,22 @@ setNotificationHandler({
     shouldSetBadge: false,
   }),
 });
+
+// Синхронизации хука и кнопок уведомления идут по одной в общей очереди: план считается
+// в момент запуска, поэтому лишний запуск ничего не меняет
+let chain: Promise<void> = Promise.resolve();
+
+function enqueue(job: () => Promise<void>): Promise<void> {
+  chain = chain.then(async () => {
+    try {
+      await job();
+    } catch (error) {
+      // Приложение не должно падать из-за уведомлений
+      if (__DEV__) console.warn('[напоминания]', error);
+    }
+  });
+  return chain;
+}
 
 // Спрашиваем не чаще раза за запуск: после «Запретить» не дёргаем человека при каждой правке.
 // Второй раз Android сам разрешает спросить один раз, а потом больше не показывает вопрос
@@ -62,11 +85,37 @@ async function ensureAllowed(): Promise<boolean> {
   return (await requestPermissionsAsync()).granted;
 }
 
-/** Ставит и отменяет уведомления, чтобы совпали с planned. true — уведомления выключены. */
-async function sync(planned: readonly Reminder[]): Promise<boolean> {
+// Кнопки регистрируем один раз за запуск JS, до первой постановки
+let categoryReady = false;
+
+async function ensureCategory(): Promise<void> {
+  if (categoryReady) return;
+  const titles: Record<ReminderAction, string> = {
+    snooze15: copy.reminders.snoozeShort,
+    snooze60: copy.reminders.snoozeLong,
+    done: copy.reminders.done,
+  };
+  await setNotificationCategoryAsync(
+    REMINDER_CATEGORY,
+    (Object.keys(titles) as ReminderAction[]).map((identifier) => ({
+      identifier,
+      buttonTitle: titles[identifier],
+      options: { opensAppToForeground: false }, // тихая кнопка: приложение не открывается
+    })),
+  );
+  categoryReady = true;
+}
+
+/**
+ * Ставит и отменяет уведомления по задачам и повторам, убирает из шторки устаревшие.
+ * true — уведомления выключены.
+ */
+async function sync(data: Pick<PlannerData, 'tasks' | 'rules'>): Promise<boolean> {
+  const planned = planReminders(data, { date: today(), time: nowTime() });
   const scheduled = (await getAllScheduledNotificationsAsync()).map((r) => ({
     id: r.identifier,
     title: r.content.title ?? '',
+    category: r.content.categoryIdentifier ?? null,
   }));
   // Нечего ставить — не спрашиваем, но запрет помним: иначе первая задача со временем
   // после пустого списка не показала бы «уведомления выключены»
@@ -74,10 +123,11 @@ async function sync(planned: readonly Reminder[]): Promise<boolean> {
     planned.length === 0 ? !refused(await getPermissionsAsync()) : await ensureAllowed();
   const { cancel, schedule } = diffReminders(allowed ? planned : [], scheduled);
   for (const id of cancel) await cancelScheduledNotificationAsync(id);
+  if (schedule.length > 0) await ensureCategory();
   for (const r of schedule) {
     await scheduleNotificationAsync({
       identifier: r.id,
-      content: { title: r.title },
+      content: { title: r.title, categoryIdentifier: REMINDER_CATEGORY },
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: localDateTime(r.date, r.time),
@@ -85,7 +135,25 @@ async function sync(planned: readonly Reminder[]): Promise<boolean> {
       },
     });
   }
+  // Сделали, убрали или перенесли — висящее уведомление больше не нужно
+  const shown = (await getPresentedNotificationsAsync()).map((n) => n.request.identifier);
+  for (const id of staleShown(shown, data)) await dismissNotificationAsync(id);
   return !allowed;
+}
+
+/**
+ * Кнопка из уведомления: и из фоновой задачи, и из слушателя при живом приложении.
+ * Смена дня, расчёт и запись — синхронно, без await: два вызова не перемешаются,
+ * второй увидит уже записанное и ничего не сделает. Шторку и будильники поправит sync.
+ */
+export async function runReminderAction(db: Db, reminderId: string, action: ReminderAction): Promise<void> {
+  const data = startDay(db, { today: today(), now: nowIso(), makeId });
+  const changes = reminderActionChanges(data, reminderId, action, nowTime(), nowIso());
+  if (changes !== null) writeChanges(db, changes);
+  const next = changes === null ? data : applyChanges(data, changes);
+  await enqueue(async () => {
+    await sync(next);
+  });
 }
 
 /** Держит уведомления в согласии с задачами и повторами. off — человек запретил уведомления. */
@@ -93,18 +161,10 @@ export function useReminders(data: PlannerData): { off: boolean } {
   const { tasks, rules } = data;
   const [off, setOff] = useState(false);
   const latest = useRef<Pick<PlannerData, 'tasks' | 'rules'>>({ tasks, rules });
-  const chain = useRef<Promise<void>>(Promise.resolve());
 
-  // Синхронизации идут по одной, план считаем в момент запуска по последним данным —
-  // поэтому лишний запуск ничего не меняет
   const resync = useCallback(() => {
-    chain.current = chain.current.then(async () => {
-      try {
-        setOff(await sync(planReminders(latest.current, { date: today(), time: nowTime() })));
-      } catch (error) {
-        // Приложение не должно падать из-за уведомлений
-        if (__DEV__) console.warn('[напоминания]', error);
-      }
+    void enqueue(async () => {
+      setOff(await sync(latest.current));
     });
   }, []);
 
@@ -132,7 +192,7 @@ export function useReminderTaps(onTap: (reminderId: string) => void): void {
   }, [onTap]);
 
   useEffect(() => {
-    // Кнопки в уведомлении (если появятся) — не «открыть задачу»
+    // Кнопки в уведомлении — не «открыть задачу», их ведёт useReminderActions
     const handle = (response: NotificationResponse) => {
       if (response.actionIdentifier !== DEFAULT_ACTION_IDENTIFIER) return;
       latest.current(response.notification.request.identifier);
@@ -146,4 +206,28 @@ export function useReminderTaps(onTap: (reminderId: string) => void): void {
     const subscription = addNotificationResponseReceivedListener(handle);
     return () => subscription.remove();
   }, []);
+}
+
+/**
+ * Кнопки уведомления, пока JS приложения жив. При закрытом приложении их ведёт фоновая задача
+ * (reminder-task.ts). Тихие кнопки приложение не запускают, поэтому getLastNotificationResponse не нужен.
+ */
+export function useReminderActions(db: Db, onChanged: () => void): void {
+  const latest = useRef(onChanged);
+  useEffect(() => {
+    latest.current = onChanged;
+  }, [onChanged]);
+
+  useEffect(() => {
+    const subscription = addNotificationResponseReceivedListener((response) => {
+      const action = response.actionIdentifier;
+      if (!isReminderAction(action)) return;
+      runReminderAction(db, response.notification.request.identifier, action)
+        .then(() => latest.current())
+        .catch((error: unknown) => {
+          if (__DEV__) console.warn('[напоминания]', error);
+        });
+    });
+    return () => subscription.remove();
+  }, [db]);
 }

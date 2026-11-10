@@ -8,7 +8,11 @@ import type { PlannerData, Task } from '@/lib/types';
 // поэтому смена времени — это отмена старого и постановка нового.
 
 export type Reminder = { id: string; title: string; date: string; time: string };
-export type ScheduledReminder = { id: string; title: string };
+/** category — набор кнопок уведомления; у поставленных до кнопок его нет. */
+export type ScheduledReminder = { id: string; title: string; category: string | null };
+
+/** Набор кнопок «+15 мин · +1 час · Сделано» — у каждого нашего уведомления. */
+export const REMINDER_CATEGORY = 'reminder';
 
 /** Повторы планируем на 14 дней вперёд, начиная с сегодня; дальше дотянет следующее открытие. */
 export const REMINDER_HORIZON_DAYS = 14;
@@ -52,7 +56,10 @@ export function planReminders(
   return planned.slice(0, MAX_REMINDERS);
 }
 
-/** Что отменить и что поставить, чтобы запланированное совпало с planned. */
+/**
+ * Что отменить и что поставить, чтобы запланированное совпало с planned.
+ * Без категории — переставляем: так уже стоящие уведомления без кнопок получат кнопки.
+ */
 export function diffReminders(
   planned: readonly Reminder[],
   scheduled: readonly ScheduledReminder[],
@@ -61,7 +68,7 @@ export function diffReminders(
   const kept = new Set<string>();
   const cancel: string[] = [];
   for (const s of scheduled) {
-    if (wanted.get(s.id)?.title === s.title) kept.add(s.id);
+    if (wanted.get(s.id)?.title === s.title && s.category === REMINDER_CATEGORY) kept.add(s.id);
     else cancel.push(s.id);
   }
   return { cancel, schedule: planned.filter((r) => !kept.has(r.id)) };
@@ -71,7 +78,45 @@ export function diffReminders(
 export type RevealTarget = { screen: 'today' | 'ahead'; id: string };
 
 // Во времени есть «:», поэтому не split(':'): t:<id задачи>:2026-10-18T15:00, r:<id правила>:…
-const REMINDER_ID = /^([tr]):([^:]+):(\d{4}-\d{2}-\d{2})T/;
+const REMINDER_ID = /^([tr]):([^:]+):(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/;
+
+/** Разобранный id напоминания: задача (t) или правило (r), день и время. */
+export type ReminderRef = { kind: 't' | 'r'; id: string; date: string; time: string };
+
+/** null — id не наш. */
+export function parseReminderId(reminderId: string): ReminderRef | null {
+  const [, kind, id, date, time] = REMINDER_ID.exec(reminderId) ?? [];
+  if (kind === undefined || id === undefined || date === undefined || time === undefined) return null;
+  return { kind: kind === 't' ? 't' : 'r', id, date, time };
+}
+
+/** Задача, про которую уведомление: сама задача или экземпляр повтора в этот день. */
+export function reminderTask(ref: ReminderRef, tasks: readonly Task[]): Task | undefined {
+  return ref.kind === 't'
+    ? tasks.find((t) => t.id === ref.id)
+    : tasks.find((t) => t.ruleId === ref.id && t.date === ref.date);
+}
+
+/** Уведомление всё ещё про несделанную задачу с этими днём и временем. */
+export function isCurrent(task: Task | undefined, ref: ReminderRef): task is Task {
+  return task !== undefined && !task.done && task.date === ref.date && task.time === ref.time;
+}
+
+/** Какие из показанных в шторке уже не про дело. Чужие id не трогаем. */
+export function staleShown(
+  shownIds: readonly string[],
+  data: Pick<PlannerData, 'tasks' | 'rules'>,
+): string[] {
+  return shownIds.filter((shownId) => {
+    const ref = parseReminderId(shownId);
+    if (ref === null) return false;
+    const task = reminderTask(ref, data.tasks);
+    if (task !== undefined) return !isCurrent(task, ref);
+    if (ref.kind === 't') return true; // задачу удалили
+    // Экземпляра повтора нет — уведомление живо, пока правило напоминает в это время
+    return !data.rules.some((r) => r.id === ref.id && r.active && r.time === ref.time);
+  });
+}
 
 function taskTarget(task: Task, today: string): RevealTarget | null {
   if (task.date === today || (task.date === null && !task.done)) return { screen: 'today', id: task.id };
@@ -84,14 +129,13 @@ export function reminderTarget(
   reminderId: string,
   data: Pick<PlannerData, 'tasks' | 'rules' | 'today'>,
 ): RevealTarget | null {
-  const [, kind, id, date] = REMINDER_ID.exec(reminderId) ?? [];
-  if (id === undefined) return null; // id не наш
-  const task =
-    kind === 't'
-      ? data.tasks.find((t) => t.id === id)
-      : data.tasks.find((t) => t.ruleId === id && t.date === date);
+  const ref = parseReminderId(reminderId);
+  if (ref === null) return null;
+  const task = reminderTask(ref, data.tasks);
   if (task !== undefined) return taskTarget(task, data.today);
   // Экземпляра повтора ещё нет — показываем само правило в «Повторяется»
-  if (kind === 'r' && data.rules.some((r) => r.id === id && r.active)) return { screen: 'ahead', id };
+  if (ref.kind === 'r' && data.rules.some((r) => r.id === ref.id && r.active)) {
+    return { screen: 'ahead', id: ref.id };
+  }
   return null;
 }

@@ -1,16 +1,15 @@
 import { useSQLiteContext, type SQLiteDatabase } from 'expo-sqlite';
-import { createContext, use, useEffect, useState, type ReactNode } from 'react';
+import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
 
 import { cleanupPhotos } from '@/hooks/use-photos';
-import { useReminders } from '@/hooks/use-reminders';
+import { useReminderActions, useReminders } from '@/hooks/use-reminders';
 import { applyChanges, type Changes } from '@/lib/changes';
 import { nowIso, today } from '@/lib/dates';
 import { migrate, photoNames, startDay, writeChanges, type Db } from '@/lib/db';
 import { demoChanges } from '@/lib/demo';
 import { makeId } from '@/lib/id';
 import type { Env, PlannerData } from '@/lib/types';
-
-export const DB_NAME = 'planner.db';
 
 // Вне компонента: время, id и запись в базу — «нечистые», в теле рендера им не место
 function currentEnv(): Env {
@@ -36,10 +35,19 @@ const PlannerContext = createContext<Planner | null>(null);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
-  // Один раз при запуске. Если React вызовет инициализатор дважды (StrictMode в dev),
-  // второй вызов ничего не изменит: rollover идемпотентен
+  // При запуске, при возврате в приложение и после кнопки в уведомлении. Если React вызовет
+  // инициализатор дважды (StrictMode в dev), второй вызов ничего не изменит: rollover идемпотентен
   const [data, setData] = useState(() => startToday(db));
+  const reload = useCallback(() => setData(startToday(db)), [db]);
   const reminders = useReminders(data);
+  useReminderActions(db, reload);
+  // Кнопку в уведомлении могли нажать при свёрнутом приложении — база уже другая. Заодно смена дня
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') reload();
+    });
+    return () => subscription.remove();
+  }, [reload]);
   // Один раз при запуске: файлы фото, на которые больше нет ссылок
   useEffect(() => {
     cleanupPhotos(photoNames(db));

@@ -3,6 +3,9 @@ import { at } from '@/lib/dates';
 import { rollover } from '@/lib/rollover';
 import type { Env, PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
+/** Файл базы: его открывают и приложение, и фоновая задача кнопок уведомления. */
+export const DB_NAME = 'planner.db';
+
 export type BindValue = string | number | null;
 
 /** Подмножество SQLiteDatabase из expo-sqlite. Настоящая база подходит структурно, в тестах — node:sqlite. */

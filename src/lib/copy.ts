@@ -105,6 +105,10 @@ export const copy = {
   },
   reminders: {
     channel: 'Напоминания', // имя канала в настройках уведомлений Android
+    // Кнопки в уведомлении
+    snoozeShort: '+15 мин',
+    snoozeLong: '+1 час',
+    done: 'Сделано',
   },
   // Индекс дня недели: 0 = вс, как Date.getDay()
   dates: {

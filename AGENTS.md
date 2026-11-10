@@ -28,6 +28,7 @@
 - Шрифты: Golos Text и JetBrains Mono через `@expo-google-fonts/*`; если пакета нет — локальные файлы через `expo-font`
 - Иконки: `react-native-svg` (линейные иконки, как в прототипе)
 - Эффекты: `expo-blur` (полупрозрачная плашка), `expo-linear-gradient` (затухание краёв бегунка), `react-native-reanimated` (таймер, появление/исчезание)
+- Фон: `expo-task-manager` — кнопки в уведомлении срабатывают, даже когда приложение закрыто
 - Тесты: Jest (`jest-expo`) для логики из `src/lib`
 - Пакеты Expo ставим **только через `npx expo install <пакет>`** — он подбирает версию под текущий SDK. Перед установкой — спроси.
 
@@ -46,7 +47,9 @@ npm run typecheck   # tsc --noEmit
 ## Структура
 
 ```
+index.ts            # вход: фоновая задача, затем expo-router/entry
 src/
+  reminder-task.ts  # фоновая задача кнопок уведомления — грузится до роутера
   app/              # Expo Router — только экраны и раскладка, без бизнес-логики
     _layout.tsx     # шрифты, safe area, тема
     index.tsx       # «Сегодня»
@@ -54,7 +57,7 @@ src/
   components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
   hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
     use-planner.tsx # PlannerProvider, usePlanner: данные в памяти, commit → база
-    use-reminders.ts # expo-notifications: разрешение, канал, синхронизация
+    use-reminders.ts # expo-notifications: разрешение, канал, кнопки, синхронизация, шторка
     use-voice.ts    # expo-speech-recognition: диктовка, громкость; в Expo Go модуля нет
     use-reveal.tsx  # тап по напоминанию: на какой экран, прокрутка и подсветка задачи
   lib/
@@ -66,7 +69,8 @@ src/
     intro.ts        # срезает «напомни мне», «надо», «пожалуйста» из названия — для parse-when
     rules.ts        # повторы: срабатывает ли правило в дату, следующая дата
     rollover.ts     # смена дня: несделанное → Стикеры, экземпляры повторов
-    reminders.ts    # какие напоминания должны стоять, сравнение с запланированными
+    reminders.ts    # какие напоминания должны стоять, сравнение с запланированными, что убрать из шторки
+    reminder-actions.ts # кнопки уведомления: «+15 мин», «+1 час», «Сделано» → Changes
     time-grid.ts    # панель ⏰: часы, минуты, утро/день/вечер, прошедшее неактивно
     voice.ts        # ошибки диктовки → текст для человека, громкость → 0…1
     changes.ts      # Changes и applyChanges — единственный путь записи

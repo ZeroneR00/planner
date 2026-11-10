@@ -1,4 +1,13 @@
-import { MAX_REMINDERS, diffReminders, planReminders, reminderTarget, type Reminder } from '@/lib/reminders';
+import {
+  MAX_REMINDERS,
+  REMINDER_CATEGORY,
+  diffReminders,
+  parseReminderId,
+  planReminders,
+  reminderTarget,
+  staleShown,
+  type Reminder,
+} from '@/lib/reminders';
 import type { Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18'; // воскресенье
@@ -120,20 +129,80 @@ describe('planReminders: повторы', () => {
 describe('diffReminders', () => {
   const a: Reminder = { id: 't:a:2026-10-18T15:00', title: 'созвон', date: TODAY, time: '15:00' };
   const b: Reminder = { id: 't:b:2026-10-19T09:00', title: 'врач', date: '2026-10-19', time: '09:00' };
+  const category = REMINDER_CATEGORY;
 
   it('всё совпадает — ничего не делаем', () => {
-    expect(diffReminders([a, b], [{ id: a.id, title: a.title }, { id: b.id, title: b.title }])).toEqual({
-      cancel: [],
-      schedule: [],
-    });
+    expect(
+      diffReminders(
+        [a, b],
+        [
+          { id: a.id, title: a.title, category },
+          { id: b.id, title: b.title, category },
+        ],
+      ),
+    ).toEqual({ cancel: [], schedule: [] });
   });
 
   it('другой текст — отменить и поставить заново', () => {
-    expect(diffReminders([a], [{ id: a.id, title: 'старое' }])).toEqual({ cancel: [a.id], schedule: [a] });
+    expect(diffReminders([a], [{ id: a.id, title: 'старое', category }])).toEqual({ cancel: [a.id], schedule: [a] });
   });
 
   it('новое — поставить, лишнее — отменить', () => {
-    expect(diffReminders([b], [{ id: a.id, title: a.title }])).toEqual({ cancel: [a.id], schedule: [b] });
+    expect(diffReminders([b], [{ id: a.id, title: a.title, category }])).toEqual({ cancel: [a.id], schedule: [b] });
+  });
+
+  it('поставлено без кнопок — переставить', () => {
+    expect(diffReminders([a], [{ id: a.id, title: a.title, category: null }])).toEqual({
+      cancel: [a.id],
+      schedule: [a],
+    });
+  });
+});
+
+describe('parseReminderId', () => {
+  it('время с «:» не мешает', () => {
+    expect(parseReminderId('t:a:2026-10-18T15:00')).toEqual({ kind: 't', id: 'a', date: TODAY, time: '15:00' });
+    expect(parseReminderId('r:r1:2026-10-19T09:30')).toEqual({ kind: 'r', id: 'r1', date: '2026-10-19', time: '09:30' });
+  });
+
+  it('чужой id — null', () => {
+    expect(parseReminderId('expo-123')).toBeNull();
+    expect(parseReminderId('t:a')).toBeNull();
+    expect(parseReminderId('t:a:2026-10-18T15:00:00')).toBeNull();
+  });
+});
+
+describe('staleShown: что убрать из шторки', () => {
+  const stale = (ids: string[], tasks: Task[], rules: Rule[] = []) => staleShown(ids, { tasks, rules });
+
+  it('задача как была — остаётся', () => {
+    expect(stale(['t:a:2026-10-18T15:00'], [task({ id: 'a', time: '15:00' })])).toEqual([]);
+  });
+
+  it('сделана, удалена, время другое, перенесена на другой день — убрать', () => {
+    expect(stale(['t:a:2026-10-18T15:00'], [task({ id: 'a', time: '15:00', done: true })])).toHaveLength(1);
+    expect(stale(['t:a:2026-10-18T15:00'], [])).toHaveLength(1);
+    expect(stale(['t:a:2026-10-18T15:00'], [task({ id: 'a', time: '15:15' })])).toHaveLength(1);
+    expect(stale(['t:a:2026-10-18T15:00'], [task({ id: 'a', date: '2026-10-19', time: '15:00' })])).toHaveLength(1);
+    expect(stale(['t:a:2026-10-17T15:00'], [task({ id: 'a', date: null })])).toHaveLength(1); // ушла в Стикеры
+  });
+
+  it('повтор без экземпляра: правило напоминает — остаётся, остановлено или время другое — убрать', () => {
+    const id = 'r:r1:2026-10-18T19:00';
+    expect(stale([id], [], [rule({ id: 'r1' })])).toEqual([]);
+    expect(stale([id], [], [rule({ id: 'r1', active: false })])).toEqual([id]);
+    expect(stale([id], [], [rule({ id: 'r1', time: '20:00' })])).toEqual([id]);
+  });
+
+  it('экземпляр повтора сделан — убрать', () => {
+    const id = 'r:r1:2026-10-18T19:00';
+    expect(stale([id], [task({ id: 'i', ruleId: 'r1', time: '19:00', done: true })], [rule({ id: 'r1' })])).toEqual([
+      id,
+    ]);
+  });
+
+  it('чужой id — не трогаем', () => {
+    expect(stale(['expo-123'], [])).toEqual([]);
   });
 });
 
