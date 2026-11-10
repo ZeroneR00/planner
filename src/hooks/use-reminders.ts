@@ -19,7 +19,7 @@ import {
   type NotificationResponse,
 } from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 
 import { applyChanges } from '@/lib/changes';
 import { copy } from '@/lib/copy';
@@ -70,14 +70,35 @@ function refused(p: NotificationPermissionsStatus): boolean {
   return !p.granted && (!p.canAskAgain || askedThisLaunch);
 }
 
+async function ensureChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await setNotificationChannelAsync(CHANNEL_ID, {
+    name: copy.reminders.channel,
+    importance: AndroidImportance.HIGH,
+  });
+}
+
+const APP_PACKAGE = 'com.zeroner00.planner'; // как android.package в app.json
+
+/** Системные настройки канала «Напоминания»: звук, вибрация. Не вышло — настройки приложения. */
+export async function openReminderSound(): Promise<void> {
+  try {
+    // Канала может ещё не быть (ни одной задачи со временем) — без него экран канала не откроется
+    await ensureChannel();
+    if (Platform.OS !== 'android') throw new Error('Настройки канала есть только на Android');
+    await Linking.sendIntent('android.settings.CHANNEL_NOTIFICATION_SETTINGS', [
+      { key: 'android.provider.extra.APP_PACKAGE', value: APP_PACKAGE },
+      { key: 'android.provider.extra.CHANNEL_ID', value: CHANNEL_ID },
+    ]);
+  } catch (error) {
+    if (__DEV__) console.warn('[напоминания] настройки канала', error);
+    await Linking.openSettings().catch(() => undefined);
+  }
+}
+
 async function ensureAllowed(): Promise<boolean> {
   // Канал — до запроса: на Android 13 без канала системный вопрос не появляется
-  if (Platform.OS === 'android') {
-    await setNotificationChannelAsync(CHANNEL_ID, {
-      name: copy.reminders.channel,
-      importance: AndroidImportance.HIGH,
-    });
-  }
+  await ensureChannel();
   const current = await getPermissionsAsync();
   if (current.granted) return true;
   if (refused(current)) return false;

@@ -6,9 +6,10 @@ import { cleanupPhotos } from '@/hooks/use-photos';
 import { useReminderActions, useReminders } from '@/hooks/use-reminders';
 import { applyChanges, type Changes } from '@/lib/changes';
 import { nowIso, today } from '@/lib/dates';
-import { migrate, photoNames, startDay, writeChanges, type Db } from '@/lib/db';
+import { loadSettings, migrate, photoNames, startDay, writeChanges, writeSettings, type Db } from '@/lib/db';
 import { demoChanges } from '@/lib/demo';
 import { makeId } from '@/lib/id';
+import type { Settings } from '@/lib/settings';
 import type { Env, PlannerData } from '@/lib/types';
 
 // Вне компонента: время, id и запись в базу — «нечистые», в теле рендера им не место
@@ -29,7 +30,12 @@ function startToday(db: Db): PlannerData {
 }
 
 // remindersOff — человек запретил уведомления: показываем это после добавления задачи со временем
-type Planner = PlannerData & { commit: (changes: Changes) => void; remindersOff: boolean };
+type Planner = PlannerData & {
+  commit: (changes: Changes) => void;
+  remindersOff: boolean;
+  settings: Settings;
+  changeSettings: (patch: Partial<Settings>) => void;
+};
 
 const PlannerContext = createContext<Planner | null>(null);
 
@@ -52,12 +58,20 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     cleanupPhotos(photoNames(db));
   }, [db]);
+  // При возврате в приложение не перечитываем: настройки меняет только этот экран
+  const [settings, setSettings] = useState(() => loadSettings(db));
   const commit = (changes: Changes) => {
     writeChanges(db, changes); // сначала база: упала запись — память не трогаем
     setData((d) => applyChanges(d, changes));
   };
+  const changeSettings = (patch: Partial<Settings>) => {
+    writeSettings(db, patch); // как commit: сначала база
+    setSettings((s) => ({ ...s, ...patch }));
+  };
   return (
-    <PlannerContext value={{ ...data, commit, remindersOff: reminders.off }}>{children}</PlannerContext>
+    <PlannerContext value={{ ...data, commit, remindersOff: reminders.off, settings, changeSettings }}>
+      {children}
+    </PlannerContext>
   );
 }
 

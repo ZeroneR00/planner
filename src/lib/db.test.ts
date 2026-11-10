@@ -3,14 +3,17 @@ import { at } from '@/lib/dates';
 import { demoChanges } from '@/lib/demo';
 import {
   loadData,
+  loadSettings,
   migrate,
   MIGRATIONS,
   photoNames,
   startDay,
   writeChanges,
+  writeSettings,
   type BindValue,
   type Db,
 } from '@/lib/db';
+import { DEFAULT_SETTINGS } from '@/lib/settings';
 import type { Env, Rule, Task } from '@/lib/types';
 
 type NodeStatement = {
@@ -105,7 +108,7 @@ describe('migrate', () => {
     const tables = fresh
       .getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name", [])
       .map((row) => row.name);
-    expect(tables).toEqual(['rules', 'tasks']);
+    expect(tables).toEqual(['rules', 'settings', 'tasks']);
   });
 
   it('повторный запуск ничего не делает', () => {
@@ -167,10 +170,46 @@ describe('migrate', () => {
       1,
     ]);
     expect(migrate(old)).toBe(3);
-    expect(MIGRATIONS).toHaveLength(4);
     const data = loadData(old, TODAY);
     expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон', time: '15:00' })]);
     expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
+  });
+
+  it('версия 4 → 5: задачи и правила на месте, настройки по умолчанию', () => {
+    const old = openTestDb();
+    for (const version of [0, 1, 2, 3]) old.execSync(at(MIGRATIONS, version));
+    old.execSync('PRAGMA user_version = 4');
+    old.runSync(
+      'INSERT INTO tasks (id, title, date, photo, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      ['t', 'созвон', TODAY, 'a.jpg', BEFORE, BEFORE],
+    );
+    old.runSync('INSERT INTO rules (id, title, kind, start_date, active) VALUES (?, ?, ?, ?, ?)', [
+      'd',
+      'зарядка',
+      'daily',
+      '2026-10-01',
+      1,
+    ]);
+    expect(migrate(old)).toBe(4);
+    expect(MIGRATIONS).toHaveLength(5);
+    const data = loadData(old, TODAY);
+    expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон', photo: 'a.jpg' })]);
+    expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
+    expect(loadSettings(old)).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe('loadSettings и writeSettings', () => {
+  it('новая база — по умолчанию', () => {
+    expect(loadSettings(db)).toEqual(DEFAULT_SETTINGS);
+  });
+
+  it('записанное читается, повторная запись того же ключа заменяет', () => {
+    writeSettings(db, { voiceReplies: false });
+    expect(loadSettings(db)).toEqual({ voiceReplies: false });
+    writeSettings(db, { voiceReplies: true });
+    expect(loadSettings(db)).toEqual({ voiceReplies: true });
+    expect(db.getAllSync('SELECT * FROM settings', [])).toHaveLength(1);
   });
 });
 

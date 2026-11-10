@@ -31,10 +31,11 @@ export type Voice = {
   listening: boolean;
   level: SharedValue<number>; // громкость 0…1 — для пульсации кнопки
   toggle(): void;
-  abort(): void;
+  finish(): void; // закончить раньше — сказанное записывается
+  abort(): void; // прервать — сказанное остаётся в поле
 };
 
-/** Диктовка: тап — слушаем, замолчал — фраза готова; повторный тап — закончить раньше. */
+/** Диктовка: касание — слушаем, замолчал — фраза готова; тап по экрану — закончить раньше. */
 export function useVoice(handlers: Handlers): Voice {
   const [listening, setListening] = useState(false);
   const level = useSharedValue(0);
@@ -174,6 +175,9 @@ export function useVoice(handlers: Handlers): Voice {
     toggle: () => {
       if (activeRef.current) stop();
       else void start();
+    },
+    finish: () => {
+      if (activeRef.current) stop();
     },
     abort,
   };

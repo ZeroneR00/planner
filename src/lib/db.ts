@@ -1,6 +1,7 @@
 import { applyChanges, type Changes } from '@/lib/changes';
 import { at } from '@/lib/dates';
 import { rollover } from '@/lib/rollover';
+import { settingsFromRows, settingsToRows, type SettingRow, type Settings } from '@/lib/settings';
 import type { Env, PlannerData, RepeatPattern, Rule, Task } from '@/lib/types';
 
 /** Файл базы: его открывают и приложение, и фоновая задача кнопок уведомления. */
@@ -61,6 +62,13 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE tasks ADD COLUMN photo TEXT;
   ALTER TABLE rules ADD COLUMN photo TEXT;
+  `,
+  // Настройки: ключ — значение, новая настройка без миграции
+  `
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY NOT NULL,
+    value TEXT NOT NULL
+  );
   `,
 ];
 
@@ -253,6 +261,19 @@ export function writeChanges(db: Db, changes: Changes): void {
     for (const id of changes.removeRules ?? []) db.runSync('DELETE FROM rules WHERE id = ?', [id]);
     for (const task of changes.putTasks ?? []) db.runSync(PUT_TASK, taskToParams(task));
     for (const rule of changes.putRules ?? []) db.runSync(PUT_RULE, ruleToParams(rule));
+  });
+}
+
+export function loadSettings(db: Db): Settings {
+  return settingsFromRows(db.getAllSync<SettingRow>('SELECT key, value FROM settings', []));
+}
+
+/** Только переданные поля, одной транзакцией. */
+export function writeSettings(db: Db, patch: Partial<Settings>): void {
+  db.withTransactionSync(() => {
+    for (const row of settingsToRows(patch)) {
+      db.runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [row.key, row.value]);
+    }
   });
 }
 

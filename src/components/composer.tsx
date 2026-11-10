@@ -7,7 +7,6 @@ import { CameraSheet } from '@/components/camera-sheet';
 import { EditBar } from '@/components/edit-bar';
 import { HintLine } from '@/components/hint-line';
 import { Icon } from '@/components/icon';
-import { MicButton } from '@/components/mic-button';
 import { PillButton } from '@/components/pill-button';
 import { RepeatSheet } from '@/components/repeat-sheet';
 import { TimeSheet } from '@/components/time-sheet';
@@ -49,15 +48,6 @@ export function Composer({ composer: c }: Props) {
     Keyboard.dismiss();
     c.openCamera();
   };
-
-  // Клавиатура при диктовке не нужна, а без фокуса тап по полю вызовет onFocus — и остановит запись
-  const toggleVoice = () => {
-    Keyboard.dismiss();
-    c.toggleVoice();
-  };
-
-  // Поле пустое — 🎙 вместо серой стрелки; в правке — ✓; в Expo Go микрофона нет
-  const showMic = c.mic.available && (c.mic.listening || (!c.typing && !c.editing));
 
   return (
     // Над системной панелью — только когда клавиатура спрятана: открытая и так выше неё
@@ -131,25 +121,21 @@ export function Composer({ composer: c }: Props) {
             </Pressable>
           )}
         </View>
-        {showMic ? (
-          <MicButton listening={c.mic.listening} level={c.mic.level} onPress={toggleVoice} />
-        ) : (
-          <Pressable
-            onPress={c.submit}
-            disabled={!c.canSubmit}
-            accessibilityRole="button"
-            accessibilityLabel={c.editing ? copy.composer.save : copy.composer.send}
-            accessibilityState={{ disabled: !c.canSubmit }}
-            style={({ pressed }) => [styles.send, c.canSubmit && styles.sendOn, pressed && styles.pressed]}
-          >
-            <Icon
-              name={c.editing ? 'check' : 'arrowUp'}
-              size={22}
-              color={c.canSubmit ? colors.onAccent : colors.control}
-              strokeWidth={c.editing ? 2.6 : 2.4}
-            />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={c.submit}
+          disabled={!c.canSubmit}
+          accessibilityRole="button"
+          accessibilityLabel={c.editing ? copy.composer.save : copy.composer.send}
+          accessibilityState={{ disabled: !c.canSubmit }}
+          style={({ pressed }) => [styles.send, c.canSubmit && styles.sendOn, pressed && styles.pressed]}
+        >
+          <Icon
+            name={c.editing ? 'check' : 'arrowUp'}
+            size={22}
+            color={c.canSubmit ? colors.onAccent : colors.control}
+            strokeWidth={c.editing ? 2.6 : 2.4}
+          />
+        </Pressable>
       </View>
       {c.camera && <CameraSheet onPhoto={(uri) => void c.addPhoto(uri)} onClose={c.closeCamera} />}
     </View>

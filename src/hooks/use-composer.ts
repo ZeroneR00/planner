@@ -1,9 +1,10 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { BackHandler } from 'react-native';
 
 import { savePhoto } from '@/hooks/use-photos';
 import { usePlanner } from '@/hooks/use-planner';
+import { useReply } from '@/hooks/use-reply';
 import { useUndo } from '@/hooks/use-undo';
 import { useVoice } from '@/hooks/use-voice';
 import {
@@ -37,6 +38,7 @@ import {
   type EditState,
 } from '@/lib/edit';
 import { makeId } from '@/lib/id';
+import { addedReply } from '@/lib/reply';
 import { addTask } from '@/lib/task-actions';
 import { timeGrid } from '@/lib/time-grid';
 import type { RepeatPattern, Rule, Task } from '@/lib/types';
@@ -58,6 +60,9 @@ export function useComposer() {
   const [notice, setNotice] = useState<Hint | null>(null);
   const [edit, setEdit] = useState<Editing | null>(null);
   const [camera, setCamera] = useState(false);
+  const { reply, hush } = useReply();
+  // Сколько раз ответили — начала ответа идут по кругу
+  const picks = useRef(0);
 
   // Каждый рендер — свежее: «в 9», написанное в 8:59 и отправленное в 9:01, уже на завтра
   const now = nowTime();
@@ -79,10 +84,19 @@ export function useComposer() {
       if (text.trim() === '') return;
       const spoken = editText(emptyDraft, text, today, nowTime());
       const heard = resolveWhen(spoken, today, nowTime());
-      if (heard.title === '') setDraft(spoken);
-      else add(heard);
+      if (heard.title === '') {
+        setDraft(spoken);
+        reply(copy.reply.noTitle);
+        return;
+      }
+      add(heard);
+      // Отвечаем только на голос: напечатал — и так смотришь на экран
+      reply(addedReply(heard, today, picks.current++, planner.remindersOff));
     },
-    onError: (error) => setNotice(voiceHint(error)),
+    onError: (error) => {
+      setNotice(voiceHint(error));
+      reply(copy.reply[error]);
+    },
   });
   const { abort: abortVoice } = voice;
 
@@ -179,10 +193,13 @@ export function useComposer() {
     toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, now, weekday)),
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
     toggleVoice: () => {
+      hush(); // иначе распознавание услышит прошлый ответ
       setSheet(null);
       setNotice(null);
       voice.toggle();
     },
+    // Тап по экрану во время диктовки — закончить раньше: сказанное записывается
+    finishVoice: () => voice.finish(),
     // Тап по полю во время диктовки — остановить и поправить услышанное руками
     focusField: () => {
       setSheet(null);
@@ -218,6 +235,11 @@ export function useComposer() {
       add(when, name);
     },
     submit: () => {
+      // Стрелка во время диктовки — закончить: задачу запишет конец диктовки, иначе она добавилась бы дважды
+      if (voice.listening) {
+        voice.finish();
+        return;
+      }
       if (when.title === '' && edit?.photo === undefined) return;
       if (edit !== null) {
         const changes = saveEdit(planner, edit, when, nowIso(), makeId);
