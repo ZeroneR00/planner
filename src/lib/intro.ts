@@ -2,6 +2,7 @@ import { capitalize } from '@/lib/dates';
 
 // Ключевые слова парсера — не тексты интерфейса, поэтому живут здесь, а не в copy.ts.
 // Срезаем только начало фразы и только целыми словами: «надомник» и «напомнить Пете» не трогаем.
+// Обращения к самому приложению — тоже вступления: «мне нужно, чтобы ты записал…», «можешь напомнить мне…».
 
 type Word = { raw: string; key: string; colon: boolean };
 
@@ -27,10 +28,29 @@ const STRONG = [
 const WRITE_DOWN = ['запиши', 'запишите', 'добавь', 'добавьте', 'запомни', 'отметь', 'пометь', 'внеси', 'закинь', 'зафиксируй'];
 const LABEL = ['задача', 'заметка'];
 const PRONOUN_OR_THAT = ['мне', 'нам', 'себе', 'что', 'чтобы', 'чтоб'];
+const PRONOUNS = ['мне', 'нам', 'себе'];
 
-// Связки после вступления: «напомни мне, что…»
-const LINK = ['о том что', 'о том чтобы', 'мне', 'нам', 'себе', 'что', 'чтобы', 'чтоб'];
+// Связки после вступления: «напомни мне, что…». «Что бы» раздельно — так часто пишет распознавание
+const LINK = ['о том что', 'о том чтобы', 'о том что бы', 'мне', 'нам', 'себе', 'что', 'чтобы', 'чтоб', 'что бы'];
 const THAT = ['что', 'чтобы', 'чтоб'];
+// «…чтобы я купил хлеб»: после них прошедшее время становится действием — «купить хлеб»
+const SUBJECTS = ['я', 'мы'];
+
+// Обращение к приложению: «можешь записать», «чтобы ты напомнил». Глаголы записи — по основе
+const ASK_STEMS = ['записа', 'напомни', 'запомни', 'добави', 'отмети', 'сохрани', 'зафиксирова'];
+const ASK_INF = [...ASK_STEMS.map((stem) => `${stem}ть`), 'внести'];
+const ASK_PAST = [
+  ...ASK_STEMS.flatMap((stem) => ['л', 'ла', 'ли'].map((end) => `${stem}${end}`)),
+  'внес', 'внесла', 'внесли',
+];
+const CAN = [
+  'можешь', 'можете', 'ты можешь', 'вы можете', 'можешь ли ты', 'можете ли вы',
+  'мог бы ты', 'могла бы ты', 'могли бы вы', 'не мог бы ты', 'не могла бы ты', 'не могли бы вы',
+  'ты не мог бы', 'ты не могла бы', 'вы не могли бы',
+];
+// «Хочу» само не вступление («хочу пиццу»): только «хочу, чтобы ты записал…»
+const WANT = ['я хочу', 'хочу', 'я хотел бы', 'я хотела бы', 'хотел бы', 'хотела бы', 'хотелось бы'];
+const THAT_WORDS = ['чтобы', 'чтоб', 'что бы'];
 
 const FILLER = [
   'слушай', 'слушайте', 'короче', 'кстати', 'ну', 'ну ка', 'окей', 'ок', 'ладно', 'эй', 'итак', 'блин',
@@ -38,6 +58,13 @@ const FILLER = [
 ];
 // «так держать», «вот это да» — не вступления: режем, только если дальше настоящее вступление
 const SOFT_FILLER = ['так', 'вот', 'а', 'и', 'да', 'значит', 'смотри'];
+
+// Прошедшее время, которое не превращается в «-ть» по окончанию: есть, сесть, попасть, класть
+const IRREGULAR_PAST = new Set([
+  'ел', 'поел', 'съел', 'доел', 'наел', 'объел',
+  'сел', 'присел', 'пересел', 'подсел', 'усел', 'засел',
+  'попал', 'упал', 'пропал', 'напал', 'клал', 'крал',
+]);
 
 /** Хвост в конце фразы, источник регулярки для нормализованного текста (ё → е, знаки — пробелы). */
 // «Спасибо» не берём: «сказать Пете спасибо»
@@ -52,6 +79,9 @@ function phrases(list: readonly string[]): string[][] {
 const STRONG_PHRASES = phrases(STRONG);
 const LINK_PHRASES = phrases(LINK);
 const FILLER_PHRASES = phrases(FILLER);
+const CAN_PHRASES = phrases(CAN);
+const WANT_PHRASES = phrases(WANT);
+const THAT_PHRASES = phrases(THAT_WORDS);
 
 // «-ка» не меняет смысла: «ну-ка», «запиши-ка», «напомни-ка» — те же слова
 function keyOf(token: string): string {
@@ -86,23 +116,79 @@ function matchPhrase(words: readonly Word[], at: number, list: readonly string[]
   return found?.length ?? 0;
 }
 
+/** После глагола записи видно, что дальше само дело: двоеточие, «мне / что», «о том» или действие. */
+function notesNext(words: readonly Word[], at: number): boolean {
+  const next = words[at + 1];
+  const aboutThat = next?.key === 'о' && words[at + 2]?.key === 'том';
+  return (
+    words[at]?.colon === true ||
+    (next !== undefined && PRONOUN_OR_THAT.includes(next.key)) ||
+    aboutThat ||
+    isInfinitive(next)
+  );
+}
+
 /** «Запиши», «напомнить», «задача» — вступление, только если это видно по следующему слову. */
 function matchSoft(words: readonly Word[], at: number): number {
   const word = words[at];
   if (word === undefined) return 0;
   const next = words[at + 1];
-  const nextIsPronoun = next !== undefined && PRONOUN_OR_THAT.includes(next.key);
-  if (WRITE_DOWN.includes(word.key)) {
-    const aboutThat = next?.key === 'о' && words[at + 2]?.key === 'том';
-    return word.colon || nextIsPronoun || aboutThat || isInfinitive(next) ? 1 : 0;
-  }
-  if (word.key === 'напомнить') return nextIsPronoun ? 1 : 0;
+  if (WRITE_DOWN.includes(word.key)) return notesNext(words, at) ? 1 : 0;
+  if (word.key === 'напомнить') return next !== undefined && PRONOUN_OR_THAT.includes(next.key) ? 1 : 0;
   if (LABEL.includes(word.key)) return word.colon || isInfinitive(next) ? 1 : 0;
   return 0;
 }
 
+function skipFillers(words: readonly Word[], at: number): number {
+  let i = at;
+  let length = matchPhrase(words, i, FILLER_PHRASES);
+  while (length > 0) {
+    i += length;
+    length = matchPhrase(words, i, FILLER_PHRASES);
+  }
+  return i;
+}
+
+/**
+ * «(пожалуйста) (мне) записать» с позиции at: конец или 0. Глагол записи — вступление, если перед ним
+ * «мне» или дальше видно дело: «можешь записать ребёнка к врачу» не трогаем, как «запиши ребёнка».
+ */
+function matchVerbPart(words: readonly Word[], at: number, verbs: readonly string[]): number {
+  let i = skipFillers(words, at);
+  const pronounBefore = PRONOUNS.includes(words[i]?.key ?? '');
+  if (pronounBefore) i = skipFillers(words, i + 1);
+  const verb = words[i];
+  if (verb === undefined || !verbs.includes(verb.key)) return 0;
+  return pronounBefore || notesNext(words, i) ? i + 1 : 0;
+}
+
+/** «Можешь напомнить мне», «не могла бы ты записать…». */
+function matchAsk(words: readonly Word[], at: number): number {
+  const length = matchPhrase(words, at, CAN_PHRASES);
+  if (length === 0) return 0;
+  const end = matchVerbPart(words, at + length, ASK_INF);
+  return end === 0 ? 0 : end - at;
+}
+
+/** «Ты записал мне», «вы мне напомнили» — сразу после «чтобы». */
+function matchAddress(words: readonly Word[], at: number): number {
+  const word = words[at];
+  if (word === undefined || (word.key !== 'ты' && word.key !== 'вы')) return 0;
+  const end = matchVerbPart(words, at + 1, ASK_PAST);
+  return end === 0 ? 0 : end - at;
+}
+
+/** «Я хочу, чтобы» — только если дальше обращение «ты записал…»; длина до «чтобы» включительно. */
+function matchWant(words: readonly Word[], at: number): number {
+  const want = matchPhrase(words, at, WANT_PHRASES);
+  if (want === 0) return 0;
+  const that = matchPhrase(words, at + want, THAT_PHRASES);
+  if (that === 0 || matchAddress(words, at + want + that) === 0) return 0;
+  return want + that;
+}
+
 function matchIntro(words: readonly Word[], at: number): number {
-  return matchPhrase(words, at, STRONG_PHRASES) || matchSoft(words, at);
+  return matchPhrase(words, at, STRONG_PHRASES) || matchSoft(words, at) || matchAsk(words, at) || matchWant(words, at);
 }
 
 /** Мягкое слово-паразит режем, если за ним (и за другими паразитами) идёт вступление. */
@@ -119,36 +205,64 @@ function introAfterFillers(words: readonly Word[], at: number): boolean {
   return false;
 }
 
+/** Перед позицией end срезано «что / чтобы / чтоб» или «что бы»: дальше может быть «я» или «ты записал». */
+function endsWithThat(words: readonly Word[], end: number): boolean {
+  const last = words[end - 1]?.key ?? '';
+  return THAT.includes(last) || (last === 'бы' && words[end - 2]?.key === 'что');
+}
+
+/**
+ * «Купил» → «купить», «позвонила» → «позвонить», «записался» → «записаться» — по окончанию, без словаря.
+ * С «ё» (пошёл, принёс) и из IRREGULAR_PAST — как сказано. «О» перед «л» не берём: «стол», «пол» — не глаголы.
+ */
+function toInfinitive(raw: string): string {
+  const [, core = raw, punct = ''] = /^(.*?)([,.;:!?—–-]*)$/.exec(raw) ?? [];
+  const lower = core.toLowerCase();
+  if (lower.includes('ё') || IRREGULAR_PAST.has(lower.replace(/(?:ся|ась|ись|а|и)$/, ''))) return raw;
+  if (/[аеиуыяю]л(?:ся|ась|ись)$/.test(lower)) return `${core.replace(/л(?:ся|ась|ись)$/i, 'ться')}${punct}`;
+  if (/[аеиуыяю]л[аи]?$/.test(lower)) return `${core.replace(/л[аи]?$/i, 'ть')}${punct}`;
+  return raw;
+}
+
 /** Срезает вежливые вступления в начале названия. Нечего оставить — возвращает как было. */
 export function stripIntro(title: string): string {
   const words = wordsOf(title);
   let at = 0;
   let introFound = false; // связки «мне», «что» режем только после вступления
-  let previous = '';
+  let subjectCut = false; // последним срезали «я / мы» после «чтобы»: дальше прошедшее время
 
   for (;;) {
     const word = words[at];
     if (word === undefined) break;
+    const afterThat = endsWithThat(words, at);
+    let subject = false;
     let length = matchIntro(words, at);
     if (length > 0) {
       introFound = true;
     } else if (introFound) {
-      length = matchPhrase(words, at, LINK_PHRASES);
-      if (length === 0 && word.key === 'я' && THAT.includes(previous)) length = 1;
+      length = afterThat ? matchAddress(words, at) : 0;
+      if (length === 0) length = matchPhrase(words, at, LINK_PHRASES);
+      if (length === 0 && afterThat && SUBJECTS.includes(word.key)) {
+        length = 1;
+        subject = true;
+      }
     }
     if (length === 0) length = matchPhrase(words, at, FILLER_PHRASES);
     if (length === 0 && SOFT_FILLER.includes(word.key) && introAfterFillers(words, at + 1)) length = 1;
     if (length === 0) break;
     at += length;
-    previous = words[at - 1]?.key ?? '';
+    subjectCut = subject;
   }
 
   if (at === 0 || at >= words.length) return title;
-  const rest = words
-    .slice(at)
-    .map((word) => word.raw)
-    .join(' ')
-    .replace(/^[\s,.;:!?—–-]+/, '');
+  const raws = words.slice(at).map((word) => word.raw);
+  if (subjectCut) {
+    // «чтобы я не опоздал» → «не опоздать»
+    const verbAt = words[at]?.key === 'не' ? 1 : 0;
+    const verb = raws[verbAt];
+    if (verb !== undefined) raws[verbAt] = toInfinitive(verb);
+  }
+  const rest = raws.join(' ').replace(/^[\s,.;:!?—–-]+/, '');
   if (rest === '') return title;
   const head = title.trim().charAt(0);
   return head !== head.toLowerCase() ? capitalize(rest) : rest;
