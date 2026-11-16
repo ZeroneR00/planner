@@ -4,6 +4,7 @@ describe('settingsFromRows', () => {
   it('пусто — по умолчанию', () => {
     expect(settingsFromRows([])).toEqual(DEFAULT_SETTINGS);
     expect(DEFAULT_SETTINGS.voiceReplies).toBe(true);
+    expect(DEFAULT_SETTINGS.voice).toBe('ruslan');
   });
 
   it("'0' — выключено", () => {
@@ -20,18 +21,35 @@ describe('settingsFromRows', () => {
         { key: 'theme', value: '0' },
         { key: 'voice_replies', value: '0' },
       ]),
-    ).toEqual({ voiceReplies: false });
+    ).toEqual({ ...DEFAULT_SETTINGS, voiceReplies: false });
+  });
+
+  it('голос читается как id', () => {
+    expect(settingsFromRows([{ key: 'voice', value: 'irina' }]).voice).toBe('irina');
+    expect(settingsFromRows([{ key: 'voice', value: 'phone' }]).voice).toBe('phone');
+  });
+
+  it('чужой голос — по умолчанию', () => {
+    expect(settingsFromRows([{ key: 'voice', value: 'alice' }]).voice).toBe(DEFAULT_SETTINGS.voice);
+    expect(settingsFromRows([{ key: 'voice', value: '' }]).voice).toBe(DEFAULT_SETTINGS.voice);
   });
 });
 
 describe('settingsToRows', () => {
   it('только переданные поля', () => {
     expect(settingsToRows({ voiceReplies: false })).toEqual([{ key: 'voice_replies', value: '0' }]);
+    expect(settingsToRows({ voice: 'denis' })).toEqual([{ key: 'voice', value: 'denis' }]);
     expect(settingsToRows({})).toEqual([]);
   });
 
   it('туда и обратно', () => {
-    expect(settingsFromRows(settingsToRows({ voiceReplies: false }))).toEqual({ voiceReplies: false });
-    expect(settingsFromRows(settingsToRows({ voiceReplies: true }))).toEqual({ voiceReplies: true });
+    expect(settingsFromRows(settingsToRows({ voiceReplies: false }))).toEqual({
+      ...DEFAULT_SETTINGS,
+      voiceReplies: false,
+    });
+    expect(settingsFromRows(settingsToRows({ voiceReplies: true, voice: 'dmitri' }))).toEqual({
+      voiceReplies: true,
+      voice: 'dmitri',
+    });
   });
 });

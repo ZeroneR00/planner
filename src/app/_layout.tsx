@@ -10,6 +10,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { JarvisVoiceProvider } from '@/hooks/use-jarvis-voice';
 import { PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
 import { RevealProvider } from '@/hooks/use-reveal';
 import { UndoProvider } from '@/hooks/use-undo';
@@ -60,12 +61,15 @@ export default function RootLayout() {
       {/* Пока база не открыта и не мигрирована, SQLiteProvider ничего не рисует — это миллисекунды */}
       <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
         <PlannerProvider>
-          <UndoProvider>
-            {/* Внутри базы: тап по напоминанию ищет задачу в данных и ведёт к ней */}
-            <RevealProvider>
-              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
-            </RevealProvider>
-          </UndoProvider>
+          {/* Внутри PlannerProvider: какой голос выбран — в настройках */}
+          <JarvisVoiceProvider>
+            <UndoProvider>
+              {/* Внутри базы: тап по напоминанию ищет задачу в данных и ведёт к ней */}
+              <RevealProvider>
+                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+              </RevealProvider>
+            </UndoProvider>
+          </JarvisVoiceProvider>
         </PlannerProvider>
       </SQLiteProvider>
     </ThemeProvider>

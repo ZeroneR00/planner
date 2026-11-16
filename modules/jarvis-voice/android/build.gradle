@@ -1,0 +1,30 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.jarvisvoice'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.jarvisvoice"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+repositories {
+  maven {
+    url 'https://jitpack.io'
+    content { includeGroup 'com.github.k2-fsa.sherpa-onnx' }
+  }
+}
+
+dependencies {
+  // 1.13.8 — последняя с espeak-ng; в 2.x русский для голосов Piper не работает.
+  // Именно @aar с этой координатой: com.github.k2-fsa:sherpa-onnx тянет JVM- и linux-сборки
+  implementation 'com.github.k2-fsa.sherpa-onnx:sherpa-onnx:v1.13.8@aar'
+  // распаковка tar.bz2: bzip2 в Android нет
+  implementation 'org.apache.commons:commons-compress:1.27.1'
+}

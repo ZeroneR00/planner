@@ -1,10 +1,11 @@
 import { requireOptionalNativeModule } from 'expo';
 import { useCallback } from 'react';
-import { Linking } from 'react-native';
 
+import { jarvisSpeak, jarvisStop } from '@/hooks/use-jarvis-voice';
 import { usePlanner } from '@/hooks/use-planner';
 
-// Единственное место с expo-speech. Что сказать — решает reply.ts.
+// Говорит свой голос Джарвиса; пока он не скачан или не смог — голос телефона через expo-speech
+// (единственное место с ним). Что сказать — решает reply.ts.
 
 type Speech = typeof import('expo-speech');
 
@@ -19,8 +20,7 @@ function load(): Promise<Speech> | null {
   return speech;
 }
 
-/** Сказать сразу, оборвав прошлую фразу. Ошибки молча: ответ голосом — не главное. */
-export function say(text: string): void {
+function phoneSay(text: string): void {
   load()
     ?.then(async (s) => {
       await s.stop();
@@ -31,8 +31,7 @@ export function say(text: string): void {
     });
 }
 
-/** Замолчать: перед записью голоса, иначе распознавание услышит само себя. */
-export function hush(): void {
+function phoneStop(): void {
   load()
     ?.then((s) => s.stop())
     .catch((error: unknown) => {
@@ -40,9 +39,36 @@ export function hush(): void {
     });
 }
 
-/** Системные настройки синтеза речи: голос, скорость. Не вышло — настройки приложения. */
-export function openSpeechSettings(): void {
-  Linking.sendIntent('com.android.settings.TTS_SETTINGS').catch(() => Linking.openSettings());
+/** Сказать сразу, оборвав прошлую фразу. Ошибки молча: ответ голосом — не главное. */
+export function say(text: string): void {
+  const own = jarvisSpeak(text);
+  if (own === null) {
+    jarvisStop();
+    phoneSay(text);
+    return;
+  }
+  phoneStop();
+  own.then(
+    (summary) => {
+      if (__DEV__) console.log('[свой голос]', summary);
+    },
+    (error: unknown) => {
+      if (__DEV__) console.warn('[голос] свой голос не сказал', error);
+      phoneSay(text);
+    },
+  );
+}
+
+/** Сказать голосом телефона, даже если свой готов: «Прослушать» у голоса телефона в настройках. */
+export function sayWithPhone(text: string): void {
+  jarvisStop();
+  phoneSay(text);
+}
+
+/** Замолчать: перед записью голоса, иначе распознавание услышит само себя. */
+export function hush(): void {
+  jarvisStop();
+  phoneStop();
 }
 
 /** say, только если в настройках «Отвечать голосом». */

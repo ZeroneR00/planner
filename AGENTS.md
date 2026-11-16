@@ -29,7 +29,8 @@
 - Иконки: `react-native-svg` (линейные иконки, как в прототипе)
 - Эффекты: `expo-blur` (полупрозрачная плашка), `expo-linear-gradient` (затухание краёв бегунка), `react-native-reanimated` (таймер, появление/исчезание)
 - Фон: `expo-task-manager` — кнопки в уведомлении срабатывают, даже когда приложение закрыто
-- Озвучка: `expo-speech` — ответы голосом (системный синтезатор)
+- Озвучка: свой голос Джарвиса на устройстве; `expo-speech` (системный синтезатор) — запасной, пока свой не скачан
+- Свой голос: локальный модуль `modules/jarvis-voice` (Kotlin, sherpa-onnx 1.13.8 с JitPack, commons-compress) — Expo autolinking находит его сам. После правок Kotlin — новая сборка
 - Тесты: Jest (`jest-expo`) для логики из `src/lib`
 - Пакеты Expo ставим **только через `npx expo install <пакет>`** — он подбирает версию под текущий SDK. Перед установкой — спроси.
 
@@ -49,6 +50,8 @@ npm run typecheck   # tsc --noEmit
 
 ```
 index.ts            # вход: фоновая задача, затем expo-router/entry
+modules/
+  jarvis-voice/     # свой нативный модуль (Android): скачивание голосов, синтез sherpa-onnx, образцы mp3
 src/
   reminder-task.ts  # фоновая задача кнопок уведомления — грузится до роутера
   app/              # Expo Router — только экраны и раскладка, без бизнес-логики
@@ -61,7 +64,8 @@ src/
     use-planner.tsx # PlannerProvider, usePlanner: данные в памяти, commit → база
     use-reminders.ts # expo-notifications: разрешение, канал, кнопки, синхронизация, шторка
     use-voice.ts    # expo-speech-recognition: диктовка, громкость; в Expo Go модуля нет
-    use-reply.ts    # expo-speech: сказать, замолчать, настройки синтеза
+    use-jarvis-voice.tsx # свой голос: какой скачан и загружен, докачка, «Прослушать» — единственное место с модулем
+    use-reply.ts    # сказать, замолчать: свой голос, запасной expo-speech
     use-reveal.tsx  # тап по напоминанию: на какой экран, прокрутка и подсветка задачи
   lib/
     types.ts        # Task, Rule, RepeatPattern
@@ -78,6 +82,7 @@ src/
     voice.ts        # ошибки диктовки → текст для человека, громкость → 0…1
     reply.ts        # что ответить голосом: «Принял. Завтра в 9.»
     settings.ts     # настройки ↔ строки таблицы settings
+    voices.ts       # свои голоса: список, адреса архивов, паузы повтора, проценты
     changes.ts      # Changes и applyChanges — единственный путь записи
     db.ts           # схема, миграции, запросы — через интерфейс Db
     id.ts           # makeId — uuid без пакета

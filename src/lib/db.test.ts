@@ -206,9 +206,16 @@ describe('loadSettings и writeSettings', () => {
 
   it('записанное читается, повторная запись того же ключа заменяет', () => {
     writeSettings(db, { voiceReplies: false });
-    expect(loadSettings(db)).toEqual({ voiceReplies: false });
+    expect(loadSettings(db)).toEqual({ ...DEFAULT_SETTINGS, voiceReplies: false });
     writeSettings(db, { voiceReplies: true });
-    expect(loadSettings(db)).toEqual({ voiceReplies: true });
+    expect(loadSettings(db)).toEqual({ ...DEFAULT_SETTINGS, voiceReplies: true });
+    expect(db.getAllSync('SELECT * FROM settings', [])).toHaveLength(1);
+  });
+
+  it('голос пишется своим ключом', () => {
+    writeSettings(db, { voice: 'irina' });
+    writeSettings(db, { voice: 'denis' });
+    expect(loadSettings(db)).toEqual({ ...DEFAULT_SETTINGS, voice: 'denis' });
     expect(db.getAllSync('SELECT * FROM settings', [])).toHaveLength(1);
   });
 });
