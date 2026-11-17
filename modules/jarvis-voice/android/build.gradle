@@ -11,6 +11,8 @@ android {
   defaultConfig {
     versionCode 1
     versionName "1.0.0"
+    // правила попадают в R8 приложения, которое подключает модуль
+    consumerProguardFiles 'proguard-rules.pro'
   }
 }
 

@@ -20,9 +20,17 @@ function pad(n: number): string {
 }
 
 // Не toISOString(): он отдаёт дату по UTC, и с 00:00 до 03:00 по Москве это был бы вчерашний день.
+export function localDate(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Date → локальное 'HH:MM'. */
+export function localTime(d: Date): string {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export function today(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  return localDate(new Date());
 }
 
 /** Текущее время для createdAt/updatedAt/doneAt — через одну функцию, как today(). */
@@ -32,8 +40,7 @@ export function nowIso(): string {
 
 /** Локальное время 'HH:MM': для «через час» и «в 9», когда 9 уже прошло. */
 export function nowTime(): string {
-  const now = new Date();
-  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return localTime(new Date());
 }
 
 /** Локальные дата и время → Date: момент для триггера уведомления. */

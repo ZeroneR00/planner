@@ -12,7 +12,9 @@ import {
   formatHeaderDate,
   formatTime,
   formatMonthTitle,
+  localDate,
   localDateTime,
+  localTime,
   makeDate,
   monthGrid,
   monthShift,
@@ -35,6 +37,16 @@ describe('today', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-10-17T21:30:00Z'));
     expect(today()).toBe('2026-10-18');
+  });
+});
+
+describe('localDate и localTime', () => {
+  it('локальная дата поздно вечером — тот же день', () => {
+    expect(localDate(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
+  });
+
+  it('время с ведущими нулями', () => {
+    expect(localTime(new Date(2026, 0, 5, 9, 5))).toBe('09:05');
   });
 });
 

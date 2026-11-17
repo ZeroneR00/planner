@@ -139,6 +139,9 @@ export const copy = {
     inPhone: 'в настройках телефона',
     reminders: 'Напоминания', // раздел
     reminderSound: 'Звук напоминаний',
+    // Строка внизу; обновление — то, что прилетело по воздуху
+    version: (v: string) => `Версия ${v}`,
+    versionUpdated: (v: string, when: string) => `Версия ${v} · обновление ${when}`,
   },
   // Свои голоса Джарвиса в «Настройках»
   voices: {

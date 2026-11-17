@@ -9,6 +9,7 @@ import { useJarvisVoice } from '@/hooks/use-jarvis-voice';
 import { usePlanner } from '@/hooks/use-planner';
 import { openReminderSound } from '@/hooks/use-reminders';
 import { hush, say, sayWithPhone } from '@/hooks/use-reply';
+import { versionText } from '@/hooks/use-version';
 import { copy } from '@/lib/copy';
 import { PHONE_VOICE, VOICES, type VoiceChoice } from '@/lib/voices';
 import { colors, pressedOpacity, space, text, touch } from '@/theme';
@@ -16,6 +17,7 @@ import { colors, pressedOpacity, space, text, touch } from '@/theme';
 export default function SettingsScreen() {
   const { settings, changeSettings } = usePlanner();
   const { states, playSample } = useJarvisVoice();
+  const version = versionText();
   // ▶ свой голос — образец лежит в приложении, скачивать не надо; голос телефона говорит сам
   const listen = (id: VoiceChoice) => {
     if (id === PHONE_VOICE) sayWithPhone(copy.reply.sample);
@@ -83,6 +85,7 @@ export default function SettingsScreen() {
             onPress={() => void openReminderSound()}
           />
         </View>
+        {version && <Text style={[text.caption, styles.label]}>{version}</Text>}
       </ScrollView>
     </SafeAreaView>
   );
