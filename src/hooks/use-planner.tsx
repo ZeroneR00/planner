@@ -5,12 +5,14 @@ import { AppState } from 'react-native';
 import { cleanupPhotos } from '@/hooks/use-photos';
 import { useReminderActions, useReminders } from '@/hooks/use-reminders';
 import { applyChanges, type Changes } from '@/lib/changes';
-import { nowIso, today } from '@/lib/dates';
+import { msUntilNextDay, nowIso, today } from '@/lib/dates';
 import { loadSettings, migrate, photoNames, startDay, writeChanges, writeSettings, type Db } from '@/lib/db';
 import { demoChanges } from '@/lib/demo';
 import { makeId } from '@/lib/id';
 import type { Settings } from '@/lib/settings';
 import type { Env, PlannerData } from '@/lib/types';
+
+const DAY_CHECK_MS = 60_000; // перевели часы или пояс — заметим за минуту
 
 // Вне компонента: время, id и запись в базу — «нечистые», в теле рендера им не место
 function currentEnv(): Env {
@@ -41,7 +43,7 @@ const PlannerContext = createContext<Planner | null>(null);
 
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const db = useSQLiteContext();
-  // При запуске, при возврате в приложение и после кнопки в уведомлении. Если React вызовет
+  // При запуске, при возврате в приложение, в полночь и после кнопки в уведомлении. Если React вызовет
   // инициализатор дважды (StrictMode в dev), второй вызов ничего не изменит: rollover идемпотентен
   const [data, setData] = useState(() => startToday(db));
   const reload = useCallback(() => setData(startToday(db)), [db]);
@@ -54,6 +56,27 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     });
     return () => subscription.remove();
   }, [reload]);
+  // Полночь, пока приложение открыто: тот же reload, что при возврате в приложение
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = () => {
+      if (today() !== data.today) reload();
+      else arm();
+    };
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(check, Math.min(msUntilNextDay(new Date()), DAY_CHECK_MS));
+    };
+    arm();
+    // Таймер мог быть заведён до перевода часов — при возврате заводим заново
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') arm();
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [data.today, reload]);
   // Один раз при запуске: файлы фото, на которые больше нет ссылок
   useEffect(() => {
     cleanupPhotos(photoNames(db));

@@ -19,6 +19,7 @@ import {
   monthGrid,
   monthShift,
   monthStart,
+  msUntilNextDay,
   nextWeekStart,
   today,
   weekdayHeaders,
@@ -61,6 +62,20 @@ describe('localDateTime', () => {
       moment.getMinutes(),
     ]).toEqual([2026, 9, 25, 7, 5]);
     expect(moment.toISOString()).toBe('2026-10-25T04:05:00.000Z'); // Москва — UTC+3
+  });
+});
+
+describe('msUntilNextDay', () => {
+  it('за 20 секунд до полуночи', () => {
+    expect(msUntilNextDay(new Date(2026, 10, 20, 23, 59, 40))).toBe(20_000);
+  });
+
+  it('ровно в полночь — до следующей', () => {
+    expect(msUntilNextDay(new Date(2026, 10, 20, 0, 0, 0))).toBe(86_400_000);
+  });
+
+  it('с миллисекундами', () => {
+    expect(msUntilNextDay(new Date(2026, 10, 20, 12, 0, 0, 500))).toBe(43_199_500);
   });
 });
 

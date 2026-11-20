@@ -1,8 +1,8 @@
 import { copy } from '@/lib/copy';
 
 // Даты — строки 'YYYY-MM-DD'. Арифметика идёт через UTC, поэтому часовой пояс
-// и переход на летнее время на неё не влияют. Локальное время трогают только today(), nowTime()
-// и localDateTime().
+// и переход на летнее время на неё не влияют. Локальное время трогают только today(), nowTime(),
+// localDateTime() и msUntilNextDay().
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -41,6 +41,12 @@ export function nowIso(): string {
 /** Локальное время 'HH:MM': для «через час» и «в 9», когда 9 уже прошло. */
 export function nowTime(): string {
   return localTime(new Date());
+}
+
+/** Сколько миллисекунд до ближайшей местной полуночи — для таймера смены дня. */
+export function msUntilNextDay(now: Date): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return next.getTime() - now.getTime();
 }
 
 /** Локальные дата и время → Date: момент для триггера уведомления. */
