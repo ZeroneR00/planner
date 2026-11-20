@@ -64,8 +64,8 @@ describe('reminderActionChanges', () => {
   });
 
   it('за полночь — на завтра, без повтора и «вернулась»', () => {
-    const a = task({ id: 'a', time: '23:50', ruleId: 'r1', returned: true, order: 3 });
-    const { returned, ruleId, ...rest } = a;
+    const a = task({ id: 'a', time: '23:50', ruleId: 'r1', missedOn: '2026-10-17', order: 3 });
+    const { missedOn, ruleId, ...rest } = a;
     expect(act('t:a:2026-10-18T23:50', 'snooze15', '23:52', [a], [rule({ id: 'r1' })])).toEqual({
       putTasks: [{ ...rest, date: TOMORROW, time: '00:10', order: 0, updatedAt: NOW_ISO }],
     });

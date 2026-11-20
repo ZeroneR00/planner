@@ -30,7 +30,7 @@ function snooze(data: PlannerData, task: Task, minutes: number, nowTime: string,
     return { putTasks: [withTime({ ...task, order, updatedAt: nowIso }, moment.time), ...shifted] };
   }
   // За полночь — как перенос на другой день в правке: повтор и «вернулась» снимаются
-  const { returned, ruleId, ...rest } = task;
+  const { missedOn, ruleId, ...rest } = task;
   const moved: Task = { ...rest, date: moment.date, order, updatedAt: nowIso };
   return { putTasks: [withTime(moved, moment.time), ...shifted] };
 }

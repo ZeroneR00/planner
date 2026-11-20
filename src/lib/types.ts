@@ -32,7 +32,7 @@ export type Task = {
   doneAt?: string;
   order: number;
   ruleId?: string;
-  returned?: boolean;
+  missedOn?: string; // 'YYYY-MM-DD': с какого дня не сделана — у стикера, вернувшегося при смене дня
   createdAt: string;
   updatedAt: string;
 };

@@ -107,7 +107,7 @@ describe('startEdit', () => {
   });
 
   it('вернувшийся экземпляр в Кармане — обычная задача', () => {
-    const t = task({ id: 'p', date: null, ruleId: 'r', returned: true });
+    const t = task({ id: 'p', date: null, ruleId: 'r', missedOn: '2026-10-17' });
     const { edit } = startEdit(data([t], [rule({ kind: 'daily' })]), t);
     expect(edit.target).toEqual({ kind: 'task', taskId: 'p' });
   });
@@ -124,7 +124,7 @@ describe('saveEdit: задача', () => {
   });
 
   it('текст в Кармане снимает «вчера не отмечено» и связь с повтором', () => {
-    const t = task({ id: 'p', date: null, ruleId: 'r', returned: true, order: 3 });
+    const t = task({ id: 'p', date: null, ruleId: 'r', missedOn: '2026-10-17', order: 3 });
     const result = only(save(data([t]), t, retitle('новое')));
     expect(result).toEqual({ ...task({ id: 'p', date: null, order: 3 }), title: 'новое', updatedAt: NOW });
   });
@@ -143,7 +143,7 @@ describe('saveEdit: задача', () => {
   });
 
   it('вернувшийся экземпляр → сегодня: обычная задача', () => {
-    const t = task({ id: 'p', date: null, ruleId: 'r', returned: true });
+    const t = task({ id: 'p', date: null, ruleId: 'r', missedOn: '2026-10-17' });
     const d = data([t, task({ id: 'a', order: 2 })]);
     const result = only(save(d, t, (draft) => pickDate(draft, TODAY)));
     expect(result).toEqual({ ...task({ id: 'p', order: 3 }), updatedAt: NOW });

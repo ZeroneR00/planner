@@ -35,7 +35,9 @@ export const copy = {
   pocket: {
     title: (n: number) => `${POCKET} · ${n}`,
     empty: 'Здесь пусто — всё разобрано',
-    returned: 'вчера не отмечено', // иконка ↩ рисуется отдельно
+    // Иконка ↩ рисуется отдельно
+    missedYesterday: 'вчера не сделано',
+    missedSince: (day: string) => `не сделано с ${day}`,
     when: 'Когда?',
     editHint: 'тапни текст, чтобы изменить',
   },

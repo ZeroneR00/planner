@@ -31,7 +31,7 @@ export function demoChanges({ today, now, makeId }: Env): Changes {
       task('Проверить новые заказы', today, 0, { done: true, doneAt: now }),
       task('Созвон с заказчиком', today, 1, { time: '15:00' }),
       task('Вёрстка формы заказа', today, 2),
-      task('Правки по макету', null, 0, { returned: true }),
+      task('Правки по макету', null, 0, { missedOn: addDays(today, -3) }),
       task('Идея: тёмная тема для сайта', null, 1),
       task('Купить батарейки', null, 2),
       task('Созвониться с новым заказчиком', addDays(today, 1), 0),

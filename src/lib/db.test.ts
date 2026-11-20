@@ -228,7 +228,7 @@ describe('writeChanges и loadData', () => {
       done: true,
       doneAt: NOW,
       ruleId: 'r1',
-      returned: true,
+      missedOn: '2026-10-17',
       order: 3,
     });
     const min = task({ id: 'min', date: null });
@@ -240,7 +240,12 @@ describe('writeChanges и loadData', () => {
     expect(tasks[1]).not.toHaveProperty('photo');
     expect(tasks[1]).not.toHaveProperty('doneAt');
     expect(tasks[1]).not.toHaveProperty('ruleId');
-    expect(tasks[1]).not.toHaveProperty('returned');
+    expect(tasks[1]).not.toHaveProperty('missedOn');
+    // Старая колонка ведётся для версии, встроенной в APK
+    expect(db.getAllSync('SELECT id, returned FROM tasks ORDER BY id', [])).toEqual([
+      { id: 'full', returned: 1 },
+      { id: 'min', returned: 0 },
+    ]);
   });
 
   it('правила всех видов после записи и чтения те же', () => {
@@ -347,7 +352,7 @@ describe('startDay', () => {
     const data = startDay(db, makeEnv());
 
     expect(data.tasks).toStrictEqual([
-      task({ id: 'missed', date: null, returned: true, updatedAt: NOW }),
+      task({ id: 'missed', date: null, missedOn: YESTERDAY, updatedAt: NOW }),
       task({ id: 'new-1', title: 'правило walk', ruleId: 'walk', createdAt: NOW, updatedAt: NOW }),
     ]);
     expect(loadData(db, TODAY)).toStrictEqual(data);
@@ -416,9 +421,25 @@ describe('каждые N часов в базе', () => {
     old.runSync(insert, ['h', 'вода', 'hourly', 2, 9, 21, '2026-10-01', 1]);
     old.runSync(insert, ['i', 'цветы', 'interval', 3, null, null, '2026-10-01', 1]);
     expect(migrate(old)).toBe(6);
-    expect(MIGRATIONS).toHaveLength(7);
     const rows = old.getAllSync<{ id: string; every: number }>('SELECT id, every FROM rules ORDER BY id', []);
     expect(rows).toEqual([{ id: 'h', every: 120 }, { id: 'i', every: 3 }]);
     expect(loadData(old, TODAY).rules[0]).toMatchObject({ kind: 'hourly', minutes: 120, from: 9, to: 21 });
+  });
+
+  it('версия 7 → 8: у старого стикера день до смены дня, у остальных — нет', () => {
+    const old = openTestDb();
+    for (const version of [0, 1, 2, 3, 4, 5, 6]) old.execSync(at(MIGRATIONS, version));
+    old.execSync('PRAGMA user_version = 7');
+    const insert = 'INSERT INTO tasks (id, title, date, returned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)';
+    // Полдень UTC — 20 ноября в любом поясе от −11 до +11: тест не зависит от пояса машины
+    old.runSync(insert, ['s', 'стикер', null, 1, BEFORE, '2026-11-20T12:00:00.000Z']);
+    old.runSync(insert, ['t', 'задача', '2026-11-20', 0, BEFORE, '2026-11-20T12:00:00.000Z']);
+    expect(migrate(old)).toBe(7);
+    expect(MIGRATIONS).toHaveLength(8);
+    const rows = old.getAllSync<{ id: string; missed_on: string | null }>('SELECT id, missed_on FROM tasks ORDER BY id', []);
+    expect(rows).toEqual([
+      { id: 's', missed_on: '2026-11-19' },
+      { id: 't', missed_on: null },
+    ]);
   });
 });

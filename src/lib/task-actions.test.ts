@@ -89,7 +89,7 @@ describe('postpone', () => {
 });
 
 describe('из Кармана в день', () => {
-  const p = task({ id: 'p', date: null, order: 0, returned: true, ruleId: 'r1' });
+  const p = task({ id: 'p', date: null, order: 0, missedOn: '2026-10-17', ruleId: 'r1' });
   const tasks = [p, task({ id: 'a', order: 4 }), task({ id: 'b', date: '2026-10-21', order: 1 })];
   const moved = {
     id: 'p',
@@ -101,24 +101,24 @@ describe('из Кармана в день', () => {
     updatedAt: NOW,
   };
 
-  it('moveToDay на сегодня: в конец дня, без returned и ruleId', () => {
+  it('moveToDay на сегодня: в конец дня, без missedOn и ruleId', () => {
     const result = only(moveToDay(data(tasks), p, TODAY, NOW));
     expect(result).toEqual(moved);
-    expect(result).not.toHaveProperty('returned');
+    expect(result).not.toHaveProperty('missedOn');
     expect(result).not.toHaveProperty('ruleId');
   });
 
   it('moveToDay на будущую дату: в конец той даты', () => {
     const result = only(moveToDay(data(tasks), p, '2026-10-21', NOW));
     expect(result).toEqual({ ...moved, date: '2026-10-21', order: 2 });
-    expect(result).not.toHaveProperty('returned');
+    expect(result).not.toHaveProperty('missedOn');
     expect(result).not.toHaveProperty('ruleId');
   });
 
   it('markDoneFromPocket: то же и сделана сейчас', () => {
     const result = only(markDoneFromPocket(data(tasks), p, NOW));
     expect(result).toEqual({ ...moved, done: true, doneAt: NOW });
-    expect(result).not.toHaveProperty('returned');
+    expect(result).not.toHaveProperty('missedOn');
     expect(result).not.toHaveProperty('ruleId');
   });
 });
@@ -151,7 +151,7 @@ describe('stopRule', () => {
   it('без экземпляра — только правило; прошлые и стикеры не трогаем', () => {
     const tasks = [
       task({ id: 'past', date: '2026-10-17', ruleId: 'r' }),
-      task({ id: 'sticker', date: null, ruleId: 'r', returned: true }),
+      task({ id: 'sticker', date: null, ruleId: 'r', missedOn: '2026-10-17' }),
       task({ id: 'other', ruleId: 'r2' }),
     ];
     expect(stopRule({ ...data(tasks), rules: [r] }, r, NOW)).toEqual({ putRules: [stopped], putTasks: [] });

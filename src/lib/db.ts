@@ -80,6 +80,13 @@ export const MIGRATIONS: readonly string[] = [
   `
   UPDATE rules SET every = every * 60 WHERE kind = 'hourly';
   `,
+  // Стикер помнит день, с которого не сделан. Колонку returned не удаляем и пишем дальше: версия,
+  // встроенная в APK, читает её, а expo-updates откатывается на неё, если обновление не запустилось.
+  // У старых стикеров дня нет — берём день до смены дня, которая их туда положила
+  `
+  ALTER TABLE tasks ADD COLUMN missed_on TEXT;  -- 'YYYY-MM-DD'; только у вернувшегося стикера
+  UPDATE tasks SET missed_on = date(updated_at, 'localtime', '-1 day') WHERE returned = 1;
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -108,6 +115,7 @@ type TaskRow = {
   sort_order: number;
   rule_id: string | null;
   returned: number;
+  missed_on: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -130,7 +138,7 @@ type RuleRow = {
 };
 
 const TASK_COLUMNS =
-  'id, title, date, time, photo, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
+  'id, title, date, time, photo, done, done_at, sort_order, rule_id, returned, missed_on, created_at, updated_at';
 const RULE_COLUMNS =
   'id, title, kind, weekdays, month, month_day, every, window_from, window_to, done_slot, start_date, active, time, photo';
 
@@ -161,7 +169,7 @@ function taskFromRow(row: TaskRow): Task {
   if (row.photo !== null) task.photo = row.photo;
   if (row.done_at !== null) task.doneAt = row.done_at;
   if (row.rule_id !== null) task.ruleId = row.rule_id;
-  if (row.returned === 1) task.returned = true;
+  if (row.missed_on !== null) task.missedOn = row.missed_on;
   return task;
 }
 
@@ -177,7 +185,8 @@ function taskToParams(task: Task): BindValue[] {
     task.doneAt ?? null,
     task.order,
     task.ruleId ?? null,
-    task.returned ? 1 : 0,
+    task.missedOn === undefined ? 0 : 1,
+    task.missedOn ?? null,
     task.createdAt,
     task.updatedAt,
   ];

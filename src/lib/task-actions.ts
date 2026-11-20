@@ -121,10 +121,10 @@ export function postpone(data: PlannerData, task: Task, now: string): Changes {
   return { putTasks: [{ ...task, order: nextOrder(data.tasks, data.today), updatedAt: now }] };
 }
 
-// Из Кармана в конец дня. ruleId и returned снимаем: иначе вернувшийся экземпляр повтора
+// Из Кармана в конец дня. ruleId и missedOn снимаем: иначе вернувшийся экземпляр повтора
 // и сегодняшний экземпляр того же правила показали бы два «↻» в одном дне
 function pocketToDay(data: PlannerData, task: Task, date: string, now: string): Task {
-  const { returned, ruleId, ...rest } = task;
+  const { missedOn, ruleId, ...rest } = task;
   return { ...rest, date, order: nextOrder(data.tasks, date), updatedAt: now };
 }
 

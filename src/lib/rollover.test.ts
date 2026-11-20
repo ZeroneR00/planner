@@ -41,7 +41,7 @@ function applyDiff(tasks: Task[], diff: RolloverDiff): Task[] {
 }
 
 const EMPTY: RolloverDiff = { created: [], updated: [], removed: [] };
-const pocketed = { date: null, returned: true, updatedAt: NOW };
+const pocketed = (date: string) => ({ date: null, missedOn: date, updatedAt: NOW });
 
 describe('rollover', () => {
   it('1: несделанное из прошлых дней уходит в Карман', () => {
@@ -50,8 +50,9 @@ describe('rollover', () => {
     expect(run([yesterday, old])).toEqual({
       ...EMPTY,
       updated: [
-        { ...yesterday, ...pocketed },
-        { ...old, ...pocketed },
+        { ...yesterday, ...pocketed('2026-10-17') },
+        // День остаётся днём задачи, даже если прошло три дня
+        { ...old, ...pocketed('2026-10-15') },
       ],
     });
   });
@@ -108,16 +109,16 @@ describe('rollover', () => {
   it('6: пропущенный вчерашний экземпляр — в Карман, на сегодня — новый', () => {
     const missed = task({ id: 'i', ruleId: 'r', date: '2026-10-17' });
     const diff = run([missed], [rule({ id: 'r' })]);
-    expect(diff.updated).toEqual([{ ...missed, ...pocketed }]);
+    expect(diff.updated).toEqual([{ ...missed, ...pocketed('2026-10-17') }]);
     expect(diff.removed).toEqual([]);
     expect(diff.created).toMatchObject([{ ruleId: 'r', date: TODAY }]);
   });
 
   it('7: старый пропуск из Кармана заменяется новым', () => {
-    const inPocket = task({ id: 'old', ruleId: 'r', date: null, returned: true });
+    const inPocket = task({ id: 'old', ruleId: 'r', date: null, missedOn: '2026-10-10' });
     const missed = task({ id: 'i', ruleId: 'r', date: '2026-10-17' });
     const diff = run([inPocket, missed], [rule({ id: 'r' })]);
-    expect(diff.updated).toEqual([{ ...missed, ...pocketed }]);
+    expect(diff.updated).toEqual([{ ...missed, ...pocketed('2026-10-17') }]);
     expect(diff.removed).toEqual(['old']);
   });
 
@@ -125,19 +126,19 @@ describe('rollover', () => {
     const early = task({ id: 'early', ruleId: 'r', date: '2026-10-16' });
     const late = task({ id: 'late', ruleId: 'r', date: '2026-10-17' });
     const diff = run([late, early], [rule({ id: 'r' })]);
-    expect(diff.updated).toEqual([{ ...late, ...pocketed }]);
+    expect(diff.updated).toEqual([{ ...late, ...pocketed('2026-10-17') }]);
     expect(diff.removed).toEqual(['early']);
   });
 
   it('9: пропуск в Кармане без нового пропуска не трогается', () => {
-    const inPocket = task({ id: 'old', ruleId: 'r', date: null, returned: true });
+    const inPocket = task({ id: 'old', ruleId: 'r', date: null, missedOn: '2026-10-10' });
     const instance = task({ id: 'i', ruleId: 'r' });
     expect(run([inPocket, instance], [rule({ id: 'r' })])).toEqual(EMPTY);
   });
 
   it('11: экземпляр берёт время правила, пропуск уходит в Карман без времени', () => {
     const diff = run([task({ id: 'call', date: '2026-10-17', time: '15:00' })], [rule({ id: 'r', time: '07:00' })]);
-    expect(diff.updated).toEqual([task({ id: 'call', ...pocketed })]);
+    expect(diff.updated).toEqual([task({ id: 'call', ...pocketed('2026-10-17') })]);
     expect(diff.updated[0]).not.toHaveProperty('time');
     expect(diff.created[0]?.time).toBe('07:00');
   });
@@ -172,7 +173,7 @@ describe('rollover', () => {
   it('10: повторный запуск на применённом результате — пустой diff', () => {
     const tasks = [
       task({ id: 'a', date: '2026-10-15' }),
-      task({ id: 'old', ruleId: 'r', date: null, returned: true }),
+      task({ id: 'old', ruleId: 'r', date: null, missedOn: '2026-10-10' }),
       task({ id: 'early', ruleId: 'r', date: '2026-10-16' }),
       task({ id: 'late', ruleId: 'r', date: '2026-10-17' }),
       task({ id: 'today', order: 2 }),

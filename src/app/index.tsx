@@ -67,7 +67,7 @@ export default function TodayScreen() {
                   onEdit={edit}
                 />
                 <PocketList
-                  tasks={day.pocket}
+                  items={day.pocket}
                   editingId={composer.editingId}
                   flash={flash}
                   movingId={day.moving?.id ?? null}

@@ -1,6 +1,6 @@
 import { applyChanges } from '@/lib/changes';
 import { postpone } from '@/lib/task-actions';
-import { todayView, type DayItem } from '@/lib/today-view';
+import { missedLabel, todayView, type DayItem } from '@/lib/today-view';
 import type { PlannerData, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18';
@@ -97,12 +97,40 @@ describe('todayView: Карман', () => {
     const view = todayView(
       data([
         task({ id: 'p1', date: null, order: 0 }),
-        task({ id: 'p2', date: null, order: 1, returned: true }),
+        task({ id: 'p2', date: null, order: 1, missedOn: '2026-10-17' }),
         task({ id: 'p3', date: null, order: 2, done: true }),
         task({ id: 'today' }),
       ]),
     );
-    expect(view.pocket.map((t) => t.id)).toEqual(['p2', 'p1']);
+    expect(view.pocket.map((i) => i.task.id)).toEqual(['p2', 'p1']);
+  });
+
+  it('у вернувшегося стикера — пометка, у записанного в стикеры — нет', () => {
+    const view = todayView(
+      data([task({ id: 'p1', date: null, order: 0 }), task({ id: 'p2', date: null, order: 1, missedOn: '2026-10-15' })]),
+    );
+    expect(view.pocket.map((i) => [i.task.id, i.missed])).toEqual([
+      ['p2', 'не сделано с 15 октября'],
+      ['p1', null],
+    ]);
+  });
+});
+
+describe('missedLabel', () => {
+  it('вчера — «вчера не сделано»', () => {
+    expect(missedLabel('2026-10-17', TODAY)).toBe('вчера не сделано');
+  });
+
+  it('раньше вчера — «не сделано с …»', () => {
+    expect(missedLabel('2026-10-15', TODAY)).toBe('не сделано с 15 октября');
+  });
+
+  it('часы перевели назад и день не раньше сегодня — тоже «с …», не «вчера»', () => {
+    expect(missedLabel('2026-10-18', TODAY)).toBe('не сделано с 18 октября');
+  });
+
+  it('прошлый год — без года', () => {
+    expect(missedLabel('2025-12-28', TODAY)).toBe('не сделано с 28 декабря');
   });
 });
 

@@ -7,11 +7,12 @@ import { PhotoThumb } from '@/components/photo-thumb';
 import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
+import type { PocketItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
 import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
 
 type Props = {
-  tasks: readonly Task[];
+  items: readonly PocketItem[];
   editingId: string | null;
   flash: Flash | null; // подсветка после тапа по напоминанию
   onMarkDone: (task: Task) => void;
@@ -21,19 +22,19 @@ type Props = {
   onEdit: (task: Task) => void;
 };
 
-export function PocketList({ tasks, editingId, flash, movingId, onMarkDone, onWhen, onRemove, onEdit }: Props) {
+export function PocketList({ items, editingId, flash, movingId, onMarkDone, onWhen, onRemove, onEdit }: Props) {
   return (
     <View style={styles.section}>
       <View style={styles.heading}>
-        <Text style={text.section}>{copy.pocket.title(tasks.length)}</Text>
-        {tasks.length > 0 && <Text style={[text.caption, styles.editHint]}>{copy.pocket.editHint}</Text>}
+        <Text style={text.section}>{copy.pocket.title(items.length)}</Text>
+        {items.length > 0 && <Text style={[text.caption, styles.editHint]}>{copy.pocket.editHint}</Text>}
       </View>
-      {tasks.length === 0 ? (
+      {items.length === 0 ? (
         <View style={styles.empty}>
           <Text style={text.hint}>{copy.pocket.empty}</Text>
         </View>
       ) : (
-        tasks.map((task) => (
+        items.map(({ task, missed }) => (
           <View key={task.id} style={styles.row}>
             {task.photo !== undefined && <PhotoThumb name={task.photo} style={styles.thumb} />}
             <Pressable
@@ -43,14 +44,14 @@ export function PocketList({ tasks, editingId, flash, movingId, onMarkDone, onWh
               style={({ pressed }) => [styles.main, pressed && styles.pressed]}
             >
               <Text style={[text.row, styles.title, task.title === '' && styles.untitled]}>{shownTitle(task)}</Text>
-              {task.returned === true && (
+              {missed !== null && (
                 <View style={styles.meta}>
                   <Icon name="return" size={12} color={colors.warning} />
-                  <Text style={[text.meta, styles.warning]}>{copy.pocket.returned}</Text>
+                  <Text style={[text.meta, styles.warning]}>{missed}</Text>
                 </View>
               )}
             </Pressable>
-            {task.returned === true && (
+            {missed !== null && (
               <Pressable
                 onPress={() => onMarkDone(task)}
                 accessibilityRole="button"
@@ -130,6 +131,7 @@ const styles = StyleSheet.create({
     gap: space[4],
   },
   warning: {
+    flexShrink: 1,
     color: colors.warning,
   },
   iconButton: {

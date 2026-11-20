@@ -92,13 +92,13 @@ function editedTask(data: PlannerData, task: Task, when: When, origin: When, now
       const { order, shifted } = placeInDay(data.tasks, task.date, when.time, task.id);
       return [{ ...edited, order }, ...shifted];
     }
-    // Как при переносе из Кармана: смена дня заменяет старый пропуск повтора только при returned,
+    // Как при переносе из Кармана: смена дня заменяет старый пропуск повтора только у вернувшегося (missedOn),
     // иначе в Кармане оказалось бы два экземпляра одного повтора
-    const { returned, ruleId, ...rest } = task;
+    const { missedOn, ruleId, ...rest } = task;
     return [{ ...rest, title: when.title, updatedAt: now }];
   }
   // Перенос = «надо сделать тогда»: отметка «сделано» снимается
-  const { returned, ruleId, doneAt, ...rest } = task;
+  const { missedOn, ruleId, doneAt, ...rest } = task;
   const { order, shifted } =
     when.date === null
       ? { order: firstOrder(data.tasks, null), shifted: [] }

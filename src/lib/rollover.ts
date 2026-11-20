@@ -29,8 +29,8 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
   const removed: string[] = [];
 
   // Время без дня бессмысленно — в стикерах его нет
-  const toPocket = (task: Task) => {
-    updated.push({ ...withTime(task, null), date: null, returned: true, updatedAt: now });
+  const toPocket = (task: DatedTask) => {
+    updated.push({ ...withTime(task, null), date: null, missedOn: task.date, updatedAt: now });
   };
 
   // Выполненное из прошлых дней не трогаем — его скрывает запрос экрана
@@ -56,7 +56,7 @@ export function rollover({ tasks, rules, today, now, makeId }: RolloverInput): R
       if (task !== latest) removed.push(task.id);
     }
     for (const task of tasks) {
-      if (task.ruleId === ruleId && task.date === null && task.returned === true && !task.done) {
+      if (task.ruleId === ruleId && task.date === null && task.missedOn !== undefined && !task.done) {
         removed.push(task.id);
       }
     }

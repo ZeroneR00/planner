@@ -1,13 +1,18 @@
+import { copy } from '@/lib/copy';
+import { addDays, dateParts, formatDayMonth } from '@/lib/dates';
 import { repeatLabel } from '@/lib/rules';
 import type { PlannerData, Task } from '@/lib/types';
 
 /** Задача дня и подпись повтора («каждый день») или null, если она не из правила. */
 export type DayItem = { task: Task; repeat: string | null };
 
+/** Стикер и пометка «вчера не сделано» / «не сделано с 16 ноября» или null, если он не вернулся при смене дня. */
+export type PocketItem = { task: Task; missed: string | null };
+
 export type TodayView = {
   now: DayItem | null;
   rest: DayItem[];
-  pocket: Task[];
+  pocket: PocketItem[];
   doneCount: number; // выполненные сегодня
   aheadCount: number; // несделанные с датой после сегодня; повторы не считаются
 };
@@ -24,6 +29,13 @@ export function byOrder(a: Task, b: Task): number {
 /** Задача из «Впереди»: несделанная, с датой после сегодня. */
 export function isAhead(task: Task, today: string): task is Task & { date: string } {
   return !task.done && task.date !== null && task.date > today;
+}
+
+/** Пометка стикера, вернувшегося при смене дня. */
+export function missedLabel(missedOn: string, today: string): string {
+  if (missedOn === addDays(today, -1)) return copy.pocket.missedYesterday;
+  const { month, day } = dateParts(missedOn);
+  return copy.pocket.missedSince(formatDayMonth(month, day));
 }
 
 /** Что показать на экране «Сегодня». */
@@ -44,7 +56,8 @@ export function todayView(data: PlannerData): TodayView {
     rest: [...others, ...done].map(toItem),
     pocket: data.tasks
       .filter((t) => t.date === null && !t.done)
-      .sort((a, b) => Number(b.returned === true) - Number(a.returned === true) || byOrder(a, b)),
+      .sort((a, b) => Number(b.missedOn !== undefined) - Number(a.missedOn !== undefined) || byOrder(a, b))
+      .map((task) => ({ task, missed: task.missedOn === undefined ? null : missedLabel(task.missedOn, data.today) })),
     doneCount: done.length,
     aheadCount: data.tasks.filter((t) => isAhead(t, data.today)).length,
   };
