@@ -1,5 +1,6 @@
 import {
   hourlySlots,
+  stepLabel,
   nextOccurrence,
   nextRuleDate,
   occursOn,
@@ -178,14 +179,26 @@ describe('повтор каждые N дней', () => {
 });
 
 describe('каждые N часов', () => {
-  const water: Rule = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
+  const water: Rule = { kind: 'hourly', minutes: 120, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
 
   it('разы за день — от начала окна шагом N, не позже конца', () => {
-    expect(hourlySlots({ hours: 2, from: 9, to: 21 })).toEqual([
+    expect(hourlySlots({ minutes: 120, from: 9, to: 21 })).toEqual([
       '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00',
     ]);
-    expect(hourlySlots({ hours: 5, from: 9, to: 21 })).toEqual(['09:00', '14:00', '19:00']);
-    expect(hourlySlots({ hours: 1, from: 8, to: 10 })).toEqual(['08:00', '09:00', '10:00']);
+    expect(hourlySlots({ minutes: 300, from: 9, to: 21 })).toEqual(['09:00', '14:00', '19:00']);
+    expect(hourlySlots({ minutes: 60, from: 8, to: 10 })).toEqual(['08:00', '09:00', '10:00']);
+    expect(hourlySlots({ minutes: 15, from: 9, to: 10 })).toEqual(['09:00', '09:15', '09:30', '09:45', '10:00']);
+    expect(hourlySlots({ minutes: 90, from: 9, to: 21 })).toEqual([
+      '09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00',
+    ]);
+  });
+
+  it('шаг словами', () => {
+    expect(stepLabel(15)).toBe('каждые 15 минут');
+    expect(stepLabel(21)).toBe('каждую 21 минуту');
+    expect(stepLabel(60)).toBe('каждый час');
+    expect(stepLabel(120)).toBe('каждые 2 часа');
+    expect(stepLabel(90)).toBe('каждые 90 минут');
   });
 
   it('без задач в дне: экземпляров нет', () => {
@@ -194,13 +207,13 @@ describe('каждые N часов', () => {
 
   it('подпись', () => {
     expect(repeatLabel(water)).toBe('каждые 2 часа, 9:00–21:00');
-    expect(repeatLabel({ kind: 'hourly', hours: 1, from: 8, to: 22 })).toBe('каждый час, 8:00–22:00');
-    expect(repeatLabel({ kind: 'hourly', hours: 5, from: 9, to: 21 })).toBe('каждые 5 часов, 9:00–21:00');
+    expect(repeatLabel({ kind: 'hourly', minutes: 60, from: 8, to: 22 })).toBe('каждый час, 8:00–22:00');
+    expect(repeatLabel({ kind: 'hourly', minutes: 300, from: 9, to: 21 })).toBe('каждые 5 часов, 9:00–21:00');
   });
 
   it('шаблон по умолчанию и сравнение', () => {
-    expect(patternFor('hourly', '2026-10-18')).toEqual({ kind: 'hourly', hours: 2, from: 9, to: 21 });
-    expect(samePattern({ kind: 'hourly', hours: 2, from: 9, to: 21 }, { kind: 'hourly', hours: 2, from: 9, to: 21 })).toBe(true);
-    expect(samePattern({ kind: 'hourly', hours: 2, from: 9, to: 21 }, { kind: 'hourly', hours: 2, from: 8, to: 21 })).toBe(false);
+    expect(patternFor('hourly', '2026-10-18')).toEqual({ kind: 'hourly', minutes: 120, from: 9, to: 21 });
+    expect(samePattern({ kind: 'hourly', minutes: 120, from: 9, to: 21 }, { kind: 'hourly', minutes: 120, from: 9, to: 21 })).toBe(true);
+    expect(samePattern({ kind: 'hourly', minutes: 120, from: 9, to: 21 }, { kind: 'hourly', minutes: 120, from: 8, to: 21 })).toBe(false);
   });
 });

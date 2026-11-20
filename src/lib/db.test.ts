@@ -378,7 +378,7 @@ describe('каждые N часов в базе', () => {
   it('правило с отметкой «Сделано» после записи и чтения то же', () => {
     const water: Rule = {
       kind: 'hourly',
-      hours: 2,
+      minutes: 120,
       from: 8,
       to: 22,
       id: 'w',
@@ -405,7 +405,20 @@ describe('каждые N часов в базе', () => {
       1,
     ]);
     expect(migrate(old)).toBe(5);
-    expect(MIGRATIONS).toHaveLength(6);
     expect(loadData(old, TODAY).rules).toStrictEqual([rule({ id: 'i', title: 'цветы', kind: 'interval', days: 3 })]);
+  });
+
+  it('версия 6 → 7: шаг hourly из часов в минуты, у остальных every как был', () => {
+    const old = openTestDb();
+    for (const version of [0, 1, 2, 3, 4, 5]) old.execSync(at(MIGRATIONS, version));
+    old.execSync('PRAGMA user_version = 6');
+    const insert = 'INSERT INTO rules (id, title, kind, every, window_from, window_to, start_date, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    old.runSync(insert, ['h', 'вода', 'hourly', 2, 9, 21, '2026-10-01', 1]);
+    old.runSync(insert, ['i', 'цветы', 'interval', 3, null, null, '2026-10-01', 1]);
+    expect(migrate(old)).toBe(6);
+    expect(MIGRATIONS).toHaveLength(7);
+    const rows = old.getAllSync<{ id: string; every: number }>('SELECT id, every FROM rules ORDER BY id', []);
+    expect(rows).toEqual([{ id: 'h', every: 120 }, { id: 'i', every: 3 }]);
+    expect(loadData(old, TODAY).rules[0]).toMatchObject({ kind: 'hourly', minutes: 120, from: 9, to: 21 });
   });
 });

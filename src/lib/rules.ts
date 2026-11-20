@@ -74,11 +74,16 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/** Разы «каждые N часов» за день: 'HH:00' от from шагом hours, не позже to. */
-export function hourlySlots(p: { hours: number; from: number; to: number }): string[] {
+/** Разы «каждые N минут» за день: 'HH:MM' от from:00 шагом minutes, не позже to:00. */
+export function hourlySlots(p: { minutes: number; from: number; to: number }): string[] {
   const slots: string[] = [];
-  for (let hour = p.from; hour <= p.to; hour += p.hours) slots.push(`${pad(hour)}:00`);
+  for (let m = p.from * 60; m <= p.to * 60; m += p.minutes) slots.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
   return slots;
+}
+
+/** «каждые 2 часа», «каждые 15 минут»: целые часы — часами, остальное — минутами. */
+export function stepLabel(minutes: number): string {
+  return minutes % 60 === 0 ? copy.repeat.everyHours(minutes / 60) : copy.repeat.everyMinutes(minutes);
 }
 
 /** Шаблон для пункта меню ↻ при выбранном дне: weekly берёт день недели, monthly — число, yearly — число и месяц. */
@@ -99,7 +104,7 @@ export function patternFor(kind: RepeatKind, date: string): RepeatPattern {
     case 'interval':
       return { kind, days: 2 };
     case 'hourly':
-      return { kind, hours: 2, from: 9, to: 21 };
+      return { kind, minutes: 120, from: 9, to: 21 };
   }
 }
 
@@ -128,7 +133,7 @@ export function repeatLabel(p: RepeatPattern): string {
       if (p.days >= 14 && p.days % 7 === 0) return copy.repeat.everyWeeks(p.days / 7);
       return copy.repeat.everyDays(p.days);
     case 'hourly':
-      return copy.repeat.hourly(copy.repeat.everyHours(p.hours), `${p.from}:00`, `${p.to}:00`);
+      return copy.repeat.hourly(stepLabel(p.minutes), `${p.from}:00`, `${p.to}:00`);
   }
 }
 
@@ -151,6 +156,6 @@ export function samePattern(a: RepeatPattern | null, b: RepeatPattern | null): b
     case 'interval':
       return b.kind === 'interval' && a.days === b.days;
     case 'hourly':
-      return b.kind === 'hourly' && a.hours === b.hours && a.from === b.from && a.to === b.to;
+      return b.kind === 'hourly' && a.minutes === b.minutes && a.from === b.from && a.to === b.to;
   }
 }

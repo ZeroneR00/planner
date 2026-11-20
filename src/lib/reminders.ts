@@ -27,6 +27,10 @@ export const NAG_COUNT = 6;
 /** «Каждые N часов» — на 3 дня; повторы только у 3 ближайших разов: будильников у приложения не бесконечно. */
 export const HOURLY_HORIZON_DAYS = 3;
 export const HOURLY_NAG_SLOTS = 3;
+/** Чаще раза в полчаса не донимает: следующий раз и так скоро. */
+export const HOURLY_NAG_MIN_STEP = 30;
+/** На одно правило — не больше 100 вместе с повторами: иначе «каждые 15 минут» вытеснит остальные задачи. */
+export const HOURLY_MAX_PER_RULE = 100;
 /** Ближайшие; Android держит до 500 будильников на приложение. */
 export const MAX_REMINDERS = 200;
 
@@ -109,6 +113,13 @@ function planHourly(
   const from = momentKey(now.date, now.time);
   const title = shownTitle(rule);
   let naggedSlots = 0;
+  let count = 0;
+  // Считаем только будущие: прошедшие add и так не ставит
+  const addCounted = (id: string, moment: Moment) => {
+    if (count >= HOURLY_MAX_PER_RULE || momentKey(moment.date, moment.time) <= from) return;
+    count++;
+    add(id, title, moment, HOURLY_CATEGORY);
+  };
   for (let i = 0; i < HOURLY_HORIZON_DAYS; i++) {
     const date = addDays(now.date, i);
     if (date < rule.startDate) continue;
@@ -117,7 +128,8 @@ function planHourly(
       // На этот раз уже нажали «Сделано»
       if (rule.doneSlot !== undefined && key <= rule.doneSlot) continue;
       const id = `h:${rule.id}:${key}`;
-      add(id, title, { date, time: slot }, HOURLY_CATEGORY);
+      addCounted(id, { date, time: slot });
+      if (rule.minutes < HOURLY_NAG_MIN_STEP) continue;
       // Донимает до следующего раза; у последнего за день — как задача, не больше NAG_COUNT
       const next = nextSlot(rule, date, slot);
       const until = next.slice(0, 10) === date ? next : null;
@@ -126,7 +138,7 @@ function planHourly(
       if (last === undefined || momentKey(last.date, last.time) <= from) continue;
       if (naggedSlots >= HOURLY_NAG_SLOTS) continue;
       naggedSlots++;
-      nags.forEach((m, k) => add(nagId(id, k + 1), title, m, HOURLY_CATEGORY));
+      nags.forEach((m, k) => addCounted(nagId(id, k + 1), m));
     }
   }
 }

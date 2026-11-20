@@ -144,11 +144,29 @@ function monthNumber(word: string): number {
   return MONTHS.indexOf(word.toLowerCase()) + 1;
 }
 
-// «каждые 2 часа», «раз в час», «ежечасно» и окно «с 8 до 22» сразу до или после
+// «каждые 2 часа», «раз в час», «каждые 15 минут», «каждые полчаса» и окно «с 8 до 22» сразу до или после
 const HOURS_WINDOW = 'с\\s+(\\d{1,2})(?::00)?\\s+до\\s+(\\d{1,2})(?::00)?';
-const EVERY_HOURS =
-  '(?:(?:каждые|каждый|раз\\s+в)\\s+(\\d+)\\s+(?:час|часа|часов)|каждый\\s+час|раз\\s+в\\s+час|ежечасно)';
+const EVERY_STEP =
+  '((?:каждые|каждый|каждую|раз\\s+в)\\s+\\d+\\s+(?:час|часа|часов|минуту|минуты|минут)' +
+  '|каждый\\s+час|раз\\s+в\\s+час|ежечасно|(?:каждые|раз\\s+в)\\s+(?:полчаса|пол\\s+часа|полтора\\s+часа))';
 const DEFAULT_WINDOW = { from: 9, to: 21 };
+// Не чаще раза в 15 минут: у Android лимит будильников на приложение
+const MIN_STEP = 15;
+const MAX_STEP = 720;
+
+/** Шаг в минутах из «каждые 2 часа», «раз в 20 минут», «каждые полчаса»; вне 15–720 — null. */
+function stepMinutes(phrase: string): number | null {
+  const text = phrase.toLowerCase();
+  let minutes: number;
+  if (text.includes('полтора')) minutes = 90;
+  else if (/пол\s*часа/.test(text)) minutes = 30;
+  else {
+    const n = /\d+/.exec(text);
+    const count = n === null ? 1 : Number(n[0]);
+    minutes = text.includes('мин') ? count : count * 60;
+  }
+  return minutes >= MIN_STEP && minutes <= MAX_STEP ? minutes : null;
+}
 
 /** «с 9 до 9» — до 21; «с 10 до 6» — до 18; не вышло — с 9 до 21. */
 function hoursWindow(fromText: string | undefined, toText: string | undefined): { from: number; to: number } {
@@ -163,11 +181,11 @@ function hoursWindow(fromText: string | undefined, toText: string | undefined): 
 const MATCHERS: Matcher[] = [
   {
     // Первым: иначе «раз в 2 часа» разобралось бы как время «в 2 часа» = 14:00
-    re: re(`\\s(?:${HOURS_WINDOW}\\s+)?${EVERY_HOURS}(?:\\s+${HOURS_WINDOW})?(?=\\s)`),
+    re: re(`\\s(?:${HOURS_WINDOW}\\s+)?${EVERY_STEP}(?:\\s+${HOURS_WINDOW})?(?=\\s)`),
     resolve: (m, today) => {
-      const hours = m[3] === undefined ? 1 : Number(m[3]);
-      if (hours < 1 || hours > 12) return null;
-      return { date: today, repeat: { kind: 'hourly', hours, ...hoursWindow(m[1] ?? m[4], m[2] ?? m[5]) } };
+      const minutes = stepMinutes(group(m, 3));
+      if (minutes === null) return null;
+      return { date: today, repeat: { kind: 'hourly', minutes, ...hoursWindow(m[1] ?? m[4], m[2] ?? m[5]) } };
     },
   },
   {

@@ -1,7 +1,7 @@
 import type { When } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { WEEK_ORDER, at, capitalize, dateParts, diffDays, formatDayMonth, weekdayOf } from '@/lib/dates';
-import { repeatLabel } from '@/lib/rules';
+import { repeatLabel, stepLabel } from '@/lib/rules';
 import type { RepeatPattern } from '@/lib/types';
 
 // Что приложение отвечает голосом на надиктованное. Читает синтезатор — поэтому полные слова:
@@ -17,7 +17,7 @@ function spokenTime(time: string): string {
 /** Повтор для озвучки, полными словами: «Каждый вторник», «По средам и четвергам», «Каждый день». */
 export function spokenRepeat(p: RepeatPattern): string {
   // Без окна «9:00–21:00»: ответ голосом короткий
-  if (p.kind === 'hourly') return capitalize(copy.repeat.everyHours(p.hours));
+  if (p.kind === 'hourly') return capitalize(stepLabel(p.minutes));
   if (p.kind !== 'weekly') return capitalize(repeatLabel(p));
   // Неделя с понедельника: «по субботам и воскресеньям», как в подписи повтора
   const names = WEEK_ORDER.filter((d) => p.weekdays.includes(d)).map((d) => at(copy.reply.weeklyDays, d));

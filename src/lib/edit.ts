@@ -33,7 +33,7 @@ function patternOf(rule: Rule): RepeatPattern {
     case 'interval':
       return { kind: rule.kind, days: rule.days };
     case 'hourly':
-      return { kind: rule.kind, hours: rule.hours, from: rule.from, to: rule.to };
+      return { kind: rule.kind, minutes: rule.minutes, from: rule.from, to: rule.to };
   }
 }
 

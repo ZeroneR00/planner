@@ -186,7 +186,7 @@ describe('rollover', () => {
 
 describe('rollover: каждые N часов', () => {
   it('экземпляров в дне не создаёт', () => {
-    const water = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true } as Rule;
+    const water = { kind: 'hourly', minutes: 120, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true } as Rule;
     expect(run([], [water])).toEqual(EMPTY);
   });
 });

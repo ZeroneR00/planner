@@ -76,6 +76,10 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE rules ADD COLUMN window_to INTEGER;    -- только hourly: последний час, 0–23
   ALTER TABLE rules ADD COLUMN done_slot TEXT;       -- только hourly: 'YYYY-MM-DDTHH:MM' последнего «Сделано»
   `,
+  // «Каждые N минут»: шаг hourly в every теперь в минутах, а не в часах
+  `
+  UPDATE rules SET every = every * 60 WHERE kind = 'hourly';
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -225,7 +229,7 @@ function ruleFromRow(row: RuleRow): Rule {
       return {
         ...base,
         kind: 'hourly',
-        hours: required(row.every, 'every', row),
+        minutes: required(row.every, 'every', row), // шаг в минутах
         from: required(row.window_from, 'window_from', row),
         to: required(row.window_to, 'window_to', row),
       };
@@ -243,7 +247,7 @@ function ruleToParams(rule: Rule): BindValue[] {
     rule.kind === 'weekly' ? rule.weekdays.join(',') : null,
     rule.kind === 'yearly' ? rule.month : null,
     rule.kind === 'monthly' || rule.kind === 'yearly' ? rule.monthDay : null,
-    rule.kind === 'interval' ? rule.days : rule.kind === 'hourly' ? rule.hours : null,
+    rule.kind === 'interval' ? rule.days : rule.kind === 'hourly' ? rule.minutes : null,
     rule.kind === 'hourly' ? rule.from : null,
     rule.kind === 'hourly' ? rule.to : null,
     rule.doneSlot ?? null,

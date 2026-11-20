@@ -335,8 +335,9 @@ describe('parseWhen: голое «в 9» перед действием', () => {
   });
 });
 
-describe('parseWhen: каждые N часов', () => {
-  const hourly = (hours: number, from = 9, to = 21) => ({ kind: 'hourly', hours, from, to });
+describe('parseWhen: каждые N часов и минут', () => {
+  const hourly = (hours: number, from = 9, to = 21) => ({ kind: 'hourly', minutes: hours * 60, from, to });
+  const every = (minutes: number, from = 9, to = 21) => ({ kind: 'hourly', minutes, from, to });
 
   it.each([
     ['пить воду каждые 2 часа', 'пить воду', hourly(2)],
@@ -350,12 +351,24 @@ describe('parseWhen: каждые N часов', () => {
     ['каждые 2 часа с 10 до 6', '', hourly(2, 10, 18)],
     ['каждый час с 9 до 9', '', hourly(1, 9, 21)],
     ['каждые 2 часа с 22 до 6', '', hourly(2)],
+    ['раз в 20 минут', '', every(20)],
+    ['каждые полчаса', '', every(30)],
+    ['раз в пол часа', '', every(30)],
+    ['каждые полтора часа', '', every(90)],
+    ['каждые пятнадцать минут', '', every(15)],
+    ['каждую 21 минуту', '', every(21)],
+    ['каждые 15 минут с 8 до 22', '', every(15, 8, 22)],
   ])('«%s» → «%s», %j', (text, title, repeat) => {
     expect(parse(text)).toEqual({ title, date: TODAY, repeat, time: null, hit: true });
   });
 
-  it('«каждые 13 часов» — не повтор', () => {
+  it('«каждые 13 часов» и «каждые 5 минут» — не повтор', () => {
     expect(parse('каждые 13 часов').repeat).toBeNull();
+    expect(parse('каждые 5 минут').repeat).toBeNull();
+  });
+
+  it('«пить воду каждые 15 минут» → «Пить воду»', () => {
+    expect(parse('пить воду каждые 15 минут')).toMatchObject({ title: 'пить воду', repeat: every(15) });
   });
 
   it('«раз в 3 дня» — по-прежнему через N дней', () => {

@@ -5,14 +5,19 @@ import {
   editText,
   emptyDraft,
   hasText,
+  HOURLY_STEPS,
   pickDate,
+  pickHourlyStep,
   pickRepeat,
   pickTime,
   repeatOptions,
   resolveWhen,
+  shiftWindow,
+  stepChips,
   toggleWeekday,
   whenChips,
   whenHint,
+  windowLimits,
   type Draft,
   type When,
 } from '@/lib/composer';
@@ -253,6 +258,7 @@ describe('бегунок', () => {
       'Каждую неделю · по вторникам',
       'Каждый месяц · 20-го',
       'Каждый год · 20 октября',
+      'Каждые 2 часа',
     ]);
     expect(repeatOptions('2026-10-20', null).map((o) => o.key)).toEqual([
       'once',
@@ -262,6 +268,7 @@ describe('бегунок', () => {
       'weekly',
       'monthly',
       'yearly',
+      'hourly',
     ]);
   });
 
@@ -423,7 +430,7 @@ describe('каждые N часов', () => {
     expect(when).toEqual({
       title: 'пить воду',
       date: TODAY,
-      repeat: { kind: 'hourly', hours: 2, from: 9, to: 21 },
+      repeat: { kind: 'hourly', minutes: 120, from: 9, to: 21 },
       time: null,
       fromText: true,
     });
@@ -434,13 +441,49 @@ describe('каждые N часов', () => {
     expect(resolve(pickTime(typed('пить воду каждый час'), '15:00')).time).toBeNull();
   });
 
-  it('в меню ↻ — только уже выбранный', () => {
-    expect(repeatOptions(TODAY, null).some((o) => o.pattern?.kind === 'hourly')).toBe(false);
-    const current = { kind: 'hourly', hours: 2, from: 9, to: 21 } as const;
-    expect(repeatOptions(TODAY, current)[1]).toEqual({
+  it('в меню ↻ — последний пункт, выбранный остаётся как есть', () => {
+    expect(repeatOptions(TODAY, null).at(-1)).toEqual({
       key: 'hourly',
-      pattern: current,
-      label: 'Каждые 2 часа, 9:00–21:00',
+      pattern: { kind: 'hourly', minutes: 120, from: 9, to: 21 },
+      label: 'Каждые 2 часа',
     });
+    const current = { kind: 'hourly', minutes: 15, from: 8, to: 23 } as const;
+    expect(repeatOptions(TODAY, current).at(-1)).toEqual({ key: 'hourly', pattern: current, label: 'Каждые 15 минут' });
+    expect(repeatOptions(TODAY, current).filter((o) => o.key === 'hourly')).toHaveLength(1);
+  });
+
+  it('чипы шага: свой шаг из текста встаёт по порядку', () => {
+    expect(stepChips(120)).toEqual(HOURLY_STEPS);
+    expect(stepChips(20)).toEqual([15, 20, 30, 60, 120, 180, 240]);
+    expect(stepChips(300)).toEqual([15, 30, 60, 120, 180, 240, 300]);
+  });
+
+  it('шаг меняется, окно остаётся', () => {
+    const draft = typed('вода каждые 2 часа с 8 до 22');
+    expect(resolve(pickHourlyStep(draft, TODAY, NOW, 15)).repeat).toEqual({ kind: 'hourly', minutes: 15, from: 8, to: 22 });
+  });
+
+  it('из другого повтора — шаблон по умолчанию', () => {
+    const draft = typed('вода каждый день');
+    expect(resolve(pickHourlyStep(draft, TODAY, NOW, 30)).repeat).toEqual({ kind: 'hourly', minutes: 30, from: 9, to: 21 });
+    expect(resolve(shiftWindow(draft, TODAY, NOW, 'from', -1)).repeat).toEqual({ kind: 'hourly', minutes: 120, from: 8, to: 21 });
+  });
+
+  it('окно −/+: упирается в 0, 23 и from < to', () => {
+    const at = (from: number, to: number) => pickRepeat(pickDate(typed('вода'), TODAY), { kind: 'hourly', minutes: 60, from, to });
+    const shifted = (d: Draft) => resolve(d).repeat;
+    expect(shifted(shiftWindow(at(9, 21), TODAY, NOW, 'to', 1))).toMatchObject({ from: 9, to: 22 });
+    const low = at(0, 23);
+    expect(shiftWindow(low, TODAY, NOW, 'from', -1)).toBe(low);
+    expect(shiftWindow(low, TODAY, NOW, 'to', 1)).toBe(low);
+    const tight = at(9, 10);
+    expect(shiftWindow(tight, TODAY, NOW, 'from', 1)).toBe(tight);
+    expect(shiftWindow(tight, TODAY, NOW, 'to', -1)).toBe(tight);
+  });
+
+  it('какие кнопки окна нажимаются', () => {
+    expect(windowLimits({ from: 9, to: 21 })).toEqual({ fromDown: true, fromUp: true, toDown: true, toUp: true });
+    expect(windowLimits({ from: 0, to: 23 })).toEqual({ fromDown: false, fromUp: true, toDown: true, toUp: false });
+    expect(windowLimits({ from: 9, to: 10 })).toEqual({ fromDown: true, fromUp: false, toDown: false, toUp: true });
   });
 });

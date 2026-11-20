@@ -1,5 +1,6 @@
 import {
   HOURLY_CATEGORY,
+  HOURLY_MAX_PER_RULE,
   MAX_REMINDERS,
   REMINDER_CATEGORY,
   diffReminders,
@@ -32,7 +33,7 @@ type HourlyRule = Extract<Rule, { kind: 'hourly' }>;
 function hourlyRule(overrides: Partial<HourlyRule> & { id: string }): HourlyRule {
   return {
     kind: 'hourly',
-    hours: 2,
+    minutes: 120,
     from: 9,
     to: 21,
     title: `правило ${overrides.id}`,
@@ -150,7 +151,7 @@ describe('planReminders: каждые N часов', () => {
   });
 
   it('каждый час — повторы до следующего раза, у последнего за день — 6', () => {
-    const planned = full([], [hourlyRule({ id: 'w', hours: 1, from: 20, to: 22 })], { date: TODAY, time: '21:55' });
+    const planned = full([], [hourlyRule({ id: 'w', minutes: 60, from: 20, to: 22 })], { date: TODAY, time: '21:55' });
     const times = (slot: string) =>
       planned.filter((r) => r.id.startsWith(`h:w:${slot}:n`)).map((r) => `${r.date} ${r.time}`);
     expect(times('2026-10-18T21:00')).toEqual([]); // прошли
@@ -175,6 +176,20 @@ describe('planReminders: каждые N часов', () => {
     const planned = full([], [hourlyRule({ id: 'w', doneSlot: '2026-10-18T09:00' })], { date: TODAY, time: '09:25' });
     expect(planned.some((r) => r.id.startsWith('h:w:2026-10-18T09:00'))).toBe(false);
     expect(planned[0]?.id).toBe('h:w:2026-10-18T11:00');
+  });
+
+  it('шаг 15 минут — повторов нет, шаг 30 — повторы +10 и +20', () => {
+    const q = full([], [hourlyRule({ id: 'w', minutes: 15, from: 9, to: 10 })], at8);
+    expect(q.some((r) => NAG.test(r.id))).toBe(false);
+    expect(q.filter((r) => r.date === TODAY).map((r) => r.time)).toEqual(['09:00', '09:15', '09:30', '09:45', '10:00']);
+    const h = full([], [hourlyRule({ id: 'w', minutes: 30, from: 9, to: 10 })], at8);
+    expect(h.filter((r) => r.id.startsWith('h:w:2026-10-18T09:00:n')).map((r) => r.time)).toEqual(['09:10', '09:20']);
+  });
+
+  it('на одно правило — не больше 100', () => {
+    const planned = full([], [hourlyRule({ id: 'w', minutes: 15, from: 8, to: 23 })], at8);
+    expect(planned).toHaveLength(HOURLY_MAX_PER_RULE);
+    expect(planned[0]?.time).toBe('08:15');
   });
 
   it('startDate в будущем — с него, выключенное — ничего', () => {
@@ -290,6 +305,7 @@ describe('parseReminderId', () => {
   it('повтор-«донималка» и «каждые N часов» — время основное', () => {
     expect(parseReminderId('t:a:2026-10-18T15:00:n3')).toEqual({ kind: 't', id: 'a', date: TODAY, time: '15:00' });
     expect(parseReminderId('h:w:2026-10-18T11:00:n1')).toEqual({ kind: 'h', id: 'w', date: TODAY, time: '11:00' });
+    expect(parseReminderId('h:w:2026-10-18T09:15')).toEqual({ kind: 'h', id: 'w', date: TODAY, time: '09:15' });
   });
 
   it('чужой id — null', () => {
@@ -344,9 +360,13 @@ describe('staleShown: что убрать из шторки', () => {
     expect(stale([id], [], [{ ...water, doneSlot: '2026-10-18T09:00' }], at('09:30'))).toEqual([id]);
     expect(stale([id], [], [{ ...water, active: false }], at('09:30'))).toEqual([id]);
     // Раза больше нет в расписании
-    expect(stale(['h:w:2026-10-18T11:00'], [], [{ ...water, hours: 3 }], at('11:30'))).toEqual([
+    expect(stale(['h:w:2026-10-18T11:00'], [], [{ ...water, minutes: 180 }], at('11:30'))).toEqual([
       'h:w:2026-10-18T11:00',
     ]);
+    // Раз с минутами
+    const quarter = { ...water, minutes: 15 };
+    expect(stale(['h:w:2026-10-18T09:15'], [], [quarter], at('09:20'))).toEqual([]);
+    expect(stale(['h:w:2026-10-18T09:15'], [], [quarter], at('09:30'))).toEqual(['h:w:2026-10-18T09:15']);
     // Последний за день живёт до первого раза завтра
     expect(stale(['h:w:2026-10-18T21:00'], [], [water], at('08:00', '2026-10-19'))).toEqual([]);
     expect(stale(['h:w:2026-10-18T21:00'], [], [water], at('09:00', '2026-10-19'))).toHaveLength(1);

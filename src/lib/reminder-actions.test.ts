@@ -97,7 +97,7 @@ describe('reminderActionChanges', () => {
 });
 
 describe('reminderActionChanges: каждые N часов', () => {
-  const water: Rule = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
+  const water: Rule = { kind: 'hourly', minutes: 120, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
 
   it('«Сделано» — отметка на этот раз, и с повтора тоже', () => {
     expect(act('h:w:2026-10-18T11:00', 'done', '11:05', [], [water])).toEqual({
@@ -105,6 +105,13 @@ describe('reminderActionChanges: каждые N часов', () => {
     });
     expect(act('h:w:2026-10-18T11:00:n2', 'done', '11:25', [], [water])).toEqual({
       putRules: [{ ...water, doneSlot: '2026-10-18T11:00' }],
+    });
+  });
+
+  it('«Сделано» на раз с минутами', () => {
+    const quarter = { ...water, minutes: 15 };
+    expect(act('h:w:2026-10-18T09:15', 'done', '09:16', [], [quarter])).toEqual({
+      putRules: [{ ...quarter, doneSlot: '2026-10-18T09:15' }],
     });
   });
 

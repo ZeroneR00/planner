@@ -61,6 +61,9 @@ export function Composer({ composer: c }: Props) {
           weekdays={c.weekdays}
           onPick={c.pickRepeat}
           onToggleDay={c.toggleWeekday}
+          hourly={c.hourly}
+          onPickStep={c.pickHourlyStep}
+          onShift={c.shiftWindow}
         />
       )}
       {c.sheet === 'calendar' && (

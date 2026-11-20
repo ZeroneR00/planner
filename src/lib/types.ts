@@ -7,8 +7,8 @@ export type RepeatPattern =
   | { kind: 'monthly'; monthDay: number } // 1–31
   | { kind: 'yearly'; month: number; monthDay: number } // 1–12; 29 февраля в невисокосный год — 28-го
   | { kind: 'interval'; days: number } // 2 и больше; «через день» = 2, отсчёт от startDate правила
-  // Каждые hours часов (1–12) с from до to (часы 0–23, from < to): раз в from, from + hours, … ≤ to
-  | { kind: 'hourly'; hours: number; from: number; to: number };
+  // Каждые minutes минут (15–720) с from до to (часы 0–23, from < to): from:00, +minutes, … ≤ to:00
+  | { kind: 'hourly'; minutes: number; from: number; to: number };
 
 export type RepeatKind = RepeatPattern['kind'];
 

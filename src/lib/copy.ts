@@ -61,6 +61,13 @@ export const copy = {
     repeatWeekly: (plural: string) => `Каждую неделю · ${plural}`,
     repeatMonthly: (day: number) => `Каждый месяц · ${day}-го`,
     repeatYearly: (day: string) => `Каждый год · ${day}`,
+    hourlyStep: (minutes: number) => (minutes % 60 === 0 ? `${minutes / 60} ч` : `${minutes} мин`),
+    windowFrom: 'с',
+    windowTo: 'до',
+    windowFromEarlier: 'Начинать раньше',
+    windowFromLater: 'Начинать позже',
+    windowToEarlier: 'Заканчивать раньше',
+    windowToLater: 'Заканчивать позже',
     time: 'Напомнить',
     timeOn: (time: string) => `Напомнить в ${time}`,
     noTime: 'Без времени',
@@ -195,6 +202,8 @@ export const copy = {
     everyWeeks: (n: number) => `раз в ${n} ${plural(n, 'неделю', 'недели', 'недель')}`,
     everyHours: (n: number) =>
       n === 1 ? 'каждый час' : `${plural(n, 'каждый', 'каждые', 'каждые')} ${n} ${plural(n, 'час', 'часа', 'часов')}`,
+    everyMinutes: (n: number) =>
+      `${plural(n, 'каждую', 'каждые', 'каждые')} ${n} ${plural(n, 'минуту', 'минуты', 'минут')}`,
     hourly: (every: string, from: string, to: string) => `${every}, ${from}–${to}`,
     doneToday: 'на сегодня готово',
   },

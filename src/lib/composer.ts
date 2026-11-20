@@ -11,7 +11,7 @@ import {
   formatTime,
 } from '@/lib/dates';
 import { parseWhen } from '@/lib/parse-when';
-import { nextOccurrence, occursOn, patternFor, repeatLabel, samePattern } from '@/lib/rules';
+import { nextOccurrence, occursOn, patternFor, repeatLabel, samePattern, stepLabel } from '@/lib/rules';
 import type { RepeatKind, RepeatPattern } from '@/lib/types';
 
 // Поле записи: что написано, что выбрано вручную и как приложение это поняло.
@@ -104,6 +104,55 @@ export function toggleWeekday(draft: Draft, today: string, now: string, weekday:
   return pickRepeat(draft, next.length === 0 ? null : { kind: 'weekly', weekdays: next });
 }
 
+type Hourly = Extract<RepeatPattern, { kind: 'hourly' }>;
+
+/** Шаги «каждые N» в меню ↻, в минутах. */
+export const HOURLY_STEPS: readonly number[] = [15, 30, 60, 120, 180, 240];
+
+/** Чипы шага: HOURLY_STEPS и текущий, если его среди них нет («каждые 20 минут» из текста). */
+export function stepChips(current: number): number[] {
+  return HOURLY_STEPS.includes(current) ? [...HOURLY_STEPS] : [...HOURLY_STEPS, current].sort((a, b) => a - b);
+}
+
+function currentHourly(draft: Draft, today: string, now: string): Hourly {
+  const current = resolveWhen(draft, today, now).repeat;
+  if (current?.kind === 'hourly') return current;
+  const fresh = patternFor('hourly', today);
+  if (fresh.kind !== 'hourly') throw new Error('patternFor(hourly) вернул не hourly');
+  return fresh;
+}
+
+/** Чип шага под «Каждые N»: окно остаётся. */
+export function pickHourlyStep(draft: Draft, today: string, now: string, minutes: number): Draft {
+  return pickRepeat(draft, { ...currentHourly(draft, today, now), minutes });
+}
+
+/** Можно ли сдвинуть границы окна: from 0–22, to 1–23, from < to. */
+export function windowLimits(p: { from: number; to: number }): {
+  fromDown: boolean;
+  fromUp: boolean;
+  toDown: boolean;
+  toUp: boolean;
+} {
+  return { fromDown: p.from > 0, fromUp: p.from + 1 < p.to, toDown: p.to - 1 > p.from, toUp: p.to < 23 };
+}
+
+/** − и + у «с» / «до»: на час; упёрлись — ничего не меняется. */
+export function shiftWindow(
+  draft: Draft,
+  today: string,
+  now: string,
+  edge: 'from' | 'to',
+  delta: 1 | -1,
+): Draft {
+  const current = currentHourly(draft, today, now);
+  const limits = windowLimits(current);
+  const allowed =
+    edge === 'from' ? (delta < 0 ? limits.fromDown : limits.fromUp) : delta < 0 ? limits.toDown : limits.toUp;
+  if (!allowed) return draft;
+  return pickRepeat(draft, { ...current, [edge]: current[edge] + delta });
+}
+
 /** now — текущее время 'HH:MM': время без дня — сегодня, а если уже прошло — завтра. */
 export function resolveWhen(draft: Draft, today: string, now: string): When {
   const parsed = parseWhen(draft.text, today, now);
@@ -189,7 +238,15 @@ export function calendarChipLabel(date: string | null, today: string): string {
   return date !== null && isFar(date, today) ? formatDayShort(date) : copy.composer.calendar;
 }
 
-const OPTION_KINDS: readonly RepeatKind[] = ['daily', 'interval', 'weekdays', 'weekly', 'monthly', 'yearly'];
+const OPTION_KINDS: readonly RepeatKind[] = [
+  'daily',
+  'interval',
+  'weekdays',
+  'weekly',
+  'monthly',
+  'yearly',
+  'hourly',
+];
 
 function optionLabel(p: RepeatPattern | null): string {
   if (p === null) return copy.composer.repeatOnce;
@@ -207,8 +264,10 @@ function optionLabel(p: RepeatPattern | null): string {
     case 'yearly':
       return copy.composer.repeatYearly(formatDayMonth(p.month, p.monthDay));
     case 'interval':
-    case 'hourly':
       return capitalize(repeatLabel(p));
+    case 'hourly':
+      // Окно — в кнопках под пунктом
+      return capitalize(stepLabel(p.minutes));
   }
 }
 
@@ -220,9 +279,7 @@ export function repeatOptions(date: string, current: RepeatPattern | null): Repe
   const patterns = OPTION_KINDS.map((kind) =>
     current !== null && current.kind === kind ? current : patternFor(kind, date),
   );
-  // «Каждые N часов» в меню сам не предлагается — только из текста; уже выбранный остаётся пунктом
-  const hourly = current?.kind === 'hourly' ? [current] : [];
-  return [null, ...hourly, ...patterns].map((pattern) => ({
+  return [null, ...patterns].map((pattern) => ({
     key: pattern?.kind ?? 'once',
     pattern,
     label: optionLabel(pattern),

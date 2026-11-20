@@ -92,7 +92,7 @@ describe('aheadView: повторы', () => {
 
 describe('aheadView: каждые N часов', () => {
   it('подпись без «следующий — …»', () => {
-    const water = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true } as Rule;
+    const water = { kind: 'hourly', minutes: 120, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true } as Rule;
     expect(aheadView(data([], [water])).rules.map((r) => r.label)).toEqual(['каждые 2 часа, 9:00–21:00']);
   });
 });

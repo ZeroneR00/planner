@@ -15,10 +15,12 @@ import {
   emptyDraft,
   hasText,
   pickDate,
+  pickHourlyStep,
   pickRepeat,
   pickTime,
   repeatOptions,
   resolveWhen,
+  shiftWindow,
   toggleWeekday,
   whenChips,
   whenHint,
@@ -168,6 +170,7 @@ export function useComposer() {
     calendarLabel: calendarChipLabel(when.date, today),
     repeatOptions: repeatOptions(when.date ?? today, when.repeat),
     weekdays: when.repeat?.kind === 'weekly' ? when.repeat.weekdays : [],
+    hourly: when.repeat?.kind === 'hourly' ? when.repeat : null,
     // Без дня времени нет — и панели тоже
     timeGrid: when.date === null ? null : timeGrid(when.time, when.date, today, now),
     today,
@@ -182,7 +185,8 @@ export function useComposer() {
     },
     pickRepeat: (repeat: RepeatPattern | null) => {
       setDraft((d) => pickRepeat(d, repeat));
-      setSheet(null);
+      // «Каждые N» не закрывает: под ним выбирают шаг и часы
+      if (repeat?.kind !== 'hourly') setSheet(null);
     },
     // Тап по часу панель не закрывает — можно выбрать минуты; минуты, «Утром» и «Без времени» закрывают
     pickTime: (time: string | null, close: boolean) => {
@@ -191,6 +195,8 @@ export function useComposer() {
     },
     // Меню не закрывается: дни отмечают по одному
     toggleWeekday: (weekday: number) => setDraft((d) => toggleWeekday(d, today, now, weekday)),
+    pickHourlyStep: (minutes: number) => setDraft((d) => pickHourlyStep(d, today, now, minutes)),
+    shiftWindow: (edge: 'from' | 'to', delta: 1 | -1) => setDraft((d) => shiftWindow(d, today, now, edge, delta)),
     toggleSheet: (next: Sheet) => setSheet((current) => (current === next ? null : next)),
     toggleVoice: () => {
       hush(); // иначе распознавание услышит прошлый ответ
