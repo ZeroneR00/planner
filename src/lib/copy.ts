@@ -193,6 +193,9 @@ export const copy = {
     everyOtherDay: 'через день',
     everyDays: (n: number) => `${plural(n, 'каждый', 'каждые', 'каждые')} ${n} ${plural(n, 'день', 'дня', 'дней')}`,
     everyWeeks: (n: number) => `раз в ${n} ${plural(n, 'неделю', 'недели', 'недель')}`,
+    everyHours: (n: number) =>
+      n === 1 ? 'каждый час' : `${plural(n, 'каждый', 'каждые', 'каждые')} ${n} ${plural(n, 'час', 'часа', 'часов')}`,
+    hourly: (every: string, from: string, to: string) => `${every}, ${from}–${to}`,
     doneToday: 'на сегодня готово',
   },
   undo: {

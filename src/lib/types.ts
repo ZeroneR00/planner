@@ -6,7 +6,9 @@ export type RepeatPattern =
   | { kind: 'weekly'; weekdays: readonly number[] } // 0–6, 0 = вс; по возрастанию, без повторов, хотя бы один
   | { kind: 'monthly'; monthDay: number } // 1–31
   | { kind: 'yearly'; month: number; monthDay: number } // 1–12; 29 февраля в невисокосный год — 28-го
-  | { kind: 'interval'; days: number }; // 2 и больше; «через день» = 2, отсчёт от startDate правила
+  | { kind: 'interval'; days: number } // 2 и больше; «через день» = 2, отсчёт от startDate правила
+  // Каждые hours часов (1–12) с from до to (часы 0–23, from < to): раз в from, from + hours, … ≤ to
+  | { kind: 'hourly'; hours: number; from: number; to: number };
 
 export type RepeatKind = RepeatPattern['kind'];
 
@@ -17,6 +19,7 @@ export type Rule = RepeatPattern & {
   active: boolean;
   time?: string; // 'HH:MM'; переходит в экземпляры
   photo?: string; // имя файла в папке фото; переходит в экземпляры
+  doneSlot?: string; // только hourly: 'YYYY-MM-DDTHH:MM' — последний раз, на который нажали «Сделано»
 };
 
 export type Task = {

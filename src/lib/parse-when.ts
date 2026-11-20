@@ -144,7 +144,32 @@ function monthNumber(word: string): number {
   return MONTHS.indexOf(word.toLowerCase()) + 1;
 }
 
+// «каждые 2 часа», «раз в час», «ежечасно» и окно «с 8 до 22» сразу до или после
+const HOURS_WINDOW = 'с\\s+(\\d{1,2})(?::00)?\\s+до\\s+(\\d{1,2})(?::00)?';
+const EVERY_HOURS =
+  '(?:(?:каждые|каждый|раз\\s+в)\\s+(\\d+)\\s+(?:час|часа|часов)|каждый\\s+час|раз\\s+в\\s+час|ежечасно)';
+const DEFAULT_WINDOW = { from: 9, to: 21 };
+
+/** «с 9 до 9» — до 21; «с 10 до 6» — до 18; не вышло — с 9 до 21. */
+function hoursWindow(fromText: string | undefined, toText: string | undefined): { from: number; to: number } {
+  if (fromText === undefined || toText === undefined) return DEFAULT_WINDOW;
+  const from = Number(fromText);
+  let to = Number(toText);
+  if (from > 23 || to > 23) return DEFAULT_WINDOW;
+  if (to <= from && to + 12 <= 23) to += 12;
+  return to > from ? { from, to } : DEFAULT_WINDOW;
+}
+
 const MATCHERS: Matcher[] = [
+  {
+    // Первым: иначе «раз в 2 часа» разобралось бы как время «в 2 часа» = 14:00
+    re: re(`\\s(?:${HOURS_WINDOW}\\s+)?${EVERY_HOURS}(?:\\s+${HOURS_WINDOW})?(?=\\s)`),
+    resolve: (m, today) => {
+      const hours = m[3] === undefined ? 1 : Number(m[3]);
+      if (hours < 1 || hours > 12) return null;
+      return { date: today, repeat: { kind: 'hourly', hours, ...hoursWindow(m[1] ?? m[4], m[2] ?? m[5]) } };
+    },
+  },
   {
     re: re(`\\s(?:каждый|каждую|каждое|по)\\s+${WD_LIST}(?=\\s)`),
     resolve: (m, today) => repeating({ kind: 'weekly', weekdays: weekdayList(m[0]) }, today),

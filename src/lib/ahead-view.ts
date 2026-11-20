@@ -29,7 +29,11 @@ export function aheadView(data: PlannerData): AheadView {
       .filter((r) => r.active)
       .map((rule) => ({
         rule,
-        label: copy.ahead.next(repeatLabel(rule), formatDayBrief(nextRuleDate(rule, tomorrow), today)),
+        // У «каждые N часов» «следующий — …» не нужен: он сегодня же
+        label:
+          rule.kind === 'hourly'
+            ? repeatLabel(rule)
+            : copy.ahead.next(repeatLabel(rule), formatDayBrief(nextRuleDate(rule, tomorrow), today)),
       })),
   };
 }

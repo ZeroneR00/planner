@@ -75,6 +75,16 @@ export function addDays(date: string, n: number): string {
   return fromUtc(toUtc(date) + n * DAY_MS);
 }
 
+const DAY_MINUTES = 24 * 60;
+
+/** Дата и время + minutes; за полночь — следующий день (или предыдущий при minutes < 0). */
+export function shiftMoment(date: string, time: string, minutes: number): { date: string; time: string } {
+  const total = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) + minutes;
+  const day = Math.floor(total / DAY_MINUTES);
+  const inDay = total - day * DAY_MINUTES;
+  return { date: addDays(date, day), time: `${pad(Math.floor(inDay / 60))}:${pad(inDay % 60)}` };
+}
+
 /** Если в месяце нет такого числа — последний день: 31 января + 1 месяц = 28 февраля. */
 export function addMonths(date: string, n: number): string {
   const { year, month, day } = dateParts(date);

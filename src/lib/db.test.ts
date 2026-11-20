@@ -191,7 +191,6 @@ describe('migrate', () => {
       1,
     ]);
     expect(migrate(old)).toBe(4);
-    expect(MIGRATIONS).toHaveLength(5);
     const data = loadData(old, TODAY);
     expect(data.tasks).toStrictEqual([task({ id: 't', title: 'созвон', photo: 'a.jpg' })]);
     expect(data.rules).toStrictEqual([rule({ id: 'd', title: 'зарядка' })]);
@@ -372,5 +371,41 @@ describe('startDay', () => {
     const walk = data.tasks.find((t) => t.date === TODAY && t.title === 'Прогулка');
     expect(walk?.ruleId).toBeDefined();
     expect(data.tasks.filter((t) => t.date === null)).toHaveLength(3);
+  });
+});
+
+describe('каждые N часов в базе', () => {
+  it('правило с отметкой «Сделано» после записи и чтения то же', () => {
+    const water: Rule = {
+      kind: 'hourly',
+      hours: 2,
+      from: 8,
+      to: 22,
+      id: 'w',
+      title: 'вода',
+      startDate: TODAY,
+      active: true,
+      doneSlot: '2026-10-18T10:00',
+    };
+    const plain = rule({ id: 'd' });
+    writeChanges(db, { putRules: [water, plain] });
+    expect(loadData(db, TODAY).rules).toStrictEqual([water, plain]);
+  });
+
+  it('версия 5 → 6: правила на месте', () => {
+    const old = openTestDb();
+    for (const version of [0, 1, 2, 3, 4]) old.execSync(at(MIGRATIONS, version));
+    old.execSync('PRAGMA user_version = 5');
+    old.runSync('INSERT INTO rules (id, title, kind, every, start_date, active) VALUES (?, ?, ?, ?, ?, ?)', [
+      'i',
+      'цветы',
+      'interval',
+      3,
+      '2026-10-01',
+      1,
+    ]);
+    expect(migrate(old)).toBe(5);
+    expect(MIGRATIONS).toHaveLength(6);
+    expect(loadData(old, TODAY).rules).toStrictEqual([rule({ id: 'i', title: 'цветы', kind: 'interval', days: 3 })]);
   });
 });

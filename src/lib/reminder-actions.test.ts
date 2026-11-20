@@ -95,3 +95,30 @@ describe('reminderActionChanges', () => {
     expect(act('t:a:2026-10-18T10:00', 'snooze15', '10:00', moved)).toBeNull();
   });
 });
+
+describe('reminderActionChanges: каждые N часов', () => {
+  const water: Rule = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
+
+  it('«Сделано» — отметка на этот раз, и с повтора тоже', () => {
+    expect(act('h:w:2026-10-18T11:00', 'done', '11:05', [], [water])).toEqual({
+      putRules: [{ ...water, doneSlot: '2026-10-18T11:00' }],
+    });
+    expect(act('h:w:2026-10-18T11:00:n2', 'done', '11:25', [], [water])).toEqual({
+      putRules: [{ ...water, doneSlot: '2026-10-18T11:00' }],
+    });
+  });
+
+  it('повторное нажатие, отложить и остановленное правило — ничего', () => {
+    const done = { ...water, doneSlot: '2026-10-18T11:00' };
+    expect(act('h:w:2026-10-18T11:00', 'done', '11:05', [], [done])).toBeNull();
+    expect(act('h:w:2026-10-18T09:00', 'done', '11:05', [], [done])).toBeNull();
+    expect(act('h:w:2026-10-18T11:00', 'snooze15', '11:05', [], [water])).toBeNull();
+    expect(act('h:w:2026-10-18T11:00', 'done', '11:05', [], [{ ...water, active: false }])).toBeNull();
+  });
+
+  it('повтор-«донималка» задачи — как основное уведомление', () => {
+    const a = task({ id: 'a', time: '15:00' });
+    expect(act('t:a:2026-10-18T15:00:n3', 'done', '15:30', [a])).toEqual(act('t:a:2026-10-18T15:00', 'done', '15:30', [a]));
+    expect(act('t:a:2026-10-18T15:00:n3', 'done', '15:30', [a])).not.toBeNull();
+  });
+});

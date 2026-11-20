@@ -1,4 +1,5 @@
 import {
+  hourlySlots,
   nextOccurrence,
   nextRuleDate,
   occursOn,
@@ -173,5 +174,33 @@ describe('повтор каждые N дней', () => {
     expect(samePattern({ kind: 'interval', days: 2 }, { kind: 'interval', days: 2 })).toBe(true);
     expect(samePattern({ kind: 'interval', days: 2 }, { kind: 'interval', days: 3 })).toBe(false);
     expect(patternFor('interval', '2026-10-20')).toEqual({ kind: 'interval', days: 2 });
+  });
+});
+
+describe('каждые N часов', () => {
+  const water: Rule = { kind: 'hourly', hours: 2, from: 9, to: 21, id: 'w', title: 'вода', startDate: '2026-10-01', active: true };
+
+  it('разы за день — от начала окна шагом N, не позже конца', () => {
+    expect(hourlySlots({ hours: 2, from: 9, to: 21 })).toEqual([
+      '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00',
+    ]);
+    expect(hourlySlots({ hours: 5, from: 9, to: 21 })).toEqual(['09:00', '14:00', '19:00']);
+    expect(hourlySlots({ hours: 1, from: 8, to: 10 })).toEqual(['08:00', '09:00', '10:00']);
+  });
+
+  it('без задач в дне: экземпляров нет', () => {
+    expect(ruleOccursOn(water, '2026-10-18')).toBe(false);
+  });
+
+  it('подпись', () => {
+    expect(repeatLabel(water)).toBe('каждые 2 часа, 9:00–21:00');
+    expect(repeatLabel({ kind: 'hourly', hours: 1, from: 8, to: 22 })).toBe('каждый час, 8:00–22:00');
+    expect(repeatLabel({ kind: 'hourly', hours: 5, from: 9, to: 21 })).toBe('каждые 5 часов, 9:00–21:00');
+  });
+
+  it('шаблон по умолчанию и сравнение', () => {
+    expect(patternFor('hourly', '2026-10-18')).toEqual({ kind: 'hourly', hours: 2, from: 9, to: 21 });
+    expect(samePattern({ kind: 'hourly', hours: 2, from: 9, to: 21 }, { kind: 'hourly', hours: 2, from: 9, to: 21 })).toBe(true);
+    expect(samePattern({ kind: 'hourly', hours: 2, from: 9, to: 21 }, { kind: 'hourly', hours: 2, from: 8, to: 21 })).toBe(false);
   });
 });

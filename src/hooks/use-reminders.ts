@@ -27,7 +27,7 @@ import { localDateTime, nowIso, nowTime, today } from '@/lib/dates';
 import { startDay, writeChanges, type Db } from '@/lib/db';
 import { makeId } from '@/lib/id';
 import { isReminderAction, reminderActionChanges, type ReminderAction } from '@/lib/reminder-actions';
-import { REMINDER_CATEGORY, diffReminders, planReminders, staleShown } from '@/lib/reminders';
+import { HOURLY_CATEGORY, REMINDER_CATEGORY, diffReminders, planReminders, staleShown } from '@/lib/reminders';
 import type { PlannerData } from '@/lib/types';
 
 // Единственное место с expo- Какие напоминания должны стоять, решает reminders.ts
@@ -116,14 +116,14 @@ async function ensureCategory(): Promise<void> {
     snooze60: copy.reminders.snoozeLong,
     done: copy.reminders.done,
   };
-  await setNotificationCategoryAsync(
-    REMINDER_CATEGORY,
-    (Object.keys(titles) as ReminderAction[]).map((identifier) => ({
+  const buttons = (actions: ReminderAction[]) =>
+    actions.map((identifier) => ({
       identifier,
       buttonTitle: titles[identifier],
       options: { opensAppToForeground: false }, // тихая кнопка: приложение не открывается
-    })),
-  );
+    }));
+  await setNotificationCategoryAsync(REMINDER_CATEGORY, buttons(['snooze15', 'snooze60', 'done']));
+  await setNotificationCategoryAsync(HOURLY_CATEGORY, buttons(['done']));
   categoryReady = true;
 }
 
@@ -132,7 +132,8 @@ async function ensureCategory(): Promise<void> {
  * true — уведомления выключены.
  */
 async function sync(data: Pick<PlannerData, 'tasks' | 'rules'>): Promise<boolean> {
-  const planned = planReminders(data, { date: today(), time: nowTime() });
+  const now = { date: today(), time: nowTime() };
+  const planned = planReminders(data, now);
   const scheduled = (await getAllScheduledNotificationsAsync()).map((r) => ({
     id: r.identifier,
     title: r.content.title ?? '',
@@ -148,7 +149,7 @@ async function sync(data: Pick<PlannerData, 'tasks' | 'rules'>): Promise<boolean
   for (const r of schedule) {
     await scheduleNotificationAsync({
       identifier: r.id,
-      content: { title: r.title, categoryIdentifier: REMINDER_CATEGORY },
+      content: { title: r.title, categoryIdentifier: r.category },
       trigger: {
         type: SchedulableTriggerInputTypes.DATE,
         date: localDateTime(r.date, r.time),
@@ -158,7 +159,7 @@ async function sync(data: Pick<PlannerData, 'tasks' | 'rules'>): Promise<boolean
   }
   // Сделали, убрали или перенесли — висящее уведомление больше не нужно
   const shown = (await getPresentedNotificationsAsync()).map((n) => n.request.identifier);
-  for (const id of staleShown(shown, data)) await dismissNotificationAsync(id);
+  for (const id of staleShown(shown, data, now)) await dismissNotificationAsync(id);
   return !allowed;
 }
 

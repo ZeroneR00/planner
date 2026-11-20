@@ -334,3 +334,31 @@ describe('parseWhen: голое «в 9» перед действием', () => {
     });
   });
 });
+
+describe('parseWhen: каждые N часов', () => {
+  const hourly = (hours: number, from = 9, to = 21) => ({ kind: 'hourly', hours, from, to });
+
+  it.each([
+    ['пить воду каждые 2 часа', 'пить воду', hourly(2)],
+    ['каждый час размяться', 'размяться', hourly(1)],
+    ['раз в час', '', hourly(1)],
+    ['ежечасно', '', hourly(1)],
+    ['раз в 3 часа', '', hourly(3)],
+    ['каждые два часа', '', hourly(2)],
+    ['с 8 до 22 каждые 2 часа', '', hourly(2, 8, 22)],
+    ['каждые 2 часа с 8:00 до 22:00', '', hourly(2, 8, 22)],
+    ['каждые 2 часа с 10 до 6', '', hourly(2, 10, 18)],
+    ['каждый час с 9 до 9', '', hourly(1, 9, 21)],
+    ['каждые 2 часа с 22 до 6', '', hourly(2)],
+  ])('«%s» → «%s», %j', (text, title, repeat) => {
+    expect(parse(text)).toEqual({ title, date: TODAY, repeat, time: null, hit: true });
+  });
+
+  it('«каждые 13 часов» — не повтор', () => {
+    expect(parse('каждые 13 часов').repeat).toBeNull();
+  });
+
+  it('«раз в 3 дня» — по-прежнему через N дней', () => {
+    expect(parse('раз в 3 дня').repeat).toEqual({ kind: 'interval', days: 3 });
+  });
+});

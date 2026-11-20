@@ -416,3 +416,31 @@ describe('голос', () => {
     expect(spoken('завтра').title).toBe('');
   });
 });
+
+describe('каждые N часов', () => {
+  it('из текста — без времени, подсказка с повтором', () => {
+    const when = resolve(typed('пить воду каждые 2 часа в 10'));
+    expect(when).toEqual({
+      title: 'пить воду',
+      date: TODAY,
+      repeat: { kind: 'hourly', hours: 2, from: 9, to: 21 },
+      time: null,
+      fromText: true,
+    });
+    expect(whenHint(when, TODAY).parts.map((p) => p.text)).toContain('каждые 2 часа, 9:00–21:00');
+  });
+
+  it('время из панели ⏰ не действует', () => {
+    expect(resolve(pickTime(typed('пить воду каждый час'), '15:00')).time).toBeNull();
+  });
+
+  it('в меню ↻ — только уже выбранный', () => {
+    expect(repeatOptions(TODAY, null).some((o) => o.pattern?.kind === 'hourly')).toBe(false);
+    const current = { kind: 'hourly', hours: 2, from: 9, to: 21 } as const;
+    expect(repeatOptions(TODAY, current)[1]).toEqual({
+      key: 'hourly',
+      pattern: current,
+      label: 'Каждые 2 часа, 9:00–21:00',
+    });
+  });
+});

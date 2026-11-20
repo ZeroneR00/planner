@@ -32,6 +32,8 @@ function patternOf(rule: Rule): RepeatPattern {
       return { kind: rule.kind, month: rule.month, monthDay: rule.monthDay };
     case 'interval':
       return { kind: rule.kind, days: rule.days };
+    case 'hourly':
+      return { kind: rule.kind, hours: rule.hours, from: rule.from, to: rule.to };
   }
 }
 

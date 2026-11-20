@@ -115,6 +115,8 @@ export function resolveWhen(draft: Draft, today: string, now: string): When {
   const fromText = parsed.hit && !draft.date.manual;
   if (draft.repeat.manual) {
     const repeat = draft.repeat.value;
+    // У «каждые N часов» свои часы: время из текста и панели ⏰ не действует
+    if (repeat?.kind === 'hourly') return { title, date: picked, repeat, time: null, fromText };
     // Дни отметили в ряду ↻, а выбранный день не из них — повтор начинается с ближайшего отмеченного.
     // Считаем от выбранного дня, а не от прошлого сдвига, поэтому начало не «уползает»
     const date = repeat === null || occursOn(repeat, picked) ? picked : nextOccurrence(repeat, picked);
@@ -127,7 +129,7 @@ export function resolveWhen(draft: Draft, today: string, now: string): When {
       : occursOn(parsed.repeat, picked)
         ? parsed.repeat
         : patternFor(parsed.repeat.kind, picked);
-  return { title, date: picked, repeat, time, fromText };
+  return { title, date: picked, repeat, time: repeat?.kind === 'hourly' ? null : time, fromText };
 }
 
 /** Строка над полем, пока печатаешь. */
@@ -205,6 +207,7 @@ function optionLabel(p: RepeatPattern | null): string {
     case 'yearly':
       return copy.composer.repeatYearly(formatDayMonth(p.month, p.monthDay));
     case 'interval':
+    case 'hourly':
       return capitalize(repeatLabel(p));
   }
 }
@@ -217,7 +220,9 @@ export function repeatOptions(date: string, current: RepeatPattern | null): Repe
   const patterns = OPTION_KINDS.map((kind) =>
     current !== null && current.kind === kind ? current : patternFor(kind, date),
   );
-  return [null, ...patterns].map((pattern) => ({
+  // «Каждые N часов» в меню сам не предлагается — только из текста; уже выбранный остаётся пунктом
+  const hourly = current?.kind === 'hourly' ? [current] : [];
+  return [null, ...hourly, ...patterns].map((pattern) => ({
     key: pattern?.kind ?? 'once',
     pattern,
     label: optionLabel(pattern),

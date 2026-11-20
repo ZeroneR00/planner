@@ -70,6 +70,12 @@ export const MIGRATIONS: readonly string[] = [
     value TEXT NOT NULL
   );
   `,
+  // «Каждые N часов»: шаг в часах — в every, как у interval
+  `
+  ALTER TABLE rules ADD COLUMN window_from INTEGER;  -- только hourly: первый час, 0–23
+  ALTER TABLE rules ADD COLUMN window_to INTEGER;    -- только hourly: последний час, 0–23
+  ALTER TABLE rules ADD COLUMN done_slot TEXT;       -- только hourly: 'YYYY-MM-DDTHH:MM' последнего «Сделано»
+  `,
 ];
 
 /** Доводит схему до последней версии. Возвращает версию до миграции: 0 — база только что создана. */
@@ -110,6 +116,9 @@ type RuleRow = {
   month: number | null;
   month_day: number | null;
   every: number | null;
+  window_from: number | null;
+  window_to: number | null;
+  done_slot: string | null;
   start_date: string;
   active: number;
   time: string | null;
@@ -119,7 +128,7 @@ type RuleRow = {
 const TASK_COLUMNS =
   'id, title, date, time, photo, done, done_at, sort_order, rule_id, returned, created_at, updated_at';
 const RULE_COLUMNS =
-  'id, title, kind, weekdays, month, month_day, every, start_date, active, time, photo';
+  'id, title, kind, weekdays, month, month_day, every, window_from, window_to, done_slot, start_date, active, time, photo';
 
 function placeholders(columns: string): string {
   return columns
@@ -193,6 +202,7 @@ function ruleFromRow(row: RuleRow): Rule {
   };
   if (row.time !== null) base.time = row.time;
   if (row.photo !== null) base.photo = row.photo;
+  if (row.done_slot !== null) base.doneSlot = row.done_slot;
   switch (row.kind) {
     case 'daily':
       return { ...base, kind: 'daily' };
@@ -211,6 +221,14 @@ function ruleFromRow(row: RuleRow): Rule {
       };
     case 'interval':
       return { ...base, kind: 'interval', days: required(row.every, 'every', row) };
+    case 'hourly':
+      return {
+        ...base,
+        kind: 'hourly',
+        hours: required(row.every, 'every', row),
+        from: required(row.window_from, 'window_from', row),
+        to: required(row.window_to, 'window_to', row),
+      };
     default:
       throw new Error(`Неизвестный вид повтора «${row.kind}» у правила ${row.id}`);
   }
@@ -225,7 +243,10 @@ function ruleToParams(rule: Rule): BindValue[] {
     rule.kind === 'weekly' ? rule.weekdays.join(',') : null,
     rule.kind === 'yearly' ? rule.month : null,
     rule.kind === 'monthly' || rule.kind === 'yearly' ? rule.monthDay : null,
-    rule.kind === 'interval' ? rule.days : null,
+    rule.kind === 'interval' ? rule.days : rule.kind === 'hourly' ? rule.hours : null,
+    rule.kind === 'hourly' ? rule.from : null,
+    rule.kind === 'hourly' ? rule.to : null,
+    rule.doneSlot ?? null,
     rule.startDate,
     rule.active ? 1 : 0,
     rule.time ?? null,

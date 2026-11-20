@@ -35,12 +35,15 @@ export function occursOn(p: RepeatPattern, date: string): boolean {
       return month === p.month && day === Math.min(p.monthDay, daysInMonth(year, month));
     }
     case 'interval':
+    case 'hourly':
       // Без правила любой день может быть началом: поле записи начинает повтор с выбранного дня
       return true;
   }
 }
 
 export function ruleOccursOn(rule: Rule, date: string): boolean {
+  // «Каждые N часов» живёт без задач в дне: только напоминания, поэтому экземпляров не создаём
+  if (rule.kind === 'hourly') return false;
   return (
     rule.active &&
     date >= rule.startDate &&
@@ -67,6 +70,17 @@ export function nextRuleDate(rule: Rule, from: string): string {
   return nextOccurrence(rule, start);
 }
 
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+/** Разы «каждые N часов» за день: 'HH:00' от from шагом hours, не позже to. */
+export function hourlySlots(p: { hours: number; from: number; to: number }): string[] {
+  const slots: string[] = [];
+  for (let hour = p.from; hour <= p.to; hour += p.hours) slots.push(`${pad(hour)}:00`);
+  return slots;
+}
+
 /** Шаблон для пункта меню ↻ при выбранном дне: weekly берёт день недели, monthly — число, yearly — число и месяц. */
 export function patternFor(kind: RepeatKind, date: string): RepeatPattern {
   switch (kind) {
@@ -84,6 +98,8 @@ export function patternFor(kind: RepeatKind, date: string): RepeatPattern {
     }
     case 'interval':
       return { kind, days: 2 };
+    case 'hourly':
+      return { kind, hours: 2, from: 9, to: 21 };
   }
 }
 
@@ -111,6 +127,8 @@ export function repeatLabel(p: RepeatPattern): string {
       if (p.days === 2) return copy.repeat.everyOtherDay;
       if (p.days >= 14 && p.days % 7 === 0) return copy.repeat.everyWeeks(p.days / 7);
       return copy.repeat.everyDays(p.days);
+    case 'hourly':
+      return copy.repeat.hourly(copy.repeat.everyHours(p.hours), `${p.from}:00`, `${p.to}:00`);
   }
 }
 
@@ -132,5 +150,7 @@ export function samePattern(a: RepeatPattern | null, b: RepeatPattern | null): b
       return b.kind === 'yearly' && a.month === b.month && a.monthDay === b.monthDay;
     case 'interval':
       return b.kind === 'interval' && a.days === b.days;
+    case 'hourly':
+      return b.kind === 'hourly' && a.hours === b.hours && a.from === b.from && a.to === b.to;
   }
 }

@@ -70,3 +70,13 @@ describe('addedReply', () => {
     expect(addedReply(w, TODAY, 2, false)).toBe('Будет сделано, сэр. На сегодня.');
   });
 });
+
+describe('каждые N часов', () => {
+  it('коротко, без часов окна', () => {
+    expect(spokenRepeat({ kind: 'hourly', hours: 2, from: 9, to: 21 })).toBe('Каждые 2 часа');
+    expect(spokenRepeat({ kind: 'hourly', hours: 1, from: 9, to: 21 })).toBe('Каждый час');
+    expect(addedReply(when(TODAY, null, { kind: 'hourly', hours: 2, from: 9, to: 21 }), TODAY, 0, false)).toMatch(
+      /\. Каждые 2 часа\.$/,
+    );
+  });
+});
