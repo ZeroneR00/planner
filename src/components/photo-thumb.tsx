@@ -5,7 +5,7 @@ import { PhotoViewer } from '@/components/photo-viewer';
 import { photoUri } from '@/hooks/use-photos';
 import { themedStyles } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { pressedOpacity, radius, size, touch } from '@/theme';
+import { pressedOpacity, size, touch } from '@/theme';
 
 // Миниатюра 40 — до зоны нажатия 44 добираем hitSlop
 const HIT_SLOP = (touch - size.thumb) / 2;
@@ -32,7 +32,7 @@ export function PhotoThumb({ name, style }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   thumb: {
     width: size.thumb,
     height: size.thumb,

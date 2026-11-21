@@ -2,7 +2,7 @@ import { Pressable, Switch, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
-import { pressedOpacity, radius, size, space } from '@/theme';
+import { pressedOpacity, size, space } from '@/theme';
 
 type Props = { title: string; note: string; value?: boolean; onPress: () => void };
 
@@ -38,7 +38,7 @@ export function SettingRow({ title, note, value, onPress }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   row: {
     minHeight: size.row,
     paddingHorizontal: space[16],

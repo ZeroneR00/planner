@@ -38,6 +38,14 @@ export function missedLabel(missedOn: string, today: string): string {
   return copy.pocket.missedSince(formatDayMonth(month, day));
 }
 
+/** Счётчик «1/3» у «Дальше сегодня»: сделанные из всех в списке. */
+export function restProgress(items: readonly DayItem[]): {
+  done: number;
+  total: number;
+} {
+  return { done: items.filter((i) => i.task.done).length, total: items.length };
+}
+
 /** Что показать на экране «Сегодня». */
 export function todayView(data: PlannerData): TodayView {
   const rules = new Map(data.rules.map((r) => [r.id, r]));
@@ -57,7 +65,10 @@ export function todayView(data: PlannerData): TodayView {
     pocket: data.tasks
       .filter((t) => t.date === null && !t.done)
       .sort((a, b) => Number(b.missedOn !== undefined) - Number(a.missedOn !== undefined) || byOrder(a, b))
-      .map((task) => ({ task, missed: task.missedOn === undefined ? null : missedLabel(task.missedOn, data.today) })),
+      .map((task) => ({
+        task,
+        missed: task.missedOn === undefined ? null : missedLabel(task.missedOn, data.today),
+      })),
     doneCount: done.length,
     aheadCount: data.tasks.filter((t) => isAhead(t, data.today)).length,
   };

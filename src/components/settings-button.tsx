@@ -3,7 +3,7 @@ import { Pressable } from 'react-native';
 import { Icon } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { pressedOpacity, radius, touch } from '@/theme';
+import { pressedOpacity, touch } from '@/theme';
 
 type Props = { onPress: () => void };
 
@@ -23,16 +23,16 @@ export function SettingsButton({ onPress }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius, details }) => ({
   button: {
     width: touch,
     height: touch,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
+    borderWidth: details.headerStroke,
+    borderColor: colors.headerBorder,
     borderRadius: radius.pill,
-    backgroundColor: colors.footer,
+    backgroundColor: colors.headerButton,
   },
   pressed: {
     opacity: pressedOpacity,

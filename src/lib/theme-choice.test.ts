@@ -14,6 +14,8 @@ describe('resolveTheme', () => {
   it('выбранная тема не зависит от телефона', () => {
     expect(resolveTheme('night', 'light')).toBe('night');
     expect(resolveTheme('day', 'dark')).toBe('day');
+    expect(resolveTheme('voice', 'light')).toBe('voice');
+    expect(resolveTheme('stickers', 'dark')).toBe('stickers');
   });
 });
 
@@ -22,10 +24,12 @@ describe('isThemeChoice', () => {
     expect(isThemeChoice('system')).toBe(true);
     expect(isThemeChoice('night')).toBe(true);
     expect(isThemeChoice('day')).toBe(true);
+    expect(isThemeChoice('voice')).toBe(true);
+    expect(isThemeChoice('stickers')).toBe(true);
   });
 
   it('чужие значения', () => {
-    expect(isThemeChoice('voice')).toBe(false);
+    expect(isThemeChoice('sunset')).toBe(false);
     expect(isThemeChoice('')).toBe(false);
   });
 });

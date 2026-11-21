@@ -68,9 +68,11 @@ describe('тема в настройках', () => {
 
   it('читается как id', () => {
     expect(settingsFromRows([{ key: 'theme', value: 'day' }]).theme).toBe('day');
+    expect(settingsFromRows([{ key: 'theme', value: 'voice' }]).theme).toBe('voice');
+    expect(settingsFromRows([{ key: 'theme', value: 'stickers' }]).theme).toBe('stickers');
   });
 
   it('чужая тема — по умолчанию', () => {
-    expect(settingsFromRows([{ key: 'theme', value: 'voice' }]).theme).toBe('system');
+    expect(settingsFromRows([{ key: 'theme', value: 'sunset' }]).theme).toBe('system');
   });
 });

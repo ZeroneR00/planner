@@ -14,7 +14,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { UndoNotice } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
-import { pressedOpacity, radius, size, space } from '@/theme';
+import { pressedOpacity, size, space } from '@/theme';
 
 const DURATION = 5000; // сколько висит плашка
 const FADE = 1500; // последние полторы секунды плавно гаснет
@@ -119,7 +119,7 @@ function Toast({ notice, onUndo, onExpire, style }: Props & { notice: UndoNotice
   );
 }
 
-const useStyles = themedStyles(({ colors, text }) => ({
+const useStyles = themedStyles(({ colors, text, radius }) => ({
   bar: {
     minHeight: size.field,
     paddingVertical: space[12],
@@ -127,7 +127,7 @@ const useStyles = themedStyles(({ colors, text }) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[12],
-    borderRadius: radius.field,
+    borderRadius: radius.button,
     borderWidth: 1,
     borderColor: colors.lineStrong,
     backgroundColor: colors.toast,

@@ -28,7 +28,7 @@
 - Навигация: Expo Router (файл в `app/` = экран)
 - Хранение: `expo-sqlite` — база на устройстве. Бэкенда в v1 нет
 - Стили: `StyleSheet` + токены из `src/theme.ts`; цвета и стили текста — по теме, через `useTheme()` / `themedStyles`. Без UI-китов
-- Шрифты: Golos Text и JetBrains Mono через `@expo-google-fonts/*`; если пакета нет — локальные файлы через `expo-font`
+- Шрифты: Golos Text и JetBrains Mono; Unbounded (600, 700) — заголовки темы «Стикеры». Через `@expo-google-fonts/*`; если пакета нет — локальные файлы через `expo-font`
 - Иконки: `react-native-svg` (линейные иконки, как в прототипе)
 - Эффекты: `expo-blur` (полупрозрачная плашка), `expo-linear-gradient` (затухание краёв бегунка), `react-native-reanimated` (таймер, появление/исчезание)
 - Фон: `expo-task-manager` — кнопки в уведомлении срабатывают, даже когда приложение закрыто

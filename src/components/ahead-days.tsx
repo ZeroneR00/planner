@@ -11,7 +11,7 @@ import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Task } from '@/lib/types';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Props = {
   days: readonly AheadDay[];
@@ -22,7 +22,7 @@ type Props = {
 };
 
 export function AheadDays({ days, editingId, flash, onEdit, onRemove }: Props) {
-  const { colors, text } = useTheme();
+  const { colors, text, radius } = useTheme();
   const styles = useStyles();
   if (days.length === 0) {
     return (
@@ -62,7 +62,7 @@ export function AheadDays({ days, editingId, flash, onEdit, onRemove }: Props) {
   ));
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   section: {
     gap: space[4],
   },

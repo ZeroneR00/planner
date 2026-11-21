@@ -13,7 +13,7 @@ import {
   monthStart,
   weekdayHeaders,
 } from '@/lib/dates';
-import { fonts, pressedOpacity, radius, space, touch } from '@/theme';
+import { fonts, pressedOpacity, space, touch } from '@/theme';
 
 // Вперёд — не дальше года: дальше планировать в этом приложении незачем
 const MAX_SHIFT = 12;
@@ -106,7 +106,7 @@ export function CalendarSheet({ today, selected, onPick }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors, text }) => ({
+const useStyles = themedStyles(({ colors, text, radius }) => ({
   sheet: {
     paddingTop: space[6],
     paddingHorizontal: space[10],

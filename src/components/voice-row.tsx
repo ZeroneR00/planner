@@ -5,7 +5,7 @@ import { Icon } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import type { VoiceState } from '@/lib/voices';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Props = {
   name: string;
@@ -72,7 +72,7 @@ export function VoiceRow({ name, note, selected, onSelect, onListen }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors, text }) => ({
+const useStyles = themedStyles(({ colors, text, radius }) => ({
   row: {
     minHeight: size.row,
     paddingLeft: space[12],

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { photoUri } from '@/hooks/use-photos';
 import { copy } from '@/lib/copy';
-import { palettes, radius, space, touch } from '@/theme';
+import { circle, palettes, space, touch } from '@/theme';
 
 // Фото на весь экран всегда на чёрном, в любой теме
 const colors = palettes.night;
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     height: touch,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
+    borderRadius: circle,
     backgroundColor: colors.cameraButton,
   },
 });

@@ -1,6 +1,6 @@
 import { applyChanges } from '@/lib/changes';
 import { postpone } from '@/lib/task-actions';
-import { missedLabel, todayView, type DayItem } from '@/lib/today-view';
+import { missedLabel, restProgress, todayView, type DayItem } from '@/lib/today-view';
 import type { PlannerData, Rule, Task } from '@/lib/types';
 
 const TODAY = '2026-10-18';
@@ -167,5 +167,20 @@ describe('todayView: подпись повтора', () => {
     );
     expect(view.now?.repeat).toBe('каждый день');
     expect(view.rest.map((i) => i.repeat)).toEqual([null, null]);
+  });
+});
+
+describe('restProgress', () => {
+  it('пустой список — 0/0', () => {
+    expect(restProgress([])).toEqual({ done: 0, total: 0 });
+  });
+
+  it('сделанные из всех в списке', () => {
+    const items: DayItem[] = [
+      { task: task({ id: 'a' }), repeat: null },
+      { task: task({ id: 'b' }), repeat: null },
+      { task: task({ id: 'c', done: true }), repeat: null },
+    ];
+    expect(restProgress(items)).toEqual({ done: 1, total: 3 });
   });
 });

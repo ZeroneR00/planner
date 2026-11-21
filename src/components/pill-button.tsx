@@ -2,7 +2,7 @@ import { Pressable, Text } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Props = {
   icon: IconName;
@@ -40,7 +40,7 @@ export function PillButton({ icon, label, disabled, accessibilityLabel, onPress 
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   // Бегунок слева сужается сам, когда кнопка раскрывается
   pill: {
     minWidth: touch,

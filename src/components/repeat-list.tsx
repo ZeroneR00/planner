@@ -11,7 +11,7 @@ import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Rule } from '@/lib/types';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Props = {
   rules: readonly AheadRule[];
@@ -23,7 +23,7 @@ type Props = {
 
 /** «Повторяется» на экране «Впереди». Повторов нет — раздела нет. */
 export function RepeatList({ rules, editingRuleId, flash, onEdit, onStop }: Props) {
-  const { colors, text } = useTheme();
+  const { colors, text, radius } = useTheme();
   const styles = useStyles();
   if (rules.length === 0) return null;
   return (
@@ -58,7 +58,7 @@ export function RepeatList({ rules, editingRuleId, flash, onEdit, onStop }: Prop
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   section: {
     gap: space[4],
   },

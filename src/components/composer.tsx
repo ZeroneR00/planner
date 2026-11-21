@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,20 +10,22 @@ import { Icon } from '@/components/icon';
 import { PillButton } from '@/components/pill-button';
 import { RepeatSheet } from '@/components/repeat-sheet';
 import { TimeSheet } from '@/components/time-sheet';
+import { VoiceBar } from '@/components/voice-bar';
 import { WhenChips } from '@/components/when-chips';
 import type { Composer as ComposerModel, Sheet } from '@/hooks/use-composer';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { formatTime } from '@/lib/dates';
+import { showVoiceBar } from '@/lib/footer';
 import { repeatLabel } from '@/lib/rules';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Props = { composer: ComposerModel };
 
-/** Поле записи внизу экрана: правка, подсказка, панель, бегунок «когда», поле и «Добавить». */
+/** Поле записи внизу экрана: правка, подсказка, панель, бегунок «когда», поле и «Добавить» — или «Аа · 🎙 · 📷» темы «Голос». */
 export function Composer({ composer: c }: Props) {
-  const { colors, text } = useTheme();
+  const { colors, text, details } = useTheme();
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const keyboardShown = useKeyboardShown();
@@ -37,6 +39,32 @@ export function Composer({ composer: c }: Props) {
     inputRef.current?.focus();
     inputRef.current?.setSelection(end, end);
   }, [editOrigin]);
+
+  // «Голос»: тап «Аа» открывает поле; спрятал клавиатуру с пустым полем — снова «Аа · 🎙 · 📷»
+  const [fieldOpen, setFieldOpen] = useState(false);
+  const { typing, editing } = c;
+  // Закрываем при переходе в «пусто и без клавиатуры», а не пока так: тап «Аа» открывает поле раньше клавиатуры.
+  // Сравнение с прошлым рендером вместо эффекта — без лишнего кадра со старым видом
+  const closable = !keyboardShown && !typing && !editing;
+  const [wasClosable, setWasClosable] = useState(closable);
+  if (closable !== wasClosable) {
+    setWasClosable(closable);
+    if (closable) setFieldOpen(false);
+  }
+  // Поле появляется в том же кадре, что и fieldOpen, — фокус после него
+  useEffect(() => {
+    if (fieldOpen) inputRef.current?.focus();
+  }, [fieldOpen]);
+  const voiceBar = showVoiceBar({
+    footer: details.footer,
+    micAvailable: c.mic.available,
+    editing,
+    typing,
+    listening: c.mic.listening,
+    keyboardShown,
+    fieldOpen,
+  });
+
   const noDay = when.date === null;
   const time = when.time !== null ? formatTime(when.time) : null;
   const repeat = when.repeat !== null ? repeatLabel(when.repeat) : null;
@@ -73,7 +101,7 @@ export function Composer({ composer: c }: Props) {
         <CalendarSheet today={c.today} selected={when.date} onPick={c.pickDate} />
       )}
       {c.sheet === 'time' && c.timeGrid !== null && <TimeSheet grid={c.timeGrid} onPick={c.pickTime} />}
-      {c.showWhen && (
+      {c.showWhen && !voiceBar && (
         <View style={styles.whenRow}>
           <WhenChips
             chips={c.chips}
@@ -99,56 +127,60 @@ export function Composer({ composer: c }: Props) {
           />
         </View>
       )}
-      <View style={styles.inputRow}>
-        <View style={styles.field}>
-          <TextInput
-            ref={inputRef}
-            value={c.text}
-            onChangeText={c.setText}
-            onFocus={c.focusField}
-            onSubmitEditing={c.submit}
-            placeholder={copy.composer.placeholder}
-            placeholderTextColor={colors.textHint}
-            cursorColor={colors.accent}
-            returnKeyType="send"
-            submitBehavior="submit"
-            accessibilityLabel={c.editing ? copy.composer.editInputLabel : copy.composer.inputLabel}
-            style={[text.input, styles.input, c.editing ? styles.inputEditing : styles.inputWithCamera]}
-          />
-          {/* В правке фото не меняют — камеры нет */}
-          {!c.editing && (
-            <Pressable
-              onPress={openCamera}
-              accessibilityRole="button"
-              accessibilityLabel={copy.photo.take}
-              style={({ pressed }) => [styles.camera, pressed && styles.pressed]}
-            >
-              <Icon name="camera" size={22} color={colors.textSecondary} />
-            </Pressable>
-          )}
+      {voiceBar ? (
+        <VoiceBar composer={c} onType={() => setFieldOpen(true)} />
+      ) : (
+        <View style={styles.inputRow}>
+          <View style={styles.field}>
+            <TextInput
+              ref={inputRef}
+              value={c.text}
+              onChangeText={c.setText}
+              onFocus={c.focusField}
+              onSubmitEditing={c.submit}
+              placeholder={copy.composer.placeholder}
+              placeholderTextColor={colors.textHint}
+              cursorColor={colors.accent}
+              returnKeyType="send"
+              submitBehavior="submit"
+              accessibilityLabel={c.editing ? copy.composer.editInputLabel : copy.composer.inputLabel}
+              style={[text.input, styles.input, c.editing ? styles.inputEditing : styles.inputWithCamera]}
+            />
+            {/* В правке фото не меняют — камеры нет */}
+            {!c.editing && (
+              <Pressable
+                onPress={openCamera}
+                accessibilityRole="button"
+                accessibilityLabel={copy.photo.take}
+                style={({ pressed }) => [styles.camera, pressed && styles.pressed]}
+              >
+                <Icon name="camera" size={22} color={colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+          <Pressable
+            onPress={c.submit}
+            disabled={!c.canSubmit}
+            accessibilityRole="button"
+            accessibilityLabel={c.editing ? copy.composer.save : copy.composer.send}
+            accessibilityState={{ disabled: !c.canSubmit }}
+            style={({ pressed }) => [styles.send, c.canSubmit && styles.sendOn, pressed && styles.pressed]}
+          >
+            <Icon
+              name={c.editing ? 'check' : 'arrowUp'}
+              size={22}
+              color={c.canSubmit ? colors.onAccent : colors.control}
+              strokeWidth={c.editing ? 2.6 : 2.4}
+            />
+          </Pressable>
         </View>
-        <Pressable
-          onPress={c.submit}
-          disabled={!c.canSubmit}
-          accessibilityRole="button"
-          accessibilityLabel={c.editing ? copy.composer.save : copy.composer.send}
-          accessibilityState={{ disabled: !c.canSubmit }}
-          style={({ pressed }) => [styles.send, c.canSubmit && styles.sendOn, pressed && styles.pressed]}
-        >
-          <Icon
-            name={c.editing ? 'check' : 'arrowUp'}
-            size={22}
-            color={c.canSubmit ? colors.onAccent : colors.control}
-            strokeWidth={c.editing ? 2.6 : 2.4}
-          />
-        </Pressable>
-      </View>
+      )}
       {c.camera && <CameraSheet onPhoto={(uri) => void c.addPhoto(uri)} onClose={c.closeCamera} />}
     </View>
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   footer: {
     paddingTop: space[10],
     paddingHorizontal: space[12],

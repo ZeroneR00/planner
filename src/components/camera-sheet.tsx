@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { copy } from '@/lib/copy';
-import { palettes, pressedOpacity, radius, size, space, themes, touch } from '@/theme';
+import { circle, palettes, pressedOpacity, size, space, themes, touch } from '@/theme';
 
 // Камера всегда на чёрном, в любой теме
 const colors = palettes.night;
@@ -149,13 +149,13 @@ const styles = StyleSheet.create({
     height: size.button,
     paddingHorizontal: space[20],
     justifyContent: 'center',
-    borderRadius: radius.row,
+    borderRadius: themes.night.radius.row,
     backgroundColor: colors.surface,
   },
   round: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.pill,
+    borderRadius: circle,
     backgroundColor: colors.cameraButton,
   },
   close: {
@@ -185,12 +185,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 4,
     borderColor: colors.shutter,
-    borderRadius: radius.pill,
+    borderRadius: circle,
   },
   shutterCore: {
     width: size.shutter - 16,
     height: size.shutter - 16,
-    borderRadius: radius.pill,
+    borderRadius: circle,
     backgroundColor: colors.shutter,
   },
   pressed: {

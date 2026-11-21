@@ -1,7 +1,7 @@
 // Выбор оформления: тема или «Как в телефоне»
 
 /** Порядок картинок тем в «Настройках». */
-export const THEME_NAMES = ['night', 'day'] as const;
+export const THEME_NAMES = ['night', 'day', 'voice', 'stickers'] as const;
 
 export type ThemeName = (typeof THEME_NAMES)[number];
 

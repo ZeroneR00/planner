@@ -3,7 +3,7 @@ import { Pressable, Text, View, type ViewStyle } from 'react-native';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import type { TimeCell, TimeGrid } from '@/lib/time-grid';
-import { pressedOpacity, radius, space, touch } from '@/theme';
+import { pressedOpacity, space, touch } from '@/theme';
 
 type Props = {
   grid: TimeGrid;
@@ -93,7 +93,7 @@ function Cell({ cell, style, preset = false, onPress }: CellProps) {
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   sheet: {
     padding: space[6],
     gap: space[4],

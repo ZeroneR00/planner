@@ -8,7 +8,7 @@ import { copy } from '@/lib/copy';
 import { WEEK_ORDER, at, capitalize, weekdayHeaders } from '@/lib/dates';
 import { stepLabel } from '@/lib/rules';
 import type { RepeatKind, RepeatPattern } from '@/lib/types';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 type Hourly = Extract<RepeatPattern, { kind: 'hourly' }>;
 
@@ -170,7 +170,7 @@ function ShiftButton({ icon, button }: { icon: 'minus' | 'plus'; button: StepBut
   );
 }
 
-const useStyles = themedStyles(({ colors, text }) => ({
+const useStyles = themedStyles(({ colors, text, radius }) => ({
   window: {
     flexDirection: 'row',
     alignItems: 'center',

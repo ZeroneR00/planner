@@ -4,7 +4,7 @@ import { ThemePreview } from '@/components/theme-preview';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { THEME_NAMES, type ThemeName } from '@/lib/theme-choice';
-import { pressedOpacity, radius, space } from '@/theme';
+import { pressedOpacity, space } from '@/theme';
 
 type Props = { active: ThemeName; followPhone: boolean; onPick: (name: ThemeName) => void };
 
@@ -44,8 +44,8 @@ export function ThemePicker({ active, followPhone, onPick }: Props) {
 
 const FRAME = 2; // толщина рамки активной картинки
 
-const useStyles = themedStyles(({ colors }) => ({
-  // Прижат влево: четыре картинки (этап с темами Голос и Стикеры) влезут в ряд
+const useStyles = themedStyles(({ colors, radius }) => ({
+  // Прижат влево: четыре картинки влезают в ряд
   row: {
     flexDirection: 'row',
     gap: space[10],

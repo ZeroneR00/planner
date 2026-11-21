@@ -3,6 +3,8 @@ import { GolosText_500Medium } from '@expo-google-fonts/golos-text/500Medium';
 import { GolosText_600SemiBold } from '@expo-google-fonts/golos-text/600SemiBold';
 import { GolosText_700Bold } from '@expo-google-fonts/golos-text/700Bold';
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Medium';
+import { Unbounded_600SemiBold } from '@expo-google-fonts/unbounded/600SemiBold';
+import { Unbounded_700Bold } from '@expo-google-fonts/unbounded/700Bold';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -31,6 +33,8 @@ export default function RootLayout() {
     [fonts.semibold]: GolosText_600SemiBold,
     [fonts.bold]: GolosText_700Bold,
     [fonts.mono]: JetBrainsMono_500Medium,
+    [fonts.display]: Unbounded_600SemiBold,
+    [fonts.displayBold]: Unbounded_700Bold,
   });
 
   // Если шрифт не загрузился, всё равно показываем приложение — на системном шрифте, а не пустой экран.

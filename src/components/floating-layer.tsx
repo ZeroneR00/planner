@@ -4,6 +4,7 @@ import { Keyboard, StyleSheet, View } from 'react-native';
 import { MicButton } from '@/components/mic-button';
 import type { Composer } from '@/hooks/use-composer';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
+import { useTheme } from '@/hooks/use-theme';
 import { space } from '@/theme';
 
 type Props = { composer: Composer; children?: ReactNode };
@@ -13,11 +14,17 @@ type Props = { composer: Composer; children?: ReactNode };
  * Столбиком — плашка любой высоты поднимает кнопку, и они не налезают друг на друга.
  */
 export function FloatingLayer({ composer: c, children }: Props) {
+  const { details } = useTheme();
   const keyboardShown = useKeyboardShown();
   // Поле пустое и клавиатура спрятана: тап по полю, чтобы печатать, прячет кнопку без лишнего нажатия.
-  // Пока слушает, слова уже в поле — кнопка остаётся. В Expo Go модуля голоса нет — и кнопки нет
+  // Пока слушает, слова уже в поле — кнопка остаётся. В Expo Go модуля голоса нет — и кнопки нет.
+  // В «Голосе» 🎙 не «в воздухе», а по центру нижней панели
   const showMic =
-    c.mic.available && !c.editing && !c.camera && (c.mic.listening || (!c.typing && !keyboardShown));
+    details.footer === 'field' &&
+    c.mic.available &&
+    !c.editing &&
+    !c.camera &&
+    (c.mic.listening || (!c.typing && !keyboardShown));
 
   // Клавиатура при диктовке не нужна, а без фокуса тап по полю вызовет onFocus — и остановит запись
   const toggleVoice = () => {

@@ -25,6 +25,7 @@ export const copy = {
     done: 'Сделано',
     later: 'Позже',
     rest: 'Дальше сегодня',
+    restProgress: (done: number, total: number) => `${done}/${total}`, // тема «Голос»
   },
   ahead: {
     title: 'Впереди',
@@ -35,17 +36,20 @@ export const copy = {
     next: (rule: string, day: string) => `${rule} · следующий — ${day}`,
   },
   pocket: {
-    title: (n: number) => `${POCKET} · ${n}`,
+    title: (count: string) => `${POCKET} · ${count}`,
+    name: POCKET, // заголовок, когда число рядом отдельно: «Голос», «Стикеры»
     empty: 'Здесь пусто — всё разобрано',
     // Иконка ↩ рисуется отдельно
     missedYesterday: 'вчера не сделано',
     missedSince: (day: string) => `не сделано с ${day}`,
     when: 'Когда?',
+    whenArrow: '→ когда?', // тема «Голос»
     editHint: 'тапни текст, чтобы изменить',
   },
   composer: {
     placeholder: 'Запиши мысль — разберёшь потом',
     inputLabel: 'Записать мысль',
+    typeButton: 'Аа', // тема «Голос»: открыть поле вместо 🎙
     send: 'Добавить',
     chipPocket: `В ${POCKET_ACC}`,
     chipToday: 'Сегодня',
@@ -113,6 +117,7 @@ export const copy = {
     noAccess: 'Нет доступа к микрофону',
     offline: 'Без интернета голос не распознался',
     failed: 'Не получилось распознать голос',
+    touchAndSpeak: 'Коснись и говори', // подпись под 🎙 в теме «Голос»; капс — стилем
   },
   // Ответы голосом: синтезатор читает текст, поэтому без сокращений
   reply: {
@@ -154,14 +159,24 @@ export const copy = {
     followPhone: 'Как в телефоне',
     followPhoneNote: 'Тёмный телефон — Ночь, светлый — День',
     themeNow: 'сейчас', // под картинкой темы, которую выбрал телефон
-    themes: { night: 'Ночь', day: 'День' } satisfies Record<ThemeName, string>,
+    themes: {
+      night: 'Ночь',
+      day: 'День',
+      voice: 'Голос',
+      stickers: 'Стикеры',
+    } satisfies Record<ThemeName, string>,
     // Строка внизу; обновление — то, что прилетело по воздуху
     version: (v: string) => `Версия ${v}`,
     versionUpdated: (v: string, when: string) => `Версия ${v} · обновление ${when}`,
   },
   // Свои голоса Джарвиса в «Настройках»
   voices: {
-    names: { ruslan: 'Руслан', dmitri: 'Дмитрий', denis: 'Денис', irina: 'Ирина' },
+    names: {
+      ruslan: 'Руслан',
+      dmitri: 'Дмитрий',
+      denis: 'Денис',
+      irina: 'Ирина',
+    },
     phone: 'Голос телефона',
     phoneNote: 'Системный, без скачивания',
     male: 'Мужской',
@@ -196,6 +211,7 @@ export const copy = {
     ],
   },
   repeat: {
+    inline: (label: string) => `↻ ${label}`, // одной строкой с временем, без значка — тема «Голос»
     daily: 'каждый день',
     weekdays: 'по будням',
     weekly: ['каждое вс', 'каждый пн', 'каждый вт', 'каждую ср', 'каждый чт', 'каждую пт', 'каждую сб'],
@@ -240,5 +256,6 @@ export const copy = {
     edit: (title: string) => `Изменить: ${title}`,
     stop: (title: string) => `Остановить повтор: ${title}`,
     settings: 'Настройки',
+    typeTask: 'Напечатать задачу',
   },
 } as const;

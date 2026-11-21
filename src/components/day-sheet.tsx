@@ -5,7 +5,7 @@ import { CalendarSheet } from '@/components/calendar-sheet';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { addDays } from '@/lib/dates';
-import { pressedOpacity, radius, size, space } from '@/theme';
+import { pressedOpacity, size, space } from '@/theme';
 
 type Props = { today: string; onPick: (date: string) => void };
 
@@ -51,7 +51,7 @@ export function DaySheet({ today, onPick }: Props) {
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   place: {
     position: 'absolute',
     right: space[12],

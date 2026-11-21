@@ -10,6 +10,7 @@ import {
   formatDayLong,
   formatDayShort,
   formatHeaderDate,
+  formatHeaderDateShort,
   formatTime,
   formatMonthTitle,
   localDate,
@@ -120,6 +121,10 @@ describe('арифметика дат', () => {
 describe('подписи', () => {
   it('formatHeaderDate', () => {
     expect(formatHeaderDate('2026-10-17')).toBe('Суббота, 17 октября');
+  });
+
+  it('formatHeaderDateShort', () => {
+    expect(formatHeaderDateShort('2026-11-18')).toBe('ср · 18 ноября');
   });
 
   it('formatDayLong', () => {

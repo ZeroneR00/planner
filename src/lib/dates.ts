@@ -150,6 +150,11 @@ export function formatHeaderDate(date: string): string {
   return `${capitalize(at(copy.dates.weekdayFull, weekdayOf(date)))}, ${dayMonth(date)}`;
 }
 
+/** «ср · 18 ноября» — дата в шапке темы «Голос»; капс даёт стиль */
+export function formatHeaderDateShort(date: string): string {
+  return `${at(copy.dates.weekdayShort, weekdayOf(date))} · ${dayMonth(date)}`;
+}
+
 /** «сегодня, сб, 17 октября» / «завтра, вс, 18 октября» / «вт, 20 октября» */
 export function formatDayLong(date: string, today: string): string {
   const base = `${at(copy.dates.weekdayShort, weekdayOf(date))}, ${dayMonth(date)}`;

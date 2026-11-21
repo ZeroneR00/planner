@@ -18,12 +18,12 @@ import { useToday } from '@/hooks/use-today';
 import { useTheme } from '@/hooks/use-theme';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
-import { formatHeaderDate } from '@/lib/dates';
+import { formatHeaderDate, formatHeaderDateShort } from '@/lib/dates';
 import type { Task } from '@/lib/types';
 import { size, space } from '@/theme';
 
 export default function TodayScreen() {
-  const { text } = useTheme();
+  const { text, details } = useTheme();
   const day = useToday();
   const composer = useComposer();
   const undo = useUndo();
@@ -42,7 +42,9 @@ export default function TodayScreen() {
         <View style={styles.screen}>
           <View style={styles.header}>
             <View style={styles.titles}>
-              <Text style={text.headerDate}>{formatHeaderDate(day.today)}</Text>
+              <Text style={text.headerDate}>
+                {details.monoLabels ? formatHeaderDateShort(day.today) : formatHeaderDate(day.today)}
+              </Text>
               <Text style={text.title}>{copy.today.title}</Text>
             </View>
             <View style={styles.headerButtons}>
@@ -56,7 +58,10 @@ export default function TodayScreen() {
               ref={scrollRef}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
-              contentContainerStyle={styles.content}
+              contentContainerStyle={[
+                styles.content,
+                details.footer === 'voice' ? styles.contentNoMic : styles.contentMic,
+              ]}
             >
               <RevealScrollContext value={reveal}>
                 <NowCard
@@ -133,10 +138,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: space[8],
   },
-  // Снизу место под 🎙 «в воздухе»: последнюю строку можно докрутить из-под неё
   content: {
     paddingHorizontal: space[16],
-    paddingBottom: size.voice + space[24],
     gap: space[24],
+  },
+  // Снизу место под 🎙 «в воздухе»: последнюю строку можно докрутить из-под неё
+  contentMic: {
+    paddingBottom: size.voice + space[24],
+  },
+  // «Голос»: 🎙 в нижней панели, над списком ничего не висит
+  contentNoMic: {
+    paddingBottom: space[24],
   },
 });

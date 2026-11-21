@@ -5,7 +5,7 @@ import { EdgeFade } from '@/components/edge-fade';
 import { Icon } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { WhenChip } from '@/lib/composer';
-import { pressedOpacity, radius, size, space, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 // Правый край растворяется всегда, левый — затемняется, только когда ряд прокручен
 const RIGHT_FADE = [
@@ -127,7 +127,7 @@ export function WhenChips({ chips, selectedKey, calendarLabel, onPick, onOpenCal
   );
 }
 
-const useStyles = themedStyles(({ colors }) => ({
+const useStyles = themedStyles(({ colors, radius }) => ({
   wrap: {
     flex: 1,
     minWidth: 0,
