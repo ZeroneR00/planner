@@ -39,6 +39,7 @@ export type Palette = {
   switchTrack: string; // выключенный переключатель
   thumb: string; // бегунок переключателя
   micRing: string; // тонкое кольцо вокруг 🎙
+  navBar: string; // полоса под кнопками навигации Android, когда их цвет не совпал с темой
 
   now: string; // карточка «Сейчас»
   nowText: string;
@@ -85,6 +86,7 @@ const night: Palette = {
   switchTrack: '#2C3037',
   thumb: '#ECEDEF',
   micRing: '#C6F36B38',
+  navBar: '#9BA0A8', // кнопки тёмные — светлая полоса
 
   now: '#1C1F24',
   nowText: '#ECEDEF',
@@ -132,6 +134,7 @@ const day: Palette = {
   switchTrack: '#C9CED6',
   thumb: '#FFFFFF',
   micRing: '#3355FF2E',
+  navBar: '#5C636D', // кнопки белые — тёмная полоса
 
   now: '#3355FF',
   nowText: '#FFFFFF',

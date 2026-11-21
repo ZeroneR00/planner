@@ -58,6 +58,11 @@ describe('theme', () => {
     }
   });
 
+  it('кнопки навигации видны на полосе: белые в Дне, тёмные в Ночи', () => {
+    expect(contrast('#FFFFFF', palettes.day.navBar)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast('#000000', palettes.night.navBar)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('зона нажатия не меньше 44', () => {
     expect(touch).toBeGreaterThanOrEqual(44);
   });
