@@ -16,7 +16,7 @@ import Animated, {
 import { Icon } from '@/components/icon';
 import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { circle, pressedOpacity, size, space } from '@/theme';
+import { circle, pressedOpacity, size } from '@/theme';
 
 type Props = {
   listening: boolean;
@@ -32,24 +32,29 @@ const BODY_PULSE = 0.08;
 const PULSE_MS = 100;
 // Тап — кнопка за столько вырастает до size.voiceListening (большая — до voiceBigListening)
 const GROW_MS = 220;
-// «Голос», пока ждёт: три кольца по очереди расходятся за WAVE_MS до 2,4 кнопки и тают
+// Пока ждёт: три кольца по очереди расходятся за WAVE_MS и тают — в любой теме.
+// Большая 🎙 «Голоса» — до 2,4 кнопки; «в воздухе» — до 2: в углу кольца не уходят за край экрана и под поле
 const WAVE_MS = 3000;
-const WAVE_SCALE = 1.4;
+const WAVE_REACH = 1.4;
+const WAVE_REACH_FLOATING = 1;
 const WAVE_OPACITY = 0.45;
-// phase — на какую долю круга кольцо отстаёт; still — где оно стоит при «уменьшить движение», как на холсте
+// phase — на какую долю круга кольцо отстаёт; still — где оно стоит при «уменьшить движение», как на холсте:
+// reach — доля пути до края (у большой 🎙 это 1,4 / 1,87 / 2,4 кнопки)
 const WAVES = [
-  { phase: 0, still: { scale: 1.4, opacity: 0.45 } },
-  { phase: 1 / 3, still: { scale: 1.87, opacity: 0.22 } },
-  { phase: 2 / 3, still: { scale: 2.4, opacity: 0.09 } },
+  { phase: 0, still: { reach: 0.29, opacity: 0.45 } },
+  { phase: 1 / 3, still: { reach: 0.62, opacity: 0.22 } },
+  { phase: 2 / 3, still: { reach: 1, opacity: 0.09 } },
 ] as const;
 
 /**
- * Кнопка диктовки «в воздухе». Ждёт — цвета акцента, вокруг тонкое кольцо (в «Голосе» — расходятся три).
+ * Кнопка диктовки «в воздухе» (в «Голосе» — большая по центру нижней панели).
+ * Ждёт — цвета акцента, от неё мерно расходятся и тают три кольца.
  * Слушает — вырастает, краснеет, сама кнопка и ореол пульсируют в такт голосу.
  */
 export function MicButton({ listening, level, onPress, big = false }: Props) {
-  const { colors, details } = useTheme();
+  const { colors } = useTheme();
   const styles = useStyles();
+  const reach = big ? WAVE_REACH : WAVE_REACH_FLOATING;
   const reducedMotion = useReducedMotion();
   const grow = useSharedValue(listening ? 1 : 0); // 0 — ждёт, 1 — слушает
   const wave = useSharedValue(0); // 0…1 по кругу
@@ -70,7 +75,7 @@ export function MicButton({ listening, level, onPress, big = false }: Props) {
   }, [grow, listening, reducedMotion]);
 
   useEffect(() => {
-    if (!details.waves || listening || reducedMotion) {
+    if (listening || reducedMotion) {
       cancelAnimation(wave);
       wave.set(0);
       return;
@@ -78,7 +83,7 @@ export function MicButton({ listening, level, onPress, big = false }: Props) {
     wave.set(0);
     wave.set(withRepeat(withTiming(1, { duration: WAVE_MS, easing: Easing.linear }), -1));
     return () => cancelAnimation(wave);
-  }, [wave, details.waves, listening, reducedMotion]);
+  }, [wave, listening, reducedMotion]);
 
   // Размер, а не scale: кнопка стоит в углу и растёт вверх-влево, не наезжая на поле
   const sizeStyle = useAnimatedStyle(() => {
@@ -107,12 +112,10 @@ export function MicButton({ listening, level, onPress, big = false }: Props) {
     <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={sizeStyle}>
       {listening ? (
         <Animated.View style={[styles.pulse, pulseStyle]} />
-      ) : details.waves ? (
-        WAVES.map(({ phase, still }) => (
-          <Wave key={phase} wave={wave} phase={phase} still={reducedMotion ? still : null} />
-        ))
       ) : (
-        <Animated.View pointerEvents="none" style={styles.ring} />
+        WAVES.map(({ phase, still }) => (
+          <Wave key={phase} wave={wave} phase={phase} reach={reach} still={reducedMotion ? still : null} />
+        ))
       )}
       <Animated.View style={[StyleSheet.absoluteFill, bodyStyle]}>
         <Pressable
@@ -143,35 +146,25 @@ export function MicButton({ listening, level, onPress, big = false }: Props) {
 type WaveProps = {
   wave: SharedValue<number>;
   phase: number;
-  still: { scale: number; opacity: number } | null; // null — кольцо движется
+  reach: number; // на сколько кнопок кольцо вырастает у края
+  still: { reach: number; opacity: number } | null; // null — кольцо движется
 };
 
-function Wave({ wave, phase, still }: WaveProps) {
+function Wave({ wave, phase, reach, still }: WaveProps) {
   const styles = useStyles();
   const frame = useAnimatedStyle(() => {
-    if (still !== null) return { opacity: still.opacity, transform: [{ scale: still.scale }] };
+    if (still !== null) return { opacity: still.opacity, transform: [{ scale: 1 + reach * still.reach }] };
     const p = (wave.get() + phase) % 1;
     const eased = 1 - (1 - p) ** 2; // быстро отходит от кнопки, у края замедляется
     return {
       opacity: WAVE_OPACITY * (1 - p),
-      transform: [{ scale: 1 + WAVE_SCALE * eased }],
+      transform: [{ scale: 1 + reach * eased }],
     };
   });
   return <Animated.View style={[styles.wave, frame]} />;
 }
 
 const useStyles = themedStyles(({ colors, details }) => ({
-  // Пока ждёт — неподвижное тонкое кольцо
-  ring: {
-    position: 'absolute',
-    top: -space[14],
-    left: -space[14],
-    right: -space[14],
-    bottom: -space[14],
-    borderRadius: circle,
-    borderWidth: 2,
-    borderColor: colors.micRing,
-  },
   wave: {
     ...StyleSheet.absoluteFill,
     borderRadius: circle,

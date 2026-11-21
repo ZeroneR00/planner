@@ -38,7 +38,6 @@ export type Palette = {
   panelBorder: string; // рамка меню и календаря
   switchTrack: string; // выключенный переключатель
   thumb: string; // бегунок переключателя
-  micRing: string; // тонкое кольцо вокруг 🎙
   navBar: string; // полоса под кнопками навигации Android, когда их цвет не совпал с темой
 
   now: string; // карточка «Сейчас»
@@ -96,7 +95,6 @@ const night: Palette = {
   panelBorder: '#00000000',
   switchTrack: '#2C3037',
   thumb: '#ECEDEF',
-  micRing: '#C6F36B38',
   navBar: '#9BA0A8', // кнопки тёмные — светлая полоса
 
   now: '#1C1F24',
@@ -159,7 +157,6 @@ const day: Palette = {
   panelBorder: '#E2E5E9',
   switchTrack: '#C9CED6',
   thumb: '#FFFFFF',
-  micRing: '#3355FF2E',
   navBar: '#5C636D', // кнопки белые — тёмная полоса
 
   now: '#3355FF',
@@ -215,7 +212,6 @@ const voice: Palette = {
   panelBorder: '#1A2230',
   switchTrack: '#1F2836',
   thumb: '#E6EEF6',
-  micRing: '#5EE6FF38',
   navBar: '#8C9AAD',
 
   now: '#0B1018',
@@ -272,7 +268,6 @@ const stickers: Palette = {
   panelBorder: '#DCDCD6',
   switchTrack: '#CFCFC9',
   thumb: '#FFFFFF',
-  micRing: '#1A1A181F',
   navBar: '#5E5E59',
 
   now: '#FFD84D',
@@ -372,7 +367,6 @@ export type Details = {
   nowTime: 'below' | 'right' | 'eyebrow'; // время задачи в «Сейчас»: под текстом / справа вверху / «СЕЙЧАС · 14:00»
   when: 'text' | 'arrow'; // «Когда?» в строке стикера: текст / «→ когда?»
   glow: string | null; // Голос: свечение 🎙 и точки «Сейчас»
-  waves: boolean; // Голос: от 🎙 расходятся три кольца вместо одного неподвижного
   sticker: { tilt: string; tape: string } | null; // Стикеры: «Сейчас» — стикер на скотче
   footer: 'field' | 'voice'; // Голос: внизу «Аа · 🎙 · 📷» вместо поля
   pocket: 'card' | 'lines' | 'notes'; // стикеры: одна карточка / строки через линию / бумажки вбок
@@ -393,7 +387,6 @@ const plainDetails: Details = {
   nowTime: 'below',
   when: 'text',
   glow: null,
-  waves: false,
   sticker: null,
   footer: 'field',
   pocket: 'card',
@@ -694,7 +687,6 @@ export const themes: Record<ThemeName, Theme> = {
       nowTime: 'right',
       when: 'arrow',
       glow: '#5EE6FF73',
-      waves: true,
       footer: 'voice',
       pocket: 'lines',
       restMeta: 'right',

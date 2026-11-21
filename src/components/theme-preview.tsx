@@ -43,7 +43,9 @@ export function ThemePreview({ name }: { name: ThemeName }) {
         </View>
       ) : (
         <>
-          <View style={[styles.micRing, styles.micRingLine, { borderColor: c.micRing }]}>
+          <View style={styles.floatingMic}>
+            <View style={[styles.wave, styles.waveNear, { borderColor: c.accent }]} />
+            <View style={[styles.wave, styles.waveFar, { borderColor: c.accent }]} />
             <View style={[styles.mic, { backgroundColor: c.accent }]} />
           </View>
           <View style={[styles.footer, { backgroundColor: c.footer }]}>
@@ -190,24 +192,19 @@ const styles = StyleSheet.create({
   cardLineShort: {
     width: '50%',
   },
-  // 🎙 «в воздухе» справа над полем
-  micRing: {
+  // 🎙 «в воздухе» справа над полем, кольца — как у 🎙 «Голоса»
+  floatingMic: {
     position: 'absolute',
     right: MIC.right,
     bottom: MIC.bottom,
     width: MIC.size,
     height: MIC.size,
-    padding: 2,
-  },
-  micRingLine: {
-    borderWidth: 1.5,
-    borderRadius: circle,
   },
   mic: {
     flex: 1,
     borderRadius: circle,
   },
-  // «Голос»: 🎙 по центру подвала, вокруг два кольца — дальнее бледнее, по бокам «Аа» и 📷
+  // «Голос»: 🎙 по центру подвала, по бокам «Аа» и 📷
   voiceFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -223,6 +220,7 @@ const styles = StyleSheet.create({
     width: VOICE_MIC,
     height: VOICE_MIC,
   },
+  // Два кольца вокруг 🎙 любого размера — дальнее бледнее
   wave: {
     position: 'absolute',
     borderWidth: 1,
@@ -231,15 +229,15 @@ const styles = StyleSheet.create({
   waveNear: {
     top: -4,
     left: -4,
-    width: VOICE_MIC + 8,
-    height: VOICE_MIC + 8,
+    right: -4,
+    bottom: -4,
     opacity: 0.45,
   },
   waveFar: {
     top: -9,
     left: -9,
-    width: VOICE_MIC + 18,
-    height: VOICE_MIC + 18,
+    right: -9,
+    bottom: -9,
     opacity: 0.2,
   },
   footer: {
