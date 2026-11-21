@@ -4,34 +4,25 @@ import { GolosText_600SemiBold } from '@expo-google-fonts/golos-text/600SemiBold
 import { GolosText_700Bold } from '@expo-google-fonts/golos-text/700Bold';
 import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono/500Medium';
 import { useFonts } from 'expo-font';
-import { DarkTheme, Stack, ThemeProvider, type Theme } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 
 import { JarvisVoiceProvider } from '@/hooks/use-jarvis-voice';
 import { PlannerProvider, prepareDatabase } from '@/hooks/use-planner';
 import { RevealProvider } from '@/hooks/use-reveal';
+import { AppThemeProvider, useTheme } from '@/hooks/use-theme';
 import { UndoProvider } from '@/hooks/use-undo';
 import { DB_NAME } from '@/lib/db';
-import { colors, fonts } from '@/theme';
+import { fonts } from '@/theme';
 
-// Держим сплэш, пока не загрузятся шрифты, — иначе первый кадр нарисуется системным шрифтом и «прыгнет».
+// Держим сплэш, пока не загрузятся шрифты и не станет известна тема, — иначе первый кадр «прыгнет».
 SplashScreen.preventAutoHideAsync();
 
-// Фон контейнера навигации — тоже наш, чтобы на переходах между экранами не мелькало белое.
-const navigationTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: colors.accent,
-    background: colors.bg,
-    card: colors.bg,
-    text: colors.text,
-    border: colors.line,
-  },
-};
+function Screens() {
+  const { colors } = useTheme();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -45,33 +36,27 @@ export default function RootLayout() {
   // Если шрифт не загрузился, всё равно показываем приложение — на системном шрифте, а не пустой экран.
   const ready = fontsLoaded || fontError !== null;
 
-  useEffect(() => {
-    if (ready) {
-      SplashScreen.hideAsync();
-    }
-  }, [ready]);
-
   if (!ready) {
     return null;
   }
 
   return (
-    <ThemeProvider value={navigationTheme}>
-      <StatusBar style="light" />
-      {/* Пока база не открыта и не мигрирована, SQLiteProvider ничего не рисует — это миллисекунды */}
-      <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
-        <PlannerProvider>
-          {/* Внутри PlannerProvider: какой голос выбран — в настройках */}
+    // Пока база не открыта и не мигрирована, SQLiteProvider ничего не рисует — это миллисекунды
+    <SQLiteProvider databaseName={DB_NAME} onInit={prepareDatabase}>
+      <PlannerProvider>
+        {/* Внутри PlannerProvider: тема — в настройках; сплэш прячет он */}
+        <AppThemeProvider>
+          {/* Какой голос выбран — тоже в настройках */}
           <JarvisVoiceProvider>
             <UndoProvider>
               {/* Внутри базы: тап по напоминанию ищет задачу в данных и ведёт к ней */}
               <RevealProvider>
-                <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+                <Screens />
               </RevealProvider>
             </UndoProvider>
           </JarvisVoiceProvider>
-        </PlannerProvider>
-      </SQLiteProvider>
-    </ThemeProvider>
+        </AppThemeProvider>
+      </PlannerProvider>
+    </SQLiteProvider>
   );
 }

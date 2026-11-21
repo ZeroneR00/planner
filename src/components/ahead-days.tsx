@@ -1,16 +1,17 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { AheadDay } from '@/lib/ahead-view';
 import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Task } from '@/lib/types';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = {
   days: readonly AheadDay[];
@@ -21,6 +22,8 @@ type Props = {
 };
 
 export function AheadDays({ days, editingId, flash, onEdit, onRemove }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   if (days.length === 0) {
     return (
       <View style={styles.empty}>
@@ -59,7 +62,7 @@ export function AheadDays({ days, editingId, flash, onEdit, onRemove }: Props) {
   ));
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   section: {
     gap: space[4],
   },
@@ -104,4 +107,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

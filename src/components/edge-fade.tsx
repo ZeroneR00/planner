@@ -1,12 +1,13 @@
 import { useId } from 'react';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { colors } from '@/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type Props = { stops: readonly (readonly [offset: number, opacity: number])[] };
 
 /** Горизонтальное затухание цветом футера; размер — от родителя. */
 export function EdgeFade({ stops }: Props) {
+  const { colors } = useTheme();
   // useId даёт «:r1:» — в url(#…) двоеточия ломают ссылку на градиент
   const id = `fade${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (

@@ -2,11 +2,11 @@
   "expo": {
     "name": "Джарвис",
     "slug": "planner",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "planner",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#111316",
     "runtimeVersion": { "policy": "appVersion" },
     "updates": {

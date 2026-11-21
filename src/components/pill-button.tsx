@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import { Icon, type IconName } from '@/components/icon';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = {
   icon: IconName;
@@ -13,6 +14,8 @@ type Props = {
 
 /** ⏰ и ↻ справа от бегунка: пусто — круглая иконка, выбрано — пилюля с надписью. */
 export function PillButton({ icon, label, disabled, accessibilityLabel, onPress }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   const on = label !== null;
   return (
     <Pressable
@@ -37,7 +40,7 @@ export function PillButton({ icon, label, disabled, accessibilityLabel, onPress 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   // Бегунок слева сужается сам, когда кнопка раскрывается
   pill: {
     minWidth: touch,
@@ -67,4 +70,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

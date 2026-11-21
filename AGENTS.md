@@ -27,7 +27,7 @@
 - Обновления по воздуху: `expo-updates`, канал `preview`, `runtimeVersion` = `version` из app.json. **Нативная правка (новый пакет, Kotlin, разрешения / плагины / значок в app.json) → поднять `version` и собрать новый APK**: по воздуху она не доедет
 - Навигация: Expo Router (файл в `app/` = экран)
 - Хранение: `expo-sqlite` — база на устройстве. Бэкенда в v1 нет
-- Стили: `StyleSheet` + токены из `src/theme.ts`. Без UI-китов
+- Стили: `StyleSheet` + токены из `src/theme.ts`; цвета и стили текста — по теме, через `useTheme()` / `themedStyles`. Без UI-китов
 - Шрифты: Golos Text и JetBrains Mono через `@expo-google-fonts/*`; если пакета нет — локальные файлы через `expo-font`
 - Иконки: `react-native-svg` (линейные иконки, как в прототипе)
 - Эффекты: `expo-blur` (полупрозрачная плашка), `expo-linear-gradient` (затухание краёв бегунка), `react-native-reanimated` (таймер, появление/исчезание)
@@ -68,6 +68,7 @@ src/
   components/       # UI: один компонент — один файл (Composer, WhenChips, NowCard, PocketList, UndoBar…)
   hooks/            # useTasks, useToday, useUndo и т.п. — связь UI с базой
     use-planner.tsx # PlannerProvider, usePlanner: данные в памяти, commit → база
+    use-theme.tsx   # тема из настроек и телефона; useTheme, themedStyles — стили на каждую тему
     use-reminders.ts # expo-notifications: разрешение, канал, кнопки, синхронизация, шторка
     use-voice.ts    # expo-speech-recognition: диктовка, громкость; в Expo Go модуля нет
     use-jarvis-voice.tsx # свой голос: какой скачан и загружен, докачка, «Прослушать» — единственное место с модулем
@@ -89,6 +90,7 @@ src/
     voice.ts        # ошибки диктовки → текст для человека, громкость → 0…1
     reply.ts        # что ответить голосом: «Принял. Завтра в 9.»
     settings.ts     # настройки ↔ строки таблицы settings
+    theme-choice.ts # выбор темы: «Как в телефоне» → Ночь / День
     voices.ts       # свои голоса: список, адреса архивов, паузы повтора, проценты
     version.ts      # «Версия 1.0.0 · обновление 16 ноября, 15:40»
     changes.ts      # Changes и applyChanges — единственный путь записи
@@ -113,7 +115,7 @@ docs/
 - **Даты храним как локальные строки `'YYYY-MM-DD'`**, а не timestamp: так нет ошибок с часовыми поясами и полночью.
   Текущую дату получай через одну функцию (`today()` в `dates.ts`), чтобы её можно было подменить в тестах.
 - Тексты интерфейса — только из `src/lib/copy.ts`. Раздел «Стикеры»: переименование — правка констант в `copy.ts`.
-- Цвета и размеры — только из `src/theme.ts`, никаких «магических» `#1C1F24` в компонентах.
+- Размеры — из `src/theme.ts`, цвета и стили текста — через `useTheme()` / `themedStyles`, никаких «магических» `#1C1F24` в компонентах.
 - Никаких веб-API (`window`, `document`, `localStorage`) — это не браузер.
 - Имена переменных и функций — на английском. Комментарии — на русском, только там, где неочевидно «почему».
 - Никаких `any` без комментария, зачем он нужен.

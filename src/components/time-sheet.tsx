@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, Text, View, type ViewStyle } from 'react-native';
 
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import type { TimeCell, TimeGrid } from '@/lib/time-grid';
-import { colors, pressedOpacity, radius, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, space, touch } from '@/theme';
 
 type Props = {
   grid: TimeGrid;
@@ -12,6 +13,8 @@ type Props = {
 
 /** Панель ⏰: «Без времени», утро/день/вечер, часы 0–23 и минуты с шагом 5. */
 export function TimeSheet({ grid, onPick }: Props) {
+  const { text } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.sheet}>
       <View style={styles.header}>
@@ -58,6 +61,8 @@ type CellProps = {
 };
 
 function Cell({ cell, style, preset = false, onPress }: CellProps) {
+  const { text } = useTheme();
+  const styles = useStyles();
   const label = preset
     ? cell.selected
       ? text.chipOn
@@ -88,10 +93,12 @@ function Cell({ cell, style, preset = false, onPress }: CellProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   sheet: {
     padding: space[6],
     gap: space[4],
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
     borderRadius: radius.panel,
     backgroundColor: colors.surface,
   },
@@ -153,4 +160,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

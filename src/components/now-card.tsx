@@ -1,15 +1,16 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
 import type { Flash } from '@/hooks/use-reveal';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
-import { colors, pressedOpacity, radius, size, space, text } from '@/theme';
+import { pressedOpacity, radius, size, space } from '@/theme';
 
 type Props = {
   item: DayItem | null;
@@ -22,14 +23,19 @@ type Props = {
 };
 
 export function NowCard({ item, doneCount, editingId, flash, onDone, onLater, onEdit }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.card}>
       <View style={styles.top}>
-        <Text style={text.eyebrow}>{copy.today.now}</Text>
-        <Text style={text.mono}>{copy.today.doneCount(doneCount)}</Text>
+        <View style={styles.eyebrow}>
+          <View style={styles.dot} />
+          <Text style={text.eyebrow}>{copy.today.now}</Text>
+        </View>
+        <Text style={[text.mono, styles.secondary]}>{copy.today.doneCount(doneCount)}</Text>
       </View>
       {item === null ? (
-        <Text style={text.emptyTitle}>{copy.today.empty}</Text>
+        <Text style={[text.emptyTitle, styles.onCard]}>{copy.today.empty}</Text>
       ) : (
         <View style={styles.body}>
           <View style={styles.titleBlock}>
@@ -41,11 +47,15 @@ export function NowCard({ item, doneCount, editingId, flash, onDone, onLater, on
               accessibilityLabel={copy.a11y.edit(shownTitle(item.task))}
               style={({ pressed }) => pressed && styles.pressed}
             >
-              <Text style={[text.nowTitle, item.task.title === '' && styles.untitled]}>
+              <Text style={[text.nowTitle, item.task.title === '' && styles.secondary]}>
                 {shownTitle(item.task)}
               </Text>
-              {item.task.id === editingId && <FocusRing offset={space[6]} radius={radius.focus} />}
-              {flash?.id === item.task.id && <FlashRing key={flash.key} offset={space[6]} radius={radius.focus} />}
+              {item.task.id === editingId && (
+                <FocusRing offset={space[6]} radius={radius.focus} color={colors.nowRing} />
+              )}
+              {flash?.id === item.task.id && (
+                <FlashRing key={flash.key} offset={space[6]} radius={radius.focus} color={colors.nowRing} />
+              )}
             </Pressable>
             <TaskMeta time={item.task.time} label={item.repeat} large />
           </View>
@@ -55,14 +65,14 @@ export function NowCard({ item, doneCount, editingId, flash, onDone, onLater, on
               accessibilityRole="button"
               style={({ pressed }) => [styles.button, styles.done, pressed && styles.pressed]}
             >
-              <Text style={text.button}>{copy.today.done}</Text>
+              <Text style={[text.button, styles.doneText]}>{copy.today.done}</Text>
             </Pressable>
             <Pressable
               onPress={() => onLater(item.task)}
               accessibilityRole="button"
               style={({ pressed }) => [styles.button, styles.later, pressed && styles.pressed]}
             >
-              <Text style={text.buttonSecondary}>{copy.today.later}</Text>
+              <Text style={[text.buttonSecondary, styles.laterText]}>{copy.today.later}</Text>
             </Pressable>
           </View>
         </View>
@@ -71,20 +81,40 @@ export function NowCard({ item, doneCount, editingId, flash, onDone, onLater, on
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, dark }) => ({
   card: {
     padding: space[20],
     gap: space[14],
     borderRadius: radius.card,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.now,
+    // В светлой теме карточка приподнята тенью
+    ...(dark ? {} : { elevation: 6, shadowColor: colors.shadow }),
   },
   top: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+  },
+  eyebrow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[8],
+  },
+  dot: {
+    width: space[8],
+    height: space[8],
+    borderRadius: radius.pill,
+    backgroundColor: colors.nowEyebrow,
+  },
+  onCard: {
+    color: colors.nowText,
+  },
+  // «сделано N» и «Фото» вместо подписи — вторичным цветом: это не текст задачи
+  secondary: {
+    color: colors.nowSecondary,
   },
   body: {
-    gap: space[18],
+    gap: space[16],
   },
   titleBlock: {
     gap: space[6],
@@ -95,29 +125,31 @@ const styles = StyleSheet.create({
     marginBottom: space[8],
     borderRadius: radius.row,
   },
-  // «Фото» вместо подписи — вторичным цветом: это не текст задачи
-  untitled: {
-    color: colors.textSecondary,
-  },
   buttons: {
     flexDirection: 'row',
     gap: space[8],
   },
   button: {
     flex: 1,
-    height: size.button,
+    height: size.nowButton,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.row,
+    borderRadius: radius.field,
   },
   done: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.nowDone,
+  },
+  doneText: {
+    color: colors.nowOnDone,
   },
   later: {
     borderWidth: 1,
-    borderColor: colors.outline,
+    borderColor: colors.nowLater,
+  },
+  laterText: {
+    color: colors.nowLaterText,
   },
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

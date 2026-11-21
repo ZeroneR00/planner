@@ -12,11 +12,13 @@ import { UndoBar } from '@/components/undo-bar';
 import { useAhead } from '@/hooks/use-ahead';
 import { useComposer } from '@/hooks/use-composer';
 import { RevealScrollContext, useFlash, useRevealScroll } from '@/hooks/use-reveal';
+import { useTheme } from '@/hooks/use-theme';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, size, space, text, touch } from '@/theme';
+import { pressedOpacity, size, space, touch } from '@/theme';
 
 export default function AheadScreen() {
+  const { colors, text } = useTheme();
   const ahead = useAhead();
   const composer = useComposer();
   const undo = useUndo();

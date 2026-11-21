@@ -1,13 +1,14 @@
 import { Fragment } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { stepChips, windowLimits, type RepeatOption } from '@/lib/composer';
 import { copy } from '@/lib/copy';
 import { WEEK_ORDER, at, capitalize, weekdayHeaders } from '@/lib/dates';
 import { stepLabel } from '@/lib/rules';
 import type { RepeatKind, RepeatPattern } from '@/lib/types';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Hourly = Extract<RepeatPattern, { kind: 'hourly' }>;
 
@@ -32,6 +33,8 @@ export function RepeatSheet({
   onPickStep,
   onShift,
 }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.sheet}>
       <Text style={[text.sheetTitle, styles.title]}>{copy.composer.repeat}</Text>
@@ -64,6 +67,8 @@ export function RepeatSheet({
 }
 
 function DayRow({ weekdays, onToggle }: { weekdays: readonly number[]; onToggle: (weekday: number) => void }) {
+  const { text } = useTheme();
+  const styles = useStyles();
   const names = weekdayHeaders();
   return (
     <View style={styles.days}>
@@ -93,6 +98,8 @@ type HourlyProps = {
 };
 
 function HourlyControls({ hourly, onPickStep, onShift }: HourlyProps) {
+  const { text } = useTheme();
+  const styles = useStyles();
   const limits = windowLimits(hourly);
   return (
     <View>
@@ -134,6 +141,8 @@ function HourlyControls({ hourly, onPickStep, onShift }: HourlyProps) {
 type StepButton = { enabled: boolean; label: string; onPress: () => void };
 
 function WindowRow({ label, hour, down, up }: { label: string; hour: number; down: StepButton; up: StepButton }) {
+  const { text } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.window}>
       <Text style={[text.label, styles.windowLabel]}>{label}</Text>
@@ -145,6 +154,8 @@ function WindowRow({ label, hour, down, up }: { label: string; hour: number; dow
 }
 
 function ShiftButton({ icon, button }: { icon: 'minus' | 'plus'; button: StepButton }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={button.onPress}
@@ -159,7 +170,7 @@ function ShiftButton({ icon, button }: { icon: 'minus' | 'plus'; button: StepBut
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, text }) => ({
   window: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -181,6 +192,8 @@ const styles = StyleSheet.create({
   },
   sheet: {
     padding: space[6],
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
     borderRadius: radius.panel,
     backgroundColor: colors.surface,
   },
@@ -222,4 +235,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

@@ -1,5 +1,7 @@
 // Все тексты интерфейса — здесь. Переименование раздела или кнопки = правка одной строки.
 
+import type { ThemeName } from '@/lib/theme-choice';
+
 // Формы названия раздела: что / куда. Переименование — правка этих двух строк
 const POCKET = 'Стикеры';
 const POCKET_ACC = 'стикеры';
@@ -148,6 +150,11 @@ export const copy = {
     inPhone: 'в настройках телефона',
     reminders: 'Напоминания', // раздел
     reminderSound: 'Звук напоминаний',
+    appearance: 'Оформление', // раздел
+    followPhone: 'Как в телефоне',
+    followPhoneNote: 'Тёмный телефон — Ночь, светлый — День',
+    themeNow: 'сейчас', // под картинкой темы, которую выбрал телефон
+    themes: { night: 'Ночь', day: 'День' } satisfies Record<ThemeName, string>,
     // Строка внизу; обновление — то, что прилетело по воздуху
     version: (v: string) => `Версия ${v}`,
     versionUpdated: (v: string, when: string) => `Версия ${v} · обновление ${when}`,

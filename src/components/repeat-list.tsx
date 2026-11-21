@@ -1,16 +1,17 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
 import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { AheadRule } from '@/lib/ahead-view';
 import type { Flash } from '@/hooks/use-reveal';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { Rule } from '@/lib/types';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = {
   rules: readonly AheadRule[];
@@ -22,6 +23,8 @@ type Props = {
 
 /** «Повторяется» на экране «Впереди». Повторов нет — раздела нет. */
 export function RepeatList({ rules, editingRuleId, flash, onEdit, onStop }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   if (rules.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -55,7 +58,7 @@ export function RepeatList({ rules, editingRuleId, flash, onEdit, onStop }: Prop
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   section: {
     gap: space[4],
   },
@@ -90,4 +93,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

@@ -6,7 +6,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { palettes, pressedOpacity, radius, size, space, themes, touch } from '@/theme';
+
+// Камера всегда на чёрном, в любой теме
+const colors = palettes.night;
+const text = themes.night.text;
 
 const QUALITY = 0.7; // снимку задачи хватает, а файл в разы меньше
 

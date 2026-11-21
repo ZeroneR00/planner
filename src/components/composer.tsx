@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
+import { Keyboard, Pressable, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
@@ -13,15 +13,18 @@ import { TimeSheet } from '@/components/time-sheet';
 import { WhenChips } from '@/components/when-chips';
 import type { Composer as ComposerModel, Sheet } from '@/hooks/use-composer';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { formatTime } from '@/lib/dates';
 import { repeatLabel } from '@/lib/rules';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = { composer: ComposerModel };
 
 /** Поле записи внизу экрана: правка, подсказка, панель, бегунок «когда», поле и «Добавить». */
 export function Composer({ composer: c }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const keyboardShown = useKeyboardShown();
   const inputRef = useRef<TextInputInstance>(null);
@@ -145,7 +148,7 @@ export function Composer({ composer: c }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   footer: {
     paddingTop: space[10],
     paddingHorizontal: space[12],
@@ -172,9 +175,9 @@ const styles = StyleSheet.create({
     height: size.field,
     paddingHorizontal: space[16],
     borderWidth: 1,
-    borderColor: colors.lineStrong,
+    borderColor: colors.fieldBorder,
     borderRadius: radius.field,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.field,
   },
   inputEditing: {
     borderColor: colors.accent,
@@ -206,4 +209,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

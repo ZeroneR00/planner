@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { FlashRing } from '@/components/flash-ring';
 import { FocusRing } from '@/components/focus-ring';
@@ -6,11 +6,12 @@ import { Icon } from '@/components/icon';
 import { PhotoThumb } from '@/components/photo-thumb';
 import { TaskMeta } from '@/components/task-meta';
 import type { Flash } from '@/hooks/use-reveal';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { shownTitle } from '@/lib/photo';
 import type { DayItem } from '@/lib/today-view';
 import type { Task } from '@/lib/types';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = {
   items: readonly DayItem[];
@@ -21,6 +22,8 @@ type Props = {
 };
 
 export function RestList({ items, editingId, flash, onToggle, onEdit }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   if (items.length === 0) return null;
   return (
     <View style={styles.section}>
@@ -62,7 +65,7 @@ export function RestList({ items, editingId, flash, onToggle, onEdit }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, text }) => ({
   section: {
     gap: space[2],
   },
@@ -120,4 +123,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

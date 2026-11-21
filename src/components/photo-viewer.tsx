@@ -4,7 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { photoUri } from '@/hooks/use-photos';
 import { copy } from '@/lib/copy';
-import { colors, radius, space, touch } from '@/theme';
+import { palettes, radius, space, touch } from '@/theme';
+
+// Фото на весь экран всегда на чёрном, в любой теме
+const colors = palettes.night;
 
 type Props = { name: string; onClose: () => void };
 

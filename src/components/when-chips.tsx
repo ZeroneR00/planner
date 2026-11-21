@@ -1,18 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-  type ScrollViewInstance,
-} from 'react-native';
+import { Animated, Pressable, Text, View, type LayoutChangeEvent, type ScrollViewInstance } from 'react-native';
 
 import { EdgeFade } from '@/components/edge-fade';
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { WhenChip } from '@/lib/composer';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 // Правый край растворяется всегда, левый — затемняется, только когда ряд прокручен
 const RIGHT_FADE = [
@@ -40,6 +33,8 @@ type Box = { x: number; width: number };
 
 /** Бегунок «когда»: ближние дни и «Дата». */
 export function WhenChips({ chips, selectedKey, calendarLabel, onPick, onOpenCalendar }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   // Не useRef: React Compiler не даёт читать ref.current в рендере, а Value нужен в стилях
   const [scrollX] = useState(() => new Animated.Value(0));
   const scrollRef = useRef<ScrollViewInstance>(null);
@@ -132,7 +127,7 @@ export function WhenChips({ chips, selectedKey, calendarLabel, onPick, onOpenCal
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   wrap: {
     flex: 1,
     minWidth: 0,
@@ -176,4 +171,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

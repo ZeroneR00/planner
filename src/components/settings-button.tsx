@@ -1,13 +1,16 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, radius, touch } from '@/theme';
+import { pressedOpacity, radius, touch } from '@/theme';
 
 type Props = { onPress: () => void };
 
 /** Шестерёнка в шапке «Сегодня» — в «Настройки». */
 export function SettingsButton({ onPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -20,7 +23,7 @@ export function SettingsButton({ onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   button: {
     width: touch,
     height: touch,
@@ -29,9 +32,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
-    backgroundColor: colors.row,
+    backgroundColor: colors.footer,
   },
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

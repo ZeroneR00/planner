@@ -4,18 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { SettingRow } from '@/components/setting-row';
+import { ThemePicker } from '@/components/theme-picker';
 import { OwnVoiceNote, VoiceRow } from '@/components/voice-row';
 import { useJarvisVoice } from '@/hooks/use-jarvis-voice';
 import { usePlanner } from '@/hooks/use-planner';
 import { openReminderSound } from '@/hooks/use-reminders';
 import { hush, say, sayWithPhone } from '@/hooks/use-reply';
+import { useTheme } from '@/hooks/use-theme';
 import { versionText } from '@/hooks/use-version';
 import { copy } from '@/lib/copy';
 import { PHONE_VOICE, VOICES, type VoiceChoice } from '@/lib/voices';
-import { colors, pressedOpacity, space, text, touch } from '@/theme';
+import { pressedOpacity, space, touch } from '@/theme';
 
 export default function SettingsScreen() {
   const { settings, changeSettings } = usePlanner();
+  const theme = useTheme();
+  const { colors, text } = theme;
+  const followPhone = settings.theme === 'system';
   const { states, playSample } = useJarvisVoice();
   const version = versionText();
   // ▶ свой голос — образец лежит в приложении, скачивать не надо; голос телефона говорит сам
@@ -35,6 +40,8 @@ export default function SettingsScreen() {
     if (on) say(copy.reply.sample);
     else hush();
   };
+  // Выключили «Как в телефоне» — остаётся тема, что на экране, ничего не мигает
+  const toggleFollowPhone = () => changeSettings({ theme: followPhone ? theme.name : 'system' });
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.header}>
@@ -85,6 +92,22 @@ export default function SettingsScreen() {
             onPress={() => void openReminderSound()}
           />
         </View>
+        <View style={styles.section}>
+          <Text style={text.section}>{copy.settings.appearance}</Text>
+          <SettingRow
+            title={copy.settings.followPhone}
+            note={copy.settings.followPhoneNote}
+            value={followPhone}
+            onPress={toggleFollowPhone}
+          />
+          <View style={styles.themes}>
+            <ThemePicker
+              active={theme.name}
+              followPhone={followPhone}
+              onPick={(name) => changeSettings({ theme: name })}
+            />
+          </View>
+        </View>
         {version && <Text style={[text.caption, styles.label]}>{version}</Text>}
       </ScrollView>
     </SafeAreaView>
@@ -123,6 +146,9 @@ const styles = StyleSheet.create({
   label: {
     paddingTop: space[4],
     paddingHorizontal: space[16],
+  },
+  themes: {
+    paddingTop: space[8],
   },
   pressed: {
     opacity: pressedOpacity,

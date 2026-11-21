@@ -1,13 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, space, text, touch } from '@/theme';
+import { pressedOpacity, space, touch } from '@/theme';
 
 type Props = { rule: boolean; onCancel: () => void };
 
 /** Строка над полем в правке: «✎ Правка» и «Отмена». */
 export function EditBar({ rule, onCancel }: Props) {
+  const { colors, text } = useTheme();
   return (
     <View style={styles.bar}>
       <View style={styles.title}>

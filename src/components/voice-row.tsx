@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import type { VoiceState } from '@/lib/voices';
-import { colors, pressedOpacity, radius, size, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, size, space, touch } from '@/theme';
 
 type Props = {
   name: string;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 function StateNote({ state }: { state: VoiceState }) {
+  const { text } = useTheme();
   switch (state.kind) {
     case 'ready':
       return copy.voices.ready;
@@ -42,6 +44,8 @@ export function OwnVoiceNote({ male, state }: { male: boolean; state: VoiceState
 
 /** Голос в настройках: тап по строке — выбрать, ▶ — только послушать образец. */
 export function VoiceRow({ name, note, selected, onSelect, onListen }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onSelect}
@@ -68,7 +72,7 @@ export function VoiceRow({ name, note, selected, onSelect, onListen }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, text }) => ({
   row: {
     minHeight: size.row,
     paddingLeft: space[12],
@@ -98,4 +102,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

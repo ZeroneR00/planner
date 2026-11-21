@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import {
   dateParts,
@@ -12,7 +13,7 @@ import {
   monthStart,
   weekdayHeaders,
 } from '@/lib/dates';
-import { colors, fonts, pressedOpacity, radius, space, text, touch } from '@/theme';
+import { fonts, pressedOpacity, radius, space, touch } from '@/theme';
 
 // Вперёд — не дальше года: дальше планировать в этом приложении незачем
 const MAX_SHIFT = 12;
@@ -20,6 +21,8 @@ const MAX_SHIFT = 12;
 type Props = { today: string; selected: string | null; onPick: (date: string) => void };
 
 export function CalendarSheet({ today, selected, onPick }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   // Сдвиг от текущего месяца; открываемся на месяце выбранной даты
   const [shift, setShift] = useState(() =>
     selected === null ? 0 : Math.min(Math.max(monthShift(today, selected), 0), MAX_SHIFT),
@@ -103,12 +106,14 @@ export function CalendarSheet({ today, selected, onPick }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, text }) => ({
   sheet: {
     paddingTop: space[6],
     paddingHorizontal: space[10],
     paddingBottom: space[10],
     gap: space[4],
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
     borderRadius: radius.panel,
     backgroundColor: colors.surface,
   },
@@ -163,4 +168,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

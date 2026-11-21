@@ -1,12 +1,15 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, pressedOpacity, radius, size, space, text } from '@/theme';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
+import { pressedOpacity, radius, size, space } from '@/theme';
 
 type Props = { title: string; note: string; value?: boolean; onPress: () => void };
 
 /** Строка настроек: с value — переключатель, без — переход в настройки телефона. Тапается вся строка. */
 export function SettingRow({ title, note, value, onPress }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   const toggle = value !== undefined;
   return (
     <Pressable
@@ -24,8 +27,8 @@ export function SettingRow({ title, note, value, onPress }: Props) {
         <View pointerEvents="none">
           <Switch
             value={value}
-            trackColor={{ false: colors.lineStrong, true: colors.accent }}
-            thumbColor={colors.text}
+            trackColor={{ false: colors.switchTrack, true: colors.accent }}
+            thumbColor={colors.thumb}
           />
         </View>
       ) : (
@@ -35,7 +38,7 @@ export function SettingRow({ title, note, value, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   row: {
     minHeight: size.row,
     paddingHorizontal: space[16],
@@ -54,4 +57,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

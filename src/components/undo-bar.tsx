@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeInDown,
@@ -11,9 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { UndoNotice } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, radius, size, space, text } from '@/theme';
+import { pressedOpacity, radius, size, space } from '@/theme';
 
 const DURATION = 5000; // сколько висит плашка
 const FADE = 1500; // последние полторы секунды плавно гаснет
@@ -44,6 +45,8 @@ export function UndoBar({ notice, ...rest }: Props) {
 }
 
 function Toast({ notice, onUndo, onExpire, style }: Props & { notice: UndoNotice }) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   const progress = useSharedValue(1); // 1 → 0 за DURATION
   const opacity = useSharedValue(1);
   const [secondsLeft, setSecondsLeft] = useState(() => secondsUntil(notice.at + DURATION));
@@ -116,7 +119,7 @@ function Toast({ notice, onUndo, onExpire, style }: Props & { notice: UndoNotice
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors, text }) => ({
   bar: {
     minHeight: size.field,
     paddingVertical: space[12],
@@ -155,4 +158,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

@@ -1,12 +1,15 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, radius, space, text, touch } from '@/theme';
+import { pressedOpacity, radius, space, touch } from '@/theme';
 
 type Props = { count: number; onPress: () => void };
 
 export function AheadButton({ count, onPress }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -21,7 +24,7 @@ export function AheadButton({ count, onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   button: {
     height: touch,
     paddingHorizontal: space[14],
@@ -31,9 +34,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
-    backgroundColor: colors.row,
+    backgroundColor: colors.footer,
   },
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

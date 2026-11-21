@@ -1,14 +1,17 @@
 import { Fragment } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import type { Hint } from '@/lib/composer';
-import { colors, space, text } from '@/theme';
+import { space } from '@/theme';
 
 type Props = { hint: Hint };
 
 /** Строка над полем: как приложение поняло запись или что с ней стало. */
 export function HintLine({ hint }: Props) {
+  const { colors, text } = useTheme();
+  const styles = useStyles();
   const color = hint.accent ? colors.accent : colors.textSecondary;
   const tone = hint.accent ? styles.accent : null;
   return (
@@ -26,7 +29,7 @@ export function HintLine({ hint }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   line: {
     paddingHorizontal: space[4],
     flexDirection: 'row',
@@ -46,4 +49,4 @@ const styles = StyleSheet.create({
   accent: {
     color: colors.accent,
   },
-});
+}));

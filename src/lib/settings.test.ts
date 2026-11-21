@@ -47,9 +47,30 @@ describe('settingsToRows', () => {
       ...DEFAULT_SETTINGS,
       voiceReplies: false,
     });
-    expect(settingsFromRows(settingsToRows({ voiceReplies: true, voice: 'dmitri' }))).toEqual({
+    expect(
+      settingsFromRows(settingsToRows({ voiceReplies: true, voice: 'dmitri', theme: 'day' })),
+    ).toEqual({
       voiceReplies: true,
       voice: 'dmitri',
+      theme: 'day',
     });
+  });
+
+  it('тема — id', () => {
+    expect(settingsToRows({ theme: 'night' })).toEqual([{ key: 'theme', value: 'night' }]);
+  });
+});
+
+describe('тема в настройках', () => {
+  it('по умолчанию — как в телефоне', () => {
+    expect(settingsFromRows([]).theme).toBe('system');
+  });
+
+  it('читается как id', () => {
+    expect(settingsFromRows([{ key: 'theme', value: 'day' }]).theme).toBe('day');
+  });
+
+  it('чужая тема — по умолчанию', () => {
+    expect(settingsFromRows([{ key: 'theme', value: 'voice' }]).theme).toBe('system');
   });
 });

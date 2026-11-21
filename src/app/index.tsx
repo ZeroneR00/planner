@@ -15,13 +15,15 @@ import { UndoBar } from '@/components/undo-bar';
 import { useComposer } from '@/hooks/use-composer';
 import { RevealScrollContext, useFlash, useRevealScroll } from '@/hooks/use-reveal';
 import { useToday } from '@/hooks/use-today';
+import { useTheme } from '@/hooks/use-theme';
 import { useUndo } from '@/hooks/use-undo';
 import { copy } from '@/lib/copy';
 import { formatHeaderDate } from '@/lib/dates';
 import type { Task } from '@/lib/types';
-import { size, space, text } from '@/theme';
+import { size, space } from '@/theme';
 
 export default function TodayScreen() {
+  const { text } = useTheme();
   const day = useToday();
   const composer = useComposer();
   const undo = useUndo();

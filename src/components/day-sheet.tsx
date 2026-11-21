@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { CalendarSheet } from '@/components/calendar-sheet';
+import { themedStyles, useTheme } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
 import { addDays } from '@/lib/dates';
-import { colors, pressedOpacity, radius, size, space, text } from '@/theme';
+import { pressedOpacity, radius, size, space } from '@/theme';
 
 type Props = { today: string; onPick: (date: string) => void };
 
 /** Меню «Когда?» у стикера. Само встаёт в правый нижний угол; календарь — на всю ширину. */
 export function DaySheet({ today, onPick }: Props) {
+  const { text } = useTheme();
+  const styles = useStyles();
   const [calendar, setCalendar] = useState(false);
 
   if (calendar) {
@@ -48,7 +51,7 @@ export function DaySheet({ today, onPick }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   place: {
     position: 'absolute',
     right: space[12],
@@ -60,6 +63,8 @@ const styles = StyleSheet.create({
   sheet: {
     minWidth: size.daySheet,
     padding: space[6],
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
     borderRadius: radius.panel,
     backgroundColor: colors.surface,
   },
@@ -77,4 +82,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

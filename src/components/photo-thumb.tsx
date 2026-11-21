@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, type ImageStyle, type StyleProp } from 'react-native';
+import { Image, Pressable, type ImageStyle, type StyleProp } from 'react-native';
 
 import { PhotoViewer } from '@/components/photo-viewer';
 import { photoUri } from '@/hooks/use-photos';
+import { themedStyles } from '@/hooks/use-theme';
 import { copy } from '@/lib/copy';
-import { colors, pressedOpacity, radius, size, touch } from '@/theme';
+import { pressedOpacity, radius, size, touch } from '@/theme';
 
 // Миниатюра 40 — до зоны нажатия 44 добираем hitSlop
 const HIT_SLOP = (touch - size.thumb) / 2;
@@ -13,6 +14,7 @@ type Props = { name: string; style?: StyleProp<ImageStyle> };
 
 /** Миниатюра фото задачи; тап — фото на весь экран. style — размер, если нужен не 40×40. */
 export function PhotoThumb({ name, style }: Props) {
+  const styles = useStyles();
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -30,7 +32,7 @@ export function PhotoThumb({ name, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themedStyles(({ colors }) => ({
   thumb: {
     width: size.thumb,
     height: size.thumb,
@@ -40,4 +42,4 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: pressedOpacity,
   },
-});
+}));

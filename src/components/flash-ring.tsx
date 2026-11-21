@@ -10,9 +10,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { RevealScrollContext } from '@/hooks/use-reveal';
-import { colors } from '@/theme';
+import { useTheme } from '@/hooks/use-theme';
 
-type Props = { offset: number; radius: number };
+type Props = { offset: number; radius: number; color?: string }; // color — по умолчанию акцент
 
 // Три вспышки по 600 мс укладываются в подсветку (2 с)
 const BLINKS = 3;
@@ -20,7 +20,8 @@ const HALF_MS = 300;
 const DIM = 0.15;
 
 /** Рамка «вот она» после тапа по напоминанию: мигает и докручивает экран до своей строки. */
-export function FlashRing({ offset, radius }: Props) {
+export function FlashRing({ offset, radius, color }: Props) {
+  const { colors } = useTheme();
   const reveal = use(RevealScrollContext);
   const ref = useRef<ViewInstance>(null);
   const revealed = useRef(false);
@@ -49,7 +50,7 @@ export function FlashRing({ offset, radius }: Props) {
   const inset = { top: -offset, left: -offset, right: -offset, bottom: -offset };
   return (
     <View ref={ref} onLayout={onLayout} style={[styles.box, inset]}>
-      <Animated.View style={[styles.ring, { borderRadius: radius }, ringStyle]} />
+      <Animated.View style={[styles.ring, { borderRadius: radius, borderColor: color ?? colors.accent }, ringStyle]} />
     </View>
   );
 }
@@ -66,6 +67,5 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderWidth: 2,
-    borderColor: colors.accent,
   },
 });
